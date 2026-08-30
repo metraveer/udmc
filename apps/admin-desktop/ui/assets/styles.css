@@ -674,19 +674,24 @@ button.attention-row:hover { border-color: var(--line-strong); color: var(--ink)
 .dialog-content { min-width: 0; }
 .dialog-section { min-width: 0; padding-bottom: 4px; }
 .dialog-section > .section-heading:first-child, .dialog-section > h2:first-child { margin-top: 0; }
-.profile-dialog-body .agent-address { padding-bottom: 16px; margin-bottom: 16px; }
+/* Inside a labelled group the group's own top rule is the separator: a second line
+   right above it would read as an empty band between two settings. */
+.profile-dialog-body .agent-address { padding-bottom: 0; margin-bottom: 0; border-bottom: 0; }
 .profile-dialog-body .profile-name-form { margin: 0 0 16px; }
-/* The login rule and the game address stack instead of squeezing each other. */
-#agentPolicyForm { display: grid; grid-template-columns: minmax(0, 1fr) 34px; gap: 12px; align-items: end; }
-#agentPolicyForm .toggle-row { grid-column: 1 / -1; }
+/* Buttons that act on the group above them, not on the section as a whole. */
+.group-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+/* A text field and the button that commits it, on one baseline. */
+.field-with-action { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; margin-top: 14px; }
+.field-with-action > .field { flex: 1 1 220px; min-width: 0; }
+.field-with-action > .button { flex: 0 0 auto; }
+#agentPolicyForm > .muted-copy { display: block; margin-top: 8px; }
 .agent-panel { max-width: 920px; }
 .connection-details { margin: 13px 0; }
 .connection-details > summary { display: flex; align-items: center; gap: 8px; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 13px; font-weight: 600; cursor: pointer; }
 .connection-details > summary svg { width: 17px; height: 17px; }
 .connection-details > .field, .connection-details > .identity-toolbar { margin-top: 12px; }
 .agent-panel > .field-help { margin-top: 12px; }
-.inline-setting { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding-bottom: 11px; margin-bottom: 12px; border-bottom: 1px solid var(--line); }
-.inline-setting .toggle-row { flex: 1; }
+.standalone-toggle { padding-bottom: 12px; margin-bottom: 14px; border-bottom: 1px solid var(--line); }
 .pack-settings { display: grid; grid-template-columns: minmax(180px, 1fr) 40px auto; align-items: end; gap: 10px; padding-bottom: 16px; }
 .pack-platform { display: grid; gap: 4px; padding-left: 12px; font-size: 12px; color: var(--muted-strong); }
 .generator-group .field > strong { padding: 6px 0; font-size: 13px; overflow-wrap: anywhere; }
@@ -918,7 +923,8 @@ input[data-protected-setting][type="number"]::-webkit-inner-spin-button { appear
 .profile-dialog-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; position: sticky; top: 0; z-index: 2; padding: 16px 0 12px; background: var(--surface); border-bottom: 1px solid var(--line); }
 .profile-dialog-heading h2 { font-size: 17px; margin: 0; }
 .profile-name-form { display: grid; grid-template-columns: minmax(0, 1fr) 40px; align-items: end; gap: 10px; margin: 13px 0 16px; }
-.agent-delivery { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+/* First thing on its own dialog page: a rule above the heading separates it from nothing. */
+.agent-delivery { margin-top: 0; }
 .agent-download-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 12px 0; }
 .agent-download-row code { min-width: 0; flex: 1; overflow-wrap: anywhere; font-size: 12px; }
 .agent-delivery .toggle-row small { display: block; margin-top: 5px; line-height: 1.5; font-size: 12px; color: var(--muted); }

@@ -3,7 +3,7 @@ import { formatAgentError } from "./http.js";
 import { agentStatusMessage } from "./agent-messages.js";
 export function initAgentUpdates({ getContext, getBinding, getRevision, getBusy, setBusy, adminGet, adminJson, adminRaw, invoke, showToast, onState, requestRestart }) {
   const $ = id => document.getElementById(id);
-  let current = null, binding = null, checking = false, attempted = false;
+  let current = null, binding = null, checking = false, attempted = false, policySaving = false, addressDirty = false;
   let confirmed = null;
   let appVersion = null; // the agent version this Control builds, from dependency_status
   const parse = value => String(value || "").split(".").map(part => Number.parseInt(part, 10) || 0);
@@ -43,9 +43,11 @@ export function initAgentUpdates({ getContext, getBinding, getRevision, getBusy,
       ? t("Остановка и перезапуск из панели выключены. Включите их на странице «Сервер» в блоке «Действия сервера».")
       : pending() ? t("Обновление уже подготовлено: остановите или перезапустите сервер, чтобы оно применилось.")
         : t("Подготовит обновление и сразу предложит перезапуск с предупреждением игроков.");
-    $("requireClientAgent").checked = current?.requireClient === true;
+    // Keep the switch where the player put it until the server answers, so it does not
+    // flick back to the old value for the length of the request.
+    if (!policySaving) $("requireClientAgent").checked = current?.requireClient === true;
     $("requireClientAgent").disabled = !current?.client || getBusy();
-    if (document.activeElement !== $("gameAddressInput")) $("gameAddressInput").value = current?.gameAddress || "";
+    if (!addressDirty && document.activeElement !== $("gameAddressInput")) $("gameAddressInput").value = current?.gameAddress || "";
     $("gameAddressInput").disabled = !current || getBusy();
     $("agentPolicySave").disabled = !current || getBusy();
     const state = current?.update?.state;
@@ -72,7 +74,7 @@ export function initAgentUpdates({ getContext, getBinding, getRevision, getBusy,
     if (!appVersion) {
       try { appVersion = (await invoke("dependency_status"))?.version || null; } catch { appVersion = null; }
     }
-    if (binding !== getBinding()) { binding = getBinding(); current = null; attempted = false; }
+    if (binding !== getBinding()) { binding = getBinding(); current = null; attempted = false; addressDirty = false; }
     const started = binding;
     checking = true;
     try {
@@ -143,18 +145,29 @@ export function initAgentUpdates({ getContext, getBinding, getRevision, getBusy,
     else if (withRestart) showToast(t("Обновление не передано на сервер, перезапуск отменён."), "error");
   });
   $("agentUpdateConfirmDialog").addEventListener("close", () => { confirmed = null; });
-  $("agentPolicyForm").addEventListener("submit", async event => {
-    event.preventDefault();
+  // A switch applies the moment it is flipped. The save button sits next to the address
+  // field, so it read as the address's button: the login rule looked switched on and
+  // then came back off after the next reload, because nothing had been sent.
+  async function savePolicy(message) {
     if (getBusy() || !current) return;
-    const requireClient = $("requireClientAgent").checked;
     const started = getBinding();
-    setBusy(true);
+    // Read the form before redrawing it: the redraw restores server values into the
+    // fields, and the address the administrator just typed would be sent as the old one.
+    const payload = { requireClient: $("requireClientAgent").checked, gameAddress: $("gameAddressInput").value.trim() };
+    policySaving = true; setBusy(true); render();
     try {
-      const value = await adminJson("/admin/agents/settings", { requireClient, gameAddress: $("gameAddressInput").value.trim() });
-      if (started === getBinding()) { current = value; showToast(t("Правило входа сохранено")); }
+      const value = await adminJson("/admin/agents/settings", payload);
+      if (started === getBinding()) { current = value; addressDirty = false; showToast(message); }
     } catch (error) { showToast(formatAgentError(error), "error"); }
-    finally { if (started === getBinding()) { setBusy(false); render(); } }
-  });
+    finally { policySaving = false; if (started === getBinding()) { setBusy(false); render(); } }
+  }
+  // A rejected address stays in the field so it can be corrected, instead of snapping
+  // back to the last accepted one.
+  $("gameAddressInput").addEventListener("input", () => { addressDirty = true; });
+  $("requireClientAgent").addEventListener("change", () => savePolicy($("requireClientAgent").checked
+    ? t("Теперь войти можно только с клиентским UDMC")
+    : t("Теперь войти можно и без клиентского UDMC")));
+  $("agentPolicyForm").addEventListener("submit", event => { event.preventDefault(); savePolicy(t("Игровой адрес сохранён")); });
   $("agentManualUpdateButton").addEventListener("click", () => {
     document.querySelector('[data-agent-mode="create"]')?.click();
     document.querySelector('[data-agent-panel="create"]')?.scrollIntoView({ block: "start" });

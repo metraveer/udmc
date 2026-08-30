@@ -83,9 +83,23 @@ test("the game address renders from the agent, saves through settings and shows 
   ui.input("gameAddressInput", "bad address"); ui.submit("agentPolicyForm");
   await until(() => ui.$("toastRegion").textContent.includes("Игровой адрес должен быть вида host или host:port"));
   ui.input("gameAddressInput", "play.new.example:25565"); ui.submit("agentPolicyForm");
-  await until(() => settingsBodies.length === 2 && ui.$("toastRegion").textContent.includes("Правило входа сохранено"));
+  await until(() => settingsBodies.length === 2 && ui.$("toastRegion").textContent.includes("Игровой адрес сохранён"));
   assert.deepEqual(settingsBodies[1], { requireClient: false, gameAddress: "play.new.example:25565" });
   assert.equal(ui.$("gameAddressInput").value, "play.new.example:25565");
+  // The switch used to wait for the address field's save button, so the rule came back
+  // off after the next reload: flipping it has to reach the server by itself.
+  ui.$("requireClientAgent").click();
+  await until(() => settingsBodies.length === 3 && ui.$("toastRegion").textContent.includes("Теперь войти можно только с клиентским UDMC"));
+  assert.deepEqual(settingsBodies[2], { requireClient: true, gameAddress: "play.new.example:25565" });
+  assert.equal(ui.$("requireClientAgent").checked, true);
+  // Each control belongs to a caption that names it: the section used to be one pile in
+  // which the version, the player link and the join rules were told apart only by reading.
+  const groups = [...ui.w.document.querySelectorAll('[data-agent-panel="agents"] fieldset.generator-group')];
+  assert.deepEqual(groups.map(group => group.querySelector("legend").textContent.trim()),
+    ["Версия агента на сервере", "Клиентский JAR для игроков", "Правила входа игроков"]);
+  for (const control of ui.w.document.querySelectorAll('[data-agent-panel="agents"] input, [data-agent-panel="agents"] button')) {
+    assert.ok(control.closest("fieldset.generator-group"), `Вне группы: ${control.id || control.textContent.trim()}`);
+  }
 });
 
 test("connecting automatically delivers only the public client agent and requires confirmation for updates", async t => {

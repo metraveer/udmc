@@ -274,7 +274,8 @@ function bindEvents() {
   elements.refreshButton.addEventListener("click", () => activeView === "devices" ? accessUi.onOpen() : activeView === "modrinth" ? modrinthUi.onOpen(true) : refresh());
   elements.clearLogButton.addEventListener("click", clearActivity);
   elements.settingsForm.addEventListener("submit", saveSettings);
-  elements.powerActionsInput.addEventListener("change", () => { powerSettingsDirty = true; });
+  // The switch is the whole setting: it saves itself instead of waiting for a button.
+  elements.powerActionsInput.addEventListener("change", () => { powerSettingsDirty = true; saveSettings(); });
   document.getElementById("packNameInput").addEventListener("input", () => { packNameDirty = true; });
   document.getElementById("packSettingsForm").addEventListener("submit", savePackName);
   document.getElementById("serverProfileName").addEventListener("input", () => { profileNameDirty = true; });
@@ -491,9 +492,9 @@ async function refreshServerStatus(silent = false) {
 }
 
 async function saveSettings(event) {
-  event.preventDefault();
+  event?.preventDefault();
   if (buildBusy || !serverStatus) return;
-  const submitButton = event.submitter;
+  const submitButton = event?.submitter;
   const enabled = elements.powerActionsInput.checked;
   setBuildBusy(true);
   setBusy(submitButton, true);
