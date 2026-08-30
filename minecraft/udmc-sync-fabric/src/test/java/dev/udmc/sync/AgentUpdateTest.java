@@ -23,8 +23,11 @@ public final class AgentUpdateTest {
         if (args.length == 2 && args[0].equals("child")) { child(Path.of(args[1])); return; }
         if (args.length == 2 && args[0].equals("generation")) {
             Path installed = Path.of(args[1]);
-            check(UdmcConfig.load(installed).bootstrapId.equals("a".repeat(64)), "A newer JAR must replace the stored generation");
+            UdmcConfig loaded = UdmcConfig.load(installed);
+            check(loaded.bootstrapId.equals("a".repeat(64)), "A newer JAR must replace the stored generation");
+            check(loaded.fromBootstrap, "A generated JAR must mark its settings as coming from Control");
             check(UdmcConfig.load(installed).bootstrapId.equals("a".repeat(64)), "The rewritten config must survive on disk");
+            Files.writeString(installed.resolve("loaded-project.txt"), loaded.packId);
             return;
         }
         Path root = Files.createTempDirectory("udmc-agent-update-test-");
@@ -224,6 +227,26 @@ public final class AgentUpdateTest {
             .redirectErrorStream(true).redirectOutput(root.resolve("generation.log").toFile()).start();
         check(child.waitFor(60, TimeUnit.SECONDS) && child.exitValue() == 0,
             "A newer client JAR must rewrite the installed config: " + Files.readString(root.resolve("generation.log")));
+
+        // The case an administrator actually hits: a client that was pointed at a test
+        // project keeps its old config, the player drops in the real JAR, and nothing tells
+        // either of them that the client still answers for a project nobody serves.
+        UdmcConfig leftover = config();
+        leftover.role = "client";
+        leftover.packId = "an-abandoned-test";
+        leftover.bootstrapId = "c".repeat(64);
+        leftover.save(root);
+        Files.deleteIfExists(root.resolve("loaded-project.txt"));
+        Process again = new ProcessBuilder(java(), "-Xmx96m", "-cp",
+                installed + java.io.File.pathSeparator + System.getProperty("java.class.path"),
+                AgentUpdateTest.class.getName(), "generation", root.toString())
+            .redirectErrorStream(true).redirectOutput(root.resolve("foreign.log").toFile()).start();
+        check(again.waitFor(60, TimeUnit.SECONDS) && again.exitValue() == 0,
+            "The installed JAR must take over from another project instead of failing: " + Files.readString(root.resolve("foreign.log")));
+        check(Files.readString(root.resolve("loaded-project.txt")).equals(stored.packId),
+            "The client must adopt the project of the JAR that was installed");
+        check(Files.exists(root.resolve("config/udmc-sync-previous.json")),
+            "The replaced settings must be kept beside the new ones");
     }
 
     private static void childProcess(Path root) throws Exception {

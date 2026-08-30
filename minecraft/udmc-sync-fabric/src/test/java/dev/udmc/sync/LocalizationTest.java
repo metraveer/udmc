@@ -37,7 +37,7 @@ public final class LocalizationTest {
         // The notice has to carry the three numbers an administrator compares, or the only
         // way to tell a stale client from a foreign one is to open files on someone's PC.
         String rendered = login.getString();
-        for (var fragment : List.of("0.17.1", "0.17.0", "udmc-main", "0.16.2")) {
+        for (var fragment : List.of("0.17.1", "0.17.0", "udmc-main")) {
             check(rendered.contains(fragment), "Login notice must state " + fragment + ": " + rendered);
         }
         check(login.getContents() instanceof TranslatableContents contents && contents.getKey().equals("udmc_sync.login.notice"), "Login notice must use a Minecraft translation with a clean-client fallback");

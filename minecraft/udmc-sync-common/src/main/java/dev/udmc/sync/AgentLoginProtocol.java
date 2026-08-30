@@ -42,6 +42,9 @@ public final class AgentLoginProtocol {
         }
     }
 
+    /** What this client would report about itself, for showing on its own screens. */
+    public static Answer localClient() { return client; }
+
     public static Answer answer(Query query) {
         Answer current = client;
         if (current == null || query.protocol != PROTOCOL) return null;

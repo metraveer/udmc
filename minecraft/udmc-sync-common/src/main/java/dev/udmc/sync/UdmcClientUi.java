@@ -35,6 +35,12 @@ public final class UdmcClientUi {
         gameDir = directory;
         config = settings;
         dismissed = false;
+        // A JAR built from source has no server to talk to. Syncing against whatever the
+        // previous config happened to say is how a client keeps a project nobody serves.
+        if (!settings.fromBootstrap) {
+            state = new State(text("udmc_sync.title.failed"), text("udmc_sync.message.unconfigured"), List.of(), false, false);
+            return;
+        }
         state = new State(text("udmc_sync.title.check"), text("udmc_sync.message.connecting"), List.of(), true, false);
         Thread worker = new Thread(() -> {
             try {

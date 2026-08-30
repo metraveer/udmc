@@ -17,7 +17,6 @@ public final class AgentLoginNotice {
         + "2. Download the file into your mods folder / Скачайте файл в папку mods\n"
         + "3. Start the game and join again / Запустите игру и зайдите снова";
     private static final String SERVER_FALLBACK = "Server / Сервер: UDMC %1$s, client %2$s, project \"%3$s\"";
-    private static final String CLIENT_FALLBACK = "Your client / Ваш клиент: UDMC %1$s";
 
     private AgentLoginNotice() {}
 
@@ -29,10 +28,8 @@ public final class AgentLoginNotice {
         // stale client from a foreign one is to open files on someone else's computer.
         notice.append("\n\n").append(Component.translatableWithFallback("udmc_sync.login.server", SERVER_FALLBACK,
             version(decision.serverAgent()), version(decision.offeredClient()), decision.packId()));
-        if (!decision.reportedClient().isBlank()) {
-            notice.append("\n").append(Component.translatableWithFallback("udmc_sync.login.client", CLIENT_FALLBACK,
-                decision.reportedClient()));
-        }
+        // What the player's own client is runs on the player's own screen: the client adds
+        // that line itself, so its project never has to be sent to a server it does not know.
         return notice;
     }
 

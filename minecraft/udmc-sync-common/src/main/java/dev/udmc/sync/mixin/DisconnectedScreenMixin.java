@@ -2,8 +2,10 @@ package dev.udmc.sync.mixin;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import dev.udmc.sync.AgentLoginProtocol;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.MultiLineTextWidget;
 import net.minecraft.client.gui.layouts.LinearLayout;
 import net.minecraft.client.gui.screens.ConfirmLinkScreen;
 import net.minecraft.client.gui.screens.DisconnectedScreen;
@@ -40,6 +42,16 @@ public abstract class DisconnectedScreenMixin extends Screen {
         Matcher address = UDMC$ADDRESS.matcher(notice);
         if (!address.find()) return;
         String url = address.group();
+
+        // The player's own client states its version and project here, on the player's own
+        // screen: the server is told neither, and an administrator reading a screenshot no
+        // longer has to ask what is installed.
+        var local = AgentLoginProtocol.localClient();
+        if (local != null && !local.packId().isBlank()) {
+            layout.addChild(new MultiLineTextWidget(
+                Component.translatable("udmc_sync.login.client", local.version(), local.packId()), font)
+                .setMaxWidth(width - 50).setCentered(true));
+        }
 
         Button open = Button.builder(Component.translatable("udmc_sync.button.install_page"),
             button -> ConfirmLinkScreen.confirmLinkNow(this, url, true)).width(210).build();
