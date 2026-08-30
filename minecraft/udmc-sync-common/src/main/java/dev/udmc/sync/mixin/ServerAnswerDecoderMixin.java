@@ -10,7 +10,10 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-@Mixin(ServerboundCustomQueryAnswerPacket.class)
+// Fabric API answers every login channel itself and cancels the vanilla call, so the
+// order of injected handlers decides who is heard. A lower number is applied first:
+// UDMC has to read its own question before anyone answers "channel not understood".
+@Mixin(value = ServerboundCustomQueryAnswerPacket.class, priority = 500)
 public abstract class ServerAnswerDecoderMixin {
     @Inject(method = "readPayload", at = @At("HEAD"), cancellable = true)
     private static void udmc$read(int transaction, FriendlyByteBuf input, CallbackInfoReturnable<CustomQueryAnswerPayload> callback) {

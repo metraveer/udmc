@@ -12,7 +12,10 @@ public final class AgentLoginProtocol {
     public static final int PROTOCOL = 1;
     private static volatile Server server;
     private static volatile Answer client;
-    private static final Map<Connection, Decision> WARN = Collections.synchronizedMap(new WeakHashMap<>());
+    // A connection that answered nothing is remembered as such: an absent entry only means
+    // the answer has not arrived yet, and the two must not read the same.
+    private static final Answer MISSING = new Answer(-1, "", "", "");
+    private static final Map<Connection, Answer> ANSWERS = Collections.synchronizedMap(new WeakHashMap<>());
 
     private AgentLoginProtocol() {}
 
@@ -91,8 +94,12 @@ public final class AgentLoginProtocol {
             expected.downloadUrl, agentVersion(), offered, expected.packId, reported, reportedProject);
     }
 
-    public static void warn(Connection connection, Decision decision) { WARN.put(connection, decision); }
-    public static Decision takeWarning(Connection connection) { return WARN.remove(connection); }
+    /** What a connection answered during login, read once at the moment the verdict is due. */
+    public static void remember(Connection connection, Answer answer) { ANSWERS.put(connection, answer == null ? MISSING : answer); }
+    public static Answer takeAnswer(Connection connection) {
+        Answer answer = ANSWERS.remove(connection);
+        return answer == null || answer == MISSING ? null : answer;
+    }
 
     public record Query(int protocol, String packId, String clientHash, String downloadUrl, boolean required) {}
     public record Answer(int protocol, String packId, String version, String jarHash) {}

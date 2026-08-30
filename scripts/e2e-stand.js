@@ -78,7 +78,10 @@ writeFileSync(path.join(ROOT, "server/eula.txt"), "eula=true\n");
 writeFileSync(path.join(ROOT, "server/server.properties"),
   ["online-mode=false", `server-port=${GAME_PORT}`, "server-ip=127.0.0.1", "level-name=e2e-world",
    "max-players=4", "view-distance=4", "simulation-distance=4", "sync-chunk-writes=false",
-   "motd=UDMC end-to-end stand", "enable-status=true"].join("\n") + "\n");
+   "motd=UDMC end-to-end stand", "enable-status=true",
+   // A paused server stops ticking, and the login check waits on ticks. Without this the
+   // stand answers a joining player with a timeout, which reads like a fault in the agent.
+   "pause-when-empty-seconds=0"].join("\n") + "\n");
 // The client joins by itself and must not stumble over the third-party warning.
 writeFileSync(path.join(ROOT, "client/options.txt"),
   ["skipMultiplayerWarning:true", "onboardAccessibility:false", "tutorialStep:none", "lang:ru_ru", "guiScale:2"].join("\n") + "\n");
