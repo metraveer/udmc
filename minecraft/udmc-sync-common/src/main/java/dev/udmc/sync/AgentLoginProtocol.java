@@ -34,39 +34,44 @@ public final class AgentLoginProtocol {
         if (current == null) return new Query(PROTOCOL, "", "", "", false);
         try {
             AgentRelease release = current.distribution.release();
-            String hash = release == null ? "unavailable" : release.verify(current.config, "client").getProperty("sha256", "unavailable");
+            // No published client means there is nothing to compare a player's file against.
+            // An empty hash says exactly that; "unavailable" was a value like any other and
+            // made every correct client look outdated against a version nobody could name.
+            String hash = release == null ? "" : release.verify(current.config, "client").getProperty("sha256", "");
             return new Query(PROTOCOL, current.config.packId, hash, current.distribution.instructionsUrl(), current.config.requireClientAgent);
         } catch (IOException error) {
             UdmcSync.LOGGER.error("Cannot read UDMC login policy", error);
-            return new Query(PROTOCOL, current.config.packId, "unavailable", current.distribution.instructionsUrl(), current.config.requireClientAgent);
+            return new Query(PROTOCOL, current.config.packId, "", current.distribution.instructionsUrl(), current.config.requireClientAgent);
         }
     }
-
-    /** What this client would report about itself, for showing on its own screens. */
-    public static Answer localClient() { return client; }
 
     public static Answer answer(Query query) {
         Answer current = client;
         if (current == null || query.protocol != PROTOCOL) return null;
-        // A client of another project still answers. Staying silent made the server report
-        // the mod as missing - the one thing it cannot know - and left the player with
-        // advice that did not apply. The project id is withheld: the server only needs to
-        // learn that this client belongs somewhere else, not where.
-        if (!current.packId.equals(query.packId)) return new Answer(PROTOCOL, "", current.version, "");
+        // A client of another project still answers, and names that project: staying silent
+        // made the server report the mod as missing - the one thing it cannot know - and an
+        // administrator holding a screenshot could not tell the two cases apart. The JAR
+        // fingerprint is left out; it says nothing to a server that did not hand it out.
+        if (!current.packId.equals(query.packId)) return new Answer(PROTOCOL, current.packId, current.version, "");
         return current;
     }
 
     public static Decision validate(Answer answer) {
         Query expected = query();
         String offered = offeredClientVersion();
-        if (answer == null) return invalid(expected, offered, "", "udmc_sync.login.missing");
-        if (answer.protocol != PROTOCOL) return invalid(expected, offered, answer.version, "udmc_sync.login.incompatible");
-        // An empty project id means the client answered from another project on purpose.
-        if (!expected.packId.equals(answer.packId)) return invalid(expected, offered, answer.version, "udmc_sync.login.foreign", expected.packId);
-        if (!expected.clientHash.isBlank() && !expected.clientHash.equals(answer.jarHash)) {
-            return invalid(expected, offered, answer.version, "udmc_sync.login.outdated", offered, answer.version);
+        if (answer == null) return invalid(expected, offered, "", "", "udmc_sync.login.missing");
+        if (answer.protocol != PROTOCOL) return invalid(expected, offered, answer.version, answer.packId, "udmc_sync.login.incompatible");
+        if (!expected.packId.equals(answer.packId)) {
+            return invalid(expected, offered, answer.version, answer.packId, "udmc_sync.login.foreign", expected.packId);
         }
-        return new Decision(true, false, "", "", List.of(), expected.downloadUrl, agentVersion(), offered, expected.packId, answer.version);
+        if (!expected.clientHash.isBlank() && !expected.clientHash.equals(answer.jarHash)) {
+            // Regenerating the client JAR - a changed address, project name or network - keeps
+            // the agent version. Calling that "outdated: 0.17.1 against 0.17.1" explains nothing.
+            return offered.equals(answer.version)
+                ? invalid(expected, offered, answer.version, answer.packId, "udmc_sync.login.rebuilt", offered)
+                : invalid(expected, offered, answer.version, answer.packId, "udmc_sync.login.outdated", offered, answer.version);
+        }
+        return new Decision(true, false, "", "", List.of(), expected.downloadUrl, agentVersion(), offered, expected.packId, answer.version, answer.packId);
     }
 
     /** The version of the client JAR this server hands out, or "" when none is published. */
@@ -81,9 +86,9 @@ public final class AgentLoginProtocol {
 
     private static String agentVersion() { return PlatformDefaults.get("agentVersion"); }
 
-    private static Decision invalid(Query expected, String offered, String reported, String messageKey, String... args) {
+    private static Decision invalid(Query expected, String offered, String reported, String reportedProject, String messageKey, String... args) {
         return new Decision(false, expected.required, messageKey, Messages.of(messageKey).fallback(), List.of(args),
-            expected.downloadUrl, agentVersion(), offered, expected.packId, reported);
+            expected.downloadUrl, agentVersion(), offered, expected.packId, reported, reportedProject);
     }
 
     public static void warn(Connection connection, Decision decision) { WARN.put(connection, decision); }
@@ -96,6 +101,7 @@ public final class AgentLoginProtocol {
      * compare: what this server runs, what it hands out, and what the client reported.
      */
     public record Decision(boolean valid, boolean reject, String messageKey, String messageFallback, List<String> args,
-                           String downloadUrl, String serverAgent, String offeredClient, String packId, String reportedClient) {}
+                           String downloadUrl, String serverAgent, String offeredClient, String packId,
+                           String reportedClient, String reportedProject) {}
     private record Server(UdmcConfig config, AgentDistribution distribution) {}
 }

@@ -23,6 +23,11 @@ if (project.hasProperty("udmc_run_dir")) {
     loom.runs.client.runDir(project.property("udmc_run_dir").toString())
     loom.runs.server.runDir(project.property("udmc_run_dir").toString())
 }
+// End-to-end checks join a stand on loopback: the player's own path is what has to be
+// walked, and clicking through the server list by hand is not a check anyone repeats.
+if (project.hasProperty("udmc_quick_join")) {
+    loom.runs.client.programArgs("--quickPlayMultiplayer", project.property("udmc_quick_join").toString())
+}
 if (project.hasProperty("udmc_packaged_test")) {
     tasks.withType(net.fabricmc.loom.task.RunGameTask).configureEach {
         javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(javaRelease) }

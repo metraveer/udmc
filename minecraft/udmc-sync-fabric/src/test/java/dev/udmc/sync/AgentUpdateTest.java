@@ -91,16 +91,21 @@ public final class AgentUpdateTest {
             check(elsewhereDecision.args().equals(java.util.List.of(config.packId)), "The reason must name the project this server needs");
             check(elsewhereDecision.reportedClient().equals("test") && !elsewhereDecision.serverAgent().isBlank(),
                 "The notice must carry both versions so an administrator can compare them");
-            // Silence was read as "not installed": a client of another project has to answer,
-            // and without naming its own project.
+            // Silence was read as "not installed": a client of another project has to answer.
             AgentLoginProtocol.configureClient(config);
             var elsewhere = AgentLoginProtocol.answer(new AgentLoginProtocol.Query(1, "another-project", "", "", true));
-            check(elsewhere != null && elsewhere.packId().isBlank() && !elsewhere.version().isBlank(),
-                "A client of another project must answer without naming it");
-            check(AgentLoginProtocol.validate(elsewhere).messageKey().equals("udmc_sync.login.foreign"),
-                "That answer must be reported as another project");
+            check(elsewhere != null && elsewhere.packId().equals(config.packId) && elsewhere.jarHash().isBlank(),
+                "A client of another project must answer, naming its project and withholding its fingerprint");
             check(!missing.messageFallback().isBlank() && !outdated.messageFallback().isBlank() && !elsewhereDecision.messageFallback().isBlank(), "Login reasons require clean-client fallbacks");
             check(AgentLoginProtocol.query().downloadUrl().endsWith("/udmc"), "Login points to instructions a player can retype");
+            // Before anything is published there is nothing to compare against: a correct
+            // client must not be called outdated against a version the server cannot name.
+            check(!AgentLoginProtocol.query().clientHash().isBlank(), "A published client must be named by its hash");
+            AgentLoginProtocol.configureServer(config, new AgentDistribution(root.resolve("nothing-published"), config));
+            check(AgentLoginProtocol.query().clientHash().isBlank(), "With nothing published there is nothing to compare against");
+            check(AgentLoginProtocol.validate(new AgentLoginProtocol.Answer(1, config.packId, "0.1.0", "any-hash")).valid(),
+                "A correct client must not be called outdated against a version the server cannot name");
+            AgentLoginProtocol.configureServer(config, distribution);
             distribution.setRequired(false);
 
             fails(() -> distribution.setGameAddress("play.example/evil"));

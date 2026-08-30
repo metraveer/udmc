@@ -83,5 +83,6 @@
   "udmc_sync.login.foreign": "The UDMC client is installed but set up for another project. This server needs the project \"%1$s\".",
   "udmc_sync.login.server": "Server: UDMC %1$s, client download %2$s, project \"%3$s\"",
   "udmc_sync.login.client": "Your client: UDMC %1$s, project \"%2$s\"",
-  "udmc_sync.message.unconfigured": "This UDMC file is not set up for any server: it was built from source instead of handed out by Control. Download the client from your server's install page."
+  "udmc_sync.message.unconfigured": "This UDMC file is not set up for any server: it was built from source instead of handed out by Control. Download the client from your server's install page.",
+  "udmc_sync.login.rebuilt": "The UDMC client file is not the one this server hands out: same version (%1$s), different build. Download the current file."
 }
