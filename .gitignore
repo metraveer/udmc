@@ -21,3 +21,6 @@ Thumbs.db
 .idea/
 .vscode/
 *.pdb
+
+# Логи тестовых запусков Minecraft: генерируются при каждой сборке агентов.
+minecraft/*/logs/
