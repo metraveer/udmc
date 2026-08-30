@@ -33,7 +33,13 @@ public final class LocalizationTest {
         var component = UdmcClientUi.component(message);
         check(component.getContents() instanceof TranslatableContents contents && contents.getKey().equals(message.key()), "Game screen must use Minecraft translations, not a preformatted literal");
         var login = AgentLoginNotice.component(new AgentLoginProtocol.Decision(false, true, "udmc_sync.login.missing",
-            en.get("udmc_sync.login.missing"), "https://127.0.0.1/udmc"));
+            en.get("udmc_sync.login.missing"), List.of(), "https://127.0.0.1/udmc", "0.17.1", "0.17.0", "udmc-main", "0.16.2"));
+        // The notice has to carry the three numbers an administrator compares, or the only
+        // way to tell a stale client from a foreign one is to open files on someone's PC.
+        String rendered = login.getString();
+        for (var fragment : List.of("0.17.1", "0.17.0", "udmc-main", "0.16.2")) {
+            check(rendered.contains(fragment), "Login notice must state " + fragment + ": " + rendered);
+        }
         check(login.getContents() instanceof TranslatableContents contents && contents.getKey().equals("udmc_sync.login.notice"), "Login notice must use a Minecraft translation with a clean-client fallback");
         // A player without the mod reads only the fallback, on a screen where the link is not
         // clickable: it has to spell out the steps and put the address on a line of its own.

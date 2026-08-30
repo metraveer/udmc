@@ -18,9 +18,9 @@
   "udmc_sync.message.admin_conflict": "Этот конфликт должен исправить администратор сборки. Локальные файлы не будут удалены.",
   "udmc_sync.message.disabled": "%1$s\nКопия: %2$s\nПерезапустите игру для новой проверки остальных модов.",
   "udmc_sync.message.confirm_disable": "%1$s\nБудет создана резервная копия. Другие файлы не удаляются.",
-  "udmc_sync.login.missing": "Клиентский синхронизатор не установлен.",
-  "udmc_sync.login.incompatible": "Клиентский синхронизатор относится к другому серверу или использует несовместимый протокол.",
-  "udmc_sync.login.outdated": "Клиентский синхронизатор устарел.",
+  "udmc_sync.login.missing": "Клиент UDMC не ответил серверу. Скорее всего, мод не установлен.",
+  "udmc_sync.login.incompatible": "Клиент UDMC несовместим с этим сервером по протоколу.",
+  "udmc_sync.login.outdated": "Клиент UDMC устарел: сервер раздаёт %1$s, а у вас %2$s.",
   "udmc_sync.login.notice": "UDMC: %1$s\n\nКак исправить:\n1. Откройте в браузере: %2$s\n2. Скачайте файл и положите его в папку mods\n3. Запустите игру и зайдите на сервер снова",
   "udmc_sync.title.confirm_disable": "Убрать файл из игры?",
   "udmc_sync.button.disable": "Убрать с копией",
@@ -79,5 +79,8 @@
   "udmc_sync.diagnostic.inspect": "Не удалось проверить %1$s. Технические сведения: %2$s",
   "udmc_sync.button.install_page": "Открыть страницу установки",
   "udmc_sync.button.copy_link": "Скопировать ссылку",
-  "udmc_sync.button.copied": "Ссылка скопирована"
+  "udmc_sync.button.copied": "Ссылка скопирована",
+  "udmc_sync.login.foreign": "Клиент UDMC установлен, но настроен на другой проект. Этому серверу нужен проект «%1$s».",
+  "udmc_sync.login.server": "Сервер: UDMC %1$s, клиент для скачивания %2$s, проект «%3$s»",
+  "udmc_sync.login.client": "Ваш клиент: UDMC %1$s"
 }

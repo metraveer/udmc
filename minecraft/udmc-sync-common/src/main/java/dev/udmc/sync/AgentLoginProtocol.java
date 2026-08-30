@@ -2,6 +2,7 @@ package dev.udmc.sync;
 
 import java.io.IOException;
 import net.minecraft.network.Connection;
+import java.util.List;
 import java.util.Map;
 import java.util.Collections;
 import java.util.WeakHashMap;
@@ -43,24 +44,43 @@ public final class AgentLoginProtocol {
 
     public static Answer answer(Query query) {
         Answer current = client;
-        if (current == null || query.protocol != PROTOCOL || !current.packId.equals(query.packId)) return null;
+        if (current == null || query.protocol != PROTOCOL) return null;
+        // A client of another project still answers. Staying silent made the server report
+        // the mod as missing - the one thing it cannot know - and left the player with
+        // advice that did not apply. The project id is withheld: the server only needs to
+        // learn that this client belongs somewhere else, not where.
+        if (!current.packId.equals(query.packId)) return new Answer(PROTOCOL, "", current.version, "");
         return current;
     }
 
     public static Decision validate(Answer answer) {
         Query expected = query();
-        if (answer == null) return invalid(expected, "udmc_sync.login.missing");
-        if (answer.protocol != PROTOCOL || !expected.packId.equals(answer.packId)) {
-            return invalid(expected, "udmc_sync.login.incompatible");
-        }
+        String offered = offeredClientVersion();
+        if (answer == null) return invalid(expected, offered, "", "udmc_sync.login.missing");
+        if (answer.protocol != PROTOCOL) return invalid(expected, offered, answer.version, "udmc_sync.login.incompatible");
+        // An empty project id means the client answered from another project on purpose.
+        if (!expected.packId.equals(answer.packId)) return invalid(expected, offered, answer.version, "udmc_sync.login.foreign", expected.packId);
         if (!expected.clientHash.isBlank() && !expected.clientHash.equals(answer.jarHash)) {
-            return invalid(expected, "udmc_sync.login.outdated");
+            return invalid(expected, offered, answer.version, "udmc_sync.login.outdated", offered, answer.version);
         }
-        return new Decision(true, false, "", "", expected.downloadUrl);
+        return new Decision(true, false, "", "", List.of(), expected.downloadUrl, agentVersion(), offered, expected.packId, answer.version);
     }
 
-    private static Decision invalid(Query expected, String messageKey) {
-        return new Decision(false, expected.required, messageKey, Messages.of(messageKey).fallback(), expected.downloadUrl);
+    /** The version of the client JAR this server hands out, or "" when none is published. */
+    private static String offeredClientVersion() {
+        Server current = server;
+        if (current == null) return "";
+        try {
+            AgentRelease release = current.distribution.release();
+            return release == null ? "" : release.verify(current.config, "client").getProperty("version", "");
+        } catch (IOException error) { return ""; }
+    }
+
+    private static String agentVersion() { return PlatformDefaults.get("agentVersion"); }
+
+    private static Decision invalid(Query expected, String offered, String reported, String messageKey, String... args) {
+        return new Decision(false, expected.required, messageKey, Messages.of(messageKey).fallback(), List.of(args),
+            expected.downloadUrl, agentVersion(), offered, expected.packId, reported);
     }
 
     public static void warn(Connection connection, Decision decision) { WARN.put(connection, decision); }
@@ -68,6 +88,11 @@ public final class AgentLoginProtocol {
 
     public record Query(int protocol, String packId, String clientHash, String downloadUrl, boolean required) {}
     public record Answer(int protocol, String packId, String version, String jarHash) {}
-    public record Decision(boolean valid, boolean reject, String messageKey, String messageFallback, String downloadUrl) {}
+    /**
+     * Why a player was let in or turned away, with the numbers an administrator needs to
+     * compare: what this server runs, what it hands out, and what the client reported.
+     */
+    public record Decision(boolean valid, boolean reject, String messageKey, String messageFallback, List<String> args,
+                           String downloadUrl, String serverAgent, String offeredClient, String packId, String reportedClient) {}
     private record Server(UdmcConfig config, AgentDistribution distribution) {}
 }

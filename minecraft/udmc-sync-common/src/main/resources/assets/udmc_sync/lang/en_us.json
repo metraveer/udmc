@@ -18,9 +18,9 @@
   "udmc_sync.message.admin_conflict": "The pack administrator needs to resolve this conflict. No local file will be removed.",
   "udmc_sync.message.disabled": "%1$s\nBackup: %2$s\nRestart Minecraft to check the remaining mods.",
   "udmc_sync.message.confirm_disable": "%1$s\nA backup will be created. Other files will not be removed.",
-  "udmc_sync.login.missing": "The client synchronizer is not installed.",
-  "udmc_sync.login.incompatible": "The client synchronizer belongs to another server or uses an incompatible protocol.",
-  "udmc_sync.login.outdated": "The client synchronizer is outdated.",
+  "udmc_sync.login.missing": "The UDMC client did not answer the server. It is most likely not installed.",
+  "udmc_sync.login.incompatible": "The UDMC client uses a protocol this server does not speak.",
+  "udmc_sync.login.outdated": "The UDMC client is outdated: the server hands out %1$s, you have %2$s.",
   "udmc_sync.login.notice": "UDMC: %1$s\n\nHow to fix:\n1. Open in a browser: %2$s\n2. Download the file into your mods folder\n3. Start the game and join again",
   "udmc_sync.title.confirm_disable": "Remove this file from the game?",
   "udmc_sync.button.disable": "Disable and back up",
@@ -79,5 +79,8 @@
   "udmc_sync.diagnostic.inspect": "Could not inspect %1$s. Technical details: %2$s",
   "udmc_sync.button.install_page": "Open install page",
   "udmc_sync.button.copy_link": "Copy link",
-  "udmc_sync.button.copied": "Link copied"
+  "udmc_sync.button.copied": "Link copied",
+  "udmc_sync.login.foreign": "The UDMC client is installed but set up for another project. This server needs the project \"%1$s\".",
+  "udmc_sync.login.server": "Server: UDMC %1$s, client download %2$s, project \"%3$s\"",
+  "udmc_sync.login.client": "Your client: UDMC %1$s"
 }

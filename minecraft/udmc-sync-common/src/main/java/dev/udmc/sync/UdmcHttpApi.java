@@ -868,6 +868,12 @@ public final class UdmcHttpApi {
     private String installPage() {
         String url = escapeHtml(agents.downloadUrl());
         String pack = escapeHtml(config.packName);
+        // The version is the first thing an administrator compares when a player is turned
+        // away, so the page states it instead of leaving them to guess from a file date.
+        String offered = "";
+        try { var release = agents.release(); if (release != null) offered = release.verify(config, "client").getProperty("version", ""); }
+        catch (IOException | RuntimeException error) { offered = ""; }
+        String versions = escapeHtml("UDMC " + (offered.isBlank() ? "-" : offered) + " · " + config.packId);
         String loader = escapeHtml(config.loaderType.substring(0, 1).toUpperCase(Locale.ROOT) + config.loaderType.substring(1));
         String environment = escapeHtml("Minecraft " + config.minecraftVersion + " · " + loader + " " + config.loaderVersion);
         return "<!doctype html><html lang=\"ru\"><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
@@ -881,7 +887,7 @@ public final class UdmcHttpApi {
             + "h2{margin:28px 0 8px;font-size:15px;color:#9aa0ab;text-transform:uppercase;letter-spacing:.06em}"
             + ".en{color:#9aa0ab;font-size:14px}.note{margin-top:28px;padding-top:16px;border-top:1px solid #2b2f39;color:#9aa0ab;font-size:14px}"
             + "</style><body><main>"
-            + "<h1>UDMC</h1><p class=\"sub\">" + pack + " &middot; " + environment + "</p>"
+            + "<h1>UDMC</h1><p class=\"sub\">" + pack + " &middot; " + environment + "<br>" + versions + "</p>"
             + "<p><a class=\"get\" href=\"" + url + "\" download=\"udmc-sync-client.jar\">Скачать мод (udmc-sync-client.jar)</a></p>"
             + "<h2>Что делать дальше</h2><ol>"
             + "<li>Закройте Minecraft, если он запущен.</li>"

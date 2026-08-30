@@ -83,9 +83,20 @@ public final class AgentUpdateTest {
             var outdated = AgentLoginProtocol.validate(new AgentLoginProtocol.Answer(1, config.packId, "test", Hashes.sha256(client)));
             check(outdated.reject() && outdated.messageKey().equals("udmc_sync.login.outdated"), "Old agent is rejected with a typed reason");
             check(AgentLoginProtocol.validate(new AgentLoginProtocol.Answer(1, config.packId, "test", Hashes.sha256(newer))).valid(), "Matching agent is accepted");
-            var incompatible = AgentLoginProtocol.validate(new AgentLoginProtocol.Answer(1, "foreign", "test", Hashes.sha256(newer)));
-            check(incompatible.reject() && incompatible.messageKey().equals("udmc_sync.login.incompatible"), "Another project is rejected with a typed reason");
-            check(!missing.messageFallback().isBlank() && !outdated.messageFallback().isBlank() && !incompatible.messageFallback().isBlank(), "Login reasons require clean-client fallbacks");
+            var elsewhereDecision = AgentLoginProtocol.validate(new AgentLoginProtocol.Answer(1, "foreign", "test", Hashes.sha256(newer)));
+            check(elsewhereDecision.reject() && elsewhereDecision.messageKey().equals("udmc_sync.login.foreign"), "Another project is named as another project, not as a missing mod");
+            check(elsewhereDecision.args().equals(java.util.List.of(config.packId)), "The reason must name the project this server needs");
+            check(elsewhereDecision.reportedClient().equals("test") && !elsewhereDecision.serverAgent().isBlank(),
+                "The notice must carry both versions so an administrator can compare them");
+            // Silence was read as "not installed": a client of another project has to answer,
+            // and without naming its own project.
+            AgentLoginProtocol.configureClient(config);
+            var elsewhere = AgentLoginProtocol.answer(new AgentLoginProtocol.Query(1, "another-project", "", "", true));
+            check(elsewhere != null && elsewhere.packId().isBlank() && !elsewhere.version().isBlank(),
+                "A client of another project must answer without naming it");
+            check(AgentLoginProtocol.validate(elsewhere).messageKey().equals("udmc_sync.login.foreign"),
+                "That answer must be reported as another project");
+            check(!missing.messageFallback().isBlank() && !outdated.messageFallback().isBlank() && !elsewhereDecision.messageFallback().isBlank(), "Login reasons require clean-client fallbacks");
             check(AgentLoginProtocol.query().downloadUrl().endsWith("/udmc"), "Login points to instructions a player can retype");
             distribution.setRequired(false);
 
