@@ -259,11 +259,7 @@ fn customize_jar(template: &[u8], bootstrap: &Value) -> Result<Vec<u8>, String> 
         if name == "fabric.mod.json" {
             let mut metadata: Value = serde_json::from_reader(&mut file).map_err(error)?;
             metadata["environment"] = json!(if server { "server" } else { "client" });
-            metadata["name"] = json!(if server {
-                "UDMC Server"
-            } else {
-                "UDMC Client"
-            });
+            metadata["name"] = json!(if server { "UDMC Server" } else { "UDMC Client" });
             metadata["mixins"] = json!([if server {
                 "udmc_sync.mixins.json"
             } else {
@@ -290,14 +286,8 @@ fn customize_jar(template: &[u8], bootstrap: &Value) -> Result<Vec<u8>, String> 
             {
                 return Err("Invalid NeoForge agent ID".into());
             }
-            mods[0]["displayName"] = toml::Value::String(
-                if server {
-                    "UDMC Server"
-                } else {
-                    "UDMC Client"
-                }
-                .into(),
-            );
+            mods[0]["displayName"] =
+                toml::Value::String(if server { "UDMC Server" } else { "UDMC Client" }.into());
             output.start_file(name, options).map_err(error)?;
             output
                 .write_all(toml::to_string(&metadata).map_err(error)?.as_bytes())
