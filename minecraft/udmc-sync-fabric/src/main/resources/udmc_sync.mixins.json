@@ -3,7 +3,12 @@
   "package": "dev.udmc.sync.mixin",
   "compatibilityLevel": "JAVA_${java_version}",
   "mixins": [
-    "DedicatedServerMixin", "MinecraftServerMixin", "ServerLoginMixin", "ServerAnswerDecoderMixin", "PlayerListMixin"
+    "DedicatedServerMixin",
+    "MinecraftServerMixin",
+    "ServerConfigVerifyMixin",
+    "ServerPayloadMixin",
+    "PlayerListMixin",
+    "UdmcPayloadCodecMixin"
   ],
   "injectors": {
     "defaultRequire": 1

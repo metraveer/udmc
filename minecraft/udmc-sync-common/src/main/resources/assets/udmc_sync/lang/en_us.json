@@ -18,7 +18,7 @@
   "udmc_sync.message.admin_conflict": "The pack administrator needs to resolve this conflict. No local file will be removed.",
   "udmc_sync.message.disabled": "%1$s\nBackup: %2$s\nRestart Minecraft to check the remaining mods.",
   "udmc_sync.message.confirm_disable": "%1$s\nA backup will be created. Other files will not be removed.",
-  "udmc_sync.login.missing": "The UDMC client did not answer the server. It is most likely not installed.",
+  "udmc_sync.login.missing": "The UDMC client did not answer the server. It is either not installed, or an older one that cannot answer this server yet - in that case restarting the game once is enough.",
   "udmc_sync.login.incompatible": "The UDMC client uses a protocol this server does not speak.",
   "udmc_sync.login.outdated": "The UDMC client is outdated: the server hands out %1$s, you have %2$s.",
   "udmc_sync.login.notice": "UDMC: %1$s\n\nHow to fix:\n1. Open in a browser: %2$s\n2. Download the file into your mods folder\n3. Start the game and join again",

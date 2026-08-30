@@ -2,7 +2,13 @@
   "required": true,
   "package": "dev.udmc.sync.mixin",
   "compatibilityLevel": "JAVA_21",
-  "mixins": ["ServerLoginMixin", "ServerAnswerDecoderMixin", "PlayerListMixin"],
-  "client": ["ClientHandshakeMixin", "ClientQueryDecoderMixin", "DisconnectedScreenMixin"],
-  "injectors": { "defaultRequire": 1 }
+  "mixins": [
+    "PlayerListMixin"
+  ],
+  "client": [
+    "DisconnectedScreenMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
 }

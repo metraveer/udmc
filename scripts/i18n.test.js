@@ -42,7 +42,7 @@ test("both agent languages cover every Java message key and compile matching dia
     for (const match of source.matchAll(/"(udmc_sync\.(?:title|message|button|progress|error|conflict|diagnostic|login)\.[a-z_]+)"/g)) assert.ok(en[match[1]], `Missing game key: ${match[1]}`);
     if (["UdmcClientUi.java", "ClientModCheck.java", "ModSynchronizer.java", "ModMetadata.java"].includes(file)) assert.doesNotMatch(source, /[А-Яа-яЁё]/, file);
   }
-  for (const file of ["PlayerListMixin.java", "ServerLoginMixin.java"]) {
+  for (const file of ["PlayerListMixin.java", "ServerConfigVerifyMixin.java"]) {
     const source = await readFile(new URL(`java/dev/udmc/sync/mixin/${file}`, gameRoot), "utf8");
     assert.doesNotMatch(source, /Component\.literal\(|Download and installation instructions|client agent is/, file);
   }

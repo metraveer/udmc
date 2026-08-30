@@ -2,6 +2,13 @@
   "required": true,
   "package": "dev.udmc.sync.mixin",
   "compatibilityLevel": "JAVA_${java_version}",
-  "client": ["ClientTickMixin", "ClientHandshakeMixin", "ClientQueryDecoderMixin", "DisconnectedScreenMixin"],
-  "injectors": { "defaultRequire": 1 }
+  "client": [
+    "ClientTickMixin",
+    "ClientPayloadMixin",
+    "DisconnectedScreenMixin",
+    "UdmcPayloadCodecMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
 }

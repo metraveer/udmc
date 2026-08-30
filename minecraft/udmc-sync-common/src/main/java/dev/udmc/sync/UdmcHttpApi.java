@@ -85,6 +85,9 @@ public final class UdmcHttpApi {
     }
 
     public void stop() {
+        // The login check hands players this server's download URL: when the API is gone the
+        // URL leads nowhere, so the check stands down with it rather than sending them there.
+        AgentLoginProtocol.clearServer();
         if (server != null) server.stop(0);
         if (workers != null) workers.shutdownNow();
     }

@@ -25,8 +25,8 @@ public final class AgentLoginNotice {
     // and answering means the mod is there with its translations. So that one carries both
     // languages; the rest keep the plain English fallback shared with the HTTP diagnostics.
     private static final String MISSING_FALLBACK =
-        "The UDMC client did not answer the server: it is most likely not installed."
-        + " / Клиент UDMC не ответил серверу: скорее всего, мод не установлен.";
+        "The UDMC client did not answer: it is not installed, or is an older one - restart the game once."
+        + "\n / Клиент UDMC не ответил: он не установлен либо остался от прежней версии - перезапустите игру один раз.";
 
     private static final String RESTART_FALLBACK =
         "UDMC: %1$s\n\n"

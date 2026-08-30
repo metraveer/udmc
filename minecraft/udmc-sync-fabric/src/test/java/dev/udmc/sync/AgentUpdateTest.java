@@ -83,17 +83,17 @@ public final class AgentUpdateTest {
             distribution.setRequired(true);
             var missing = AgentLoginProtocol.validate(null);
             check(missing.reject() && missing.messageKey().equals("udmc_sync.login.missing"), "Required agent denies and identifies a missing client");
-            var outdated = AgentLoginProtocol.validate(new AgentLoginProtocol.Answer(1, config.packId, "test", Hashes.sha256(client)));
+            var outdated = AgentLoginProtocol.validate(new AgentLoginProtocol.Answer(AgentLoginProtocol.PROTOCOL, config.packId, "test", Hashes.sha256(client)));
             check(outdated.reject() && outdated.messageKey().equals("udmc_sync.login.outdated"), "Old agent is rejected with a typed reason");
-            check(AgentLoginProtocol.validate(new AgentLoginProtocol.Answer(1, config.packId, "test", Hashes.sha256(newer))).valid(), "Matching agent is accepted");
-            var elsewhereDecision = AgentLoginProtocol.validate(new AgentLoginProtocol.Answer(1, "foreign", "test", Hashes.sha256(newer)));
+            check(AgentLoginProtocol.validate(new AgentLoginProtocol.Answer(AgentLoginProtocol.PROTOCOL, config.packId, "test", Hashes.sha256(newer))).valid(), "Matching agent is accepted");
+            var elsewhereDecision = AgentLoginProtocol.validate(new AgentLoginProtocol.Answer(AgentLoginProtocol.PROTOCOL, "foreign", "test", Hashes.sha256(newer)));
             check(elsewhereDecision.reject() && elsewhereDecision.messageKey().equals("udmc_sync.login.foreign"), "Another project is named as another project, not as a missing mod");
             check(elsewhereDecision.args().equals(java.util.List.of(config.packId)), "The reason must name the project this server needs");
             check(elsewhereDecision.reportedClient().equals("test") && !elsewhereDecision.serverAgent().isBlank(),
                 "The notice must carry both versions so an administrator can compare them");
             // Silence was read as "not installed": a client of another project has to answer.
             AgentLoginProtocol.configureClient(config);
-            var elsewhere = AgentLoginProtocol.answer(new AgentLoginProtocol.Query(1, "another-project", "", "", true));
+            var elsewhere = AgentLoginProtocol.answer(new AgentLoginProtocol.Query(AgentLoginProtocol.PROTOCOL, "another-project", "", "", true));
             check(elsewhere != null && elsewhere.packId().equals(config.packId) && elsewhere.jarHash().isBlank(),
                 "A client of another project must answer, naming its project and withholding its fingerprint");
             check(!missing.messageFallback().isBlank() && !outdated.messageFallback().isBlank() && !elsewhereDecision.messageFallback().isBlank(), "Login reasons require clean-client fallbacks");
@@ -103,7 +103,7 @@ public final class AgentUpdateTest {
             check(!AgentLoginProtocol.query().clientHash().isBlank(), "A published client must be named by its hash");
             AgentLoginProtocol.configureServer(config, new AgentDistribution(root.resolve("nothing-published"), config));
             check(AgentLoginProtocol.query().clientHash().isBlank(), "With nothing published there is nothing to compare against");
-            check(AgentLoginProtocol.validate(new AgentLoginProtocol.Answer(1, config.packId, "0.1.0", "any-hash")).valid(),
+            check(AgentLoginProtocol.validate(new AgentLoginProtocol.Answer(AgentLoginProtocol.PROTOCOL, config.packId, "0.1.0", "any-hash")).valid(),
                 "A correct client must not be called outdated against a version the server cannot name");
             AgentLoginProtocol.configureServer(config, distribution);
             distribution.setRequired(false);

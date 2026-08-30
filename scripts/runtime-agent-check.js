@@ -1,3 +1,7 @@
+// SUPERSEDED. This harness speaks the login-phase question UDMC no longer asks: the check
+// moved to the configuration phase (docs/client-verification.md). It is not wired into
+// `npm test` and has not run in some time. The end-to-end stand covers this ground with a
+// real client against a real server: docs/end-to-end-stand.md.
 import assert from "node:assert/strict";
 import { createHash, randomUUID } from "node:crypto";
 import { readFile, realpath, writeFile } from "node:fs/promises";

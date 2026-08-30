@@ -16,6 +16,9 @@ public final class NeoForgeEntrypoint {
 
     public NeoForgeEntrypoint(IEventBus modBus) {
         UdmcSync.LOGGER.info("UDMC loaded (NeoForge).");
+        // Both sides declare the same channels or NeoForge refuses the connection before the
+        // check can explain itself, so this is registered regardless of which JAR is running.
+        NeoForgeVerification.register(modBus);
         // The client adapter must never be resolved on a dedicated server.
         if (FMLEnvironment.dist == Dist.CLIENT) {
             NeoForgeClient.register(modBus);

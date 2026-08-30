@@ -8,17 +8,27 @@ import java.util.Collections;
 import java.util.WeakHashMap;
 
 public final class AgentLoginProtocol {
-    public static final int TRANSACTION_ID = 0x55444d43;
-    public static final int PROTOCOL = 1;
+    // 1 asked during login; 2 asks during the configuration phase, where the question is
+    // not contested by other mods. A client on 1 cannot hear a server on 2.
+    public static final int PROTOCOL = 2;
+    /** Ticks the server waits for an answer before deciding without one: about ten seconds. */
+    public static final int DEADLINE_TICKS = 200;
     private static volatile Server server;
     private static volatile Answer client;
     private static final Map<Connection, Decision> WARN = Collections.synchronizedMap(new WeakHashMap<>());
+    // Present means the player's client answered; absent means it never did. The two must not
+    // read the same: silence is what tells the server the mod is not there at all.
+    private static final Map<Connection, Answer> ANSWERS = Collections.synchronizedMap(new WeakHashMap<>());
+    private static final Map<Connection, Boolean> PENDING = Collections.synchronizedMap(new WeakHashMap<>());
 
     private AgentLoginProtocol() {}
 
     static void configureServer(UdmcConfig config, AgentDistribution distribution) {
         server = new Server(config, distribution);
     }
+
+    /** Disarms the check when the HTTP API failed to start: its download URL leads nowhere. */
+    public static void clearServer() { server = null; }
 
     public static boolean enabled() { return server != null; }
 
@@ -90,6 +100,15 @@ public final class AgentLoginProtocol {
         return new Decision(false, expected.required, messageKey, Messages.of(messageKey).fallback(), List.of(args),
             expected.downloadUrl, agentVersion(), offered, expected.packId, reported, reportedProject);
     }
+
+    public static void receive(Connection connection, Answer answer) { ANSWERS.put(connection, answer); }
+    public static boolean answered(Connection connection) { return ANSWERS.containsKey(connection); }
+    // Marked when the question goes out and cleared by the verdict: it tells the join hook
+    // whether this connection still owes an answer, without it having to know the phase.
+    public static void asked(Connection connection) { PENDING.put(connection, Boolean.TRUE); }
+    public static boolean pending(Connection connection) { return PENDING.remove(connection) != null; }
+    public static Answer takeAnswer(Connection connection) { return ANSWERS.remove(connection); }
+    public static void forget(Connection connection) { ANSWERS.remove(connection); WARN.remove(connection); PENDING.remove(connection); }
 
     public static void warn(Connection connection, Decision decision) { WARN.put(connection, decision); }
     public static Decision takeWarning(Connection connection) { return WARN.remove(connection); }
