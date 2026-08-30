@@ -709,7 +709,6 @@
   "Скопировать ссылку для игроков": "Copy player download link",
   "Передать клиентский JAR": "Upload client JAR",
   "Вход только с клиентским UDMC": "Require client UDMC to join",
-  "Если выключено, игрок получит предупреждение и ссылку, но сможет войти.": "When disabled, players get a warning and download link but can still join.",
   "Администраторы": "Administrators",
   "Доступ к этому серверу": "Access to this server",
   "Пригласить": "Invite",
@@ -1148,5 +1147,6 @@
   "Теперь войти можно только с клиентским UDMC": "Only players with the UDMC client can join now",
   "Теперь войти можно и без клиентского UDMC": "Players can now join without the UDMC client",
   "Игровой адрес сохранён": "Game address saved",
-  "Диагностика": "Diagnostics"
+  "Диагностика": "Diagnostics",
+  "Если выключено, игрок получит предупреждение и ссылку, но сможет войти. Правило действует со следующего входа, перезапуск сервера не нужен.": "When disabled, players get a warning and download link but can still join. The rule applies from the next login; the server does not need a restart."
 }
