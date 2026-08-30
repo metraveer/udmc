@@ -11,6 +11,12 @@ on:
 permissions:
   contents: read
 
+# A newer push makes the previous check pointless: cancelling it saves minutes and
+# stops obsolete failure notifications from piling up.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   node:
     name: Node smoke test

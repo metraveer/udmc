@@ -15,6 +15,12 @@ on:
 permissions:
   contents: write
 
+# Release builds are never cancelled automatically: a half-finished publication
+# would leave a release without its installer.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   windows:
     name: Windows installer
