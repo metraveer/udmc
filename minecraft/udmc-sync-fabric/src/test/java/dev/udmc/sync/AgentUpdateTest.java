@@ -22,6 +22,12 @@ public final class AgentUpdateTest {
 
     public static void main(String[] args) throws Exception {
         if (args.length == 2 && args[0].equals("child")) { child(Path.of(args[1])); return; }
+        if (args.length == 2 && args[0].equals("generation")) {
+            Path installed = Path.of(args[1]);
+            check(UdmcConfig.load(installed).bootstrapId.equals("a".repeat(64)), "A newer JAR must replace the stored generation");
+            check(UdmcConfig.load(installed).bootstrapId.equals("a".repeat(64)), "The rewritten config must survive on disk");
+            return;
+        }
         Path root = Files.createTempDirectory("udmc-agent-update-test-");
         try {
             UdmcConfig config = config();
@@ -100,6 +106,7 @@ public final class AgentUpdateTest {
             replacement(root.resolve("tampered"), true, false);
             replacement(root.resolve("changed-original"), false, true);
             childProcess(root.resolve("process"));
+            bootstrapRewrite(root.resolve("generation"));
             System.out.println("Agent update checks passed: signed releases, secret/platform/role rejection, idempotent delivery, login policy, post-exit replacement, backup, tampering and stale original protection.");
         } finally {
             try (var paths = Files.walk(root)) { for (Path path : paths.sorted(Comparator.reverseOrder()).toList()) Files.deleteIfExists(path); }
@@ -183,6 +190,30 @@ public final class AgentUpdateTest {
                 "Secret-bearing archive must be rejected with an actionable HTTP error: " + invalid.body());
             check(new AgentDistribution(root, config).release().verify(config, "client").getProperty("sha256").equals(Hashes.sha256(client)), "Failed delivery preserves the public client");
         } finally { api.stop(); }
+    }
+
+    /**
+     * The first launch after a player installs a freshly generated client JAR: the stored
+     * config belongs to an earlier generation and has to be rewritten. Windows refuses to
+     * replace a file that still has an open handle, so reading and rewriting it in one
+     * breath crashed the game on startup - and only on the machines players actually use.
+     */
+    private static void bootstrapRewrite(Path root) throws Exception {
+        Files.createDirectories(root.resolve("config"));
+        Path installed = jar(root.resolve("installed-client.jar"), config(), true, "one", Map.of());
+        UdmcConfig stored;
+        try (var zip = new ZipFile(installed.toFile());
+             var reader = new java.io.InputStreamReader(zip.getInputStream(zip.getEntry("udmc-bootstrap.json")), StandardCharsets.UTF_8)) {
+            stored = GSON.fromJson(reader, UdmcConfig.class);
+        }
+        stored.bootstrapId = "b".repeat(64);
+        stored.save(root);
+        Process child = new ProcessBuilder(java(), "-Xmx96m", "-cp",
+                installed + java.io.File.pathSeparator + System.getProperty("java.class.path"),
+                AgentUpdateTest.class.getName(), "generation", root.toString())
+            .redirectErrorStream(true).redirectOutput(root.resolve("generation.log").toFile()).start();
+        check(child.waitFor(60, TimeUnit.SECONDS) && child.exitValue() == 0,
+            "A newer client JAR must rewrite the installed config: " + Files.readString(root.resolve("generation.log")));
     }
 
     private static void childProcess(Path root) throws Exception {

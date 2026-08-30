@@ -86,10 +86,14 @@ public final class UdmcConfig {
 
         try {
             if (Files.exists(configPath)) {
+                UdmcConfig stored;
+                // Read the file and let go of it before applying the bootstrap: a JAR from a
+                // newer generation rewrites this very file, and Windows refuses to replace a
+                // file while a handle to it is still open - the game crashed on startup.
                 try (Reader reader = Files.newBufferedReader(configPath)) {
-                    UdmcConfig config = GSON.fromJson(reader, UdmcConfig.class);
-                    return applyBootstrap(gameDir, config == null ? new UdmcConfig() : config);
+                    stored = GSON.fromJson(reader, UdmcConfig.class);
                 }
+                return applyBootstrap(gameDir, stored == null ? new UdmcConfig() : stored);
             }
 
             UdmcConfig config = applyBootstrap(gameDir, new UdmcConfig());
