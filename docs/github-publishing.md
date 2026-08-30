@@ -1,6 +1,14 @@
 # Публикация на GitHub: пошагово
 
-Инструкция для первой публикации. Все команды выполняются в PowerShell из папки `H:\UDMC`.
+Инструкция для первой публикации.
+
+> **Где выполнять команды.** Команды ниже написаны для **PowerShell**, а не для «Командной строки» (cmd). Если в окне видно `H:\UDMC>` — это cmd, и команды вроде `Get-Content` там не работают. Откройте PowerShell: нажмите `Win + X` → **Терминал** или **Windows PowerShell**, затем перейдите в папку проекта:
+>
+> ```powershell
+> cd H:\UDMC
+> ```
+>
+> В PowerShell приглашение выглядит так: `PS H:\UDMC>`.
 
 ## 1. Создать репозиторий
 
@@ -28,32 +36,48 @@ git remote add origin https://github.com/ВАШ-ЛОГИН/udmc-sync.git
 git push -u origin main
 ```
 
-При запросе логина GitHub попросит токен вместо пароля: [создайте его здесь](https://github.com/settings/tokens/new) с правом **repo**.
+Если Git попросит логин и пароль — вместо пароля нужен токен: [создайте его здесь](https://github.com/settings/tokens/new) с правом **repo**. Часто вход уже сохранён в Windows, и ничего вводить не придётся.
 
 ## 4. Добавить ключ подписи обновлений в секреты
 
 Без этого GitHub не сможет собирать обновления, которые примут установленные копии.
 
-1. Откройте содержимое файла ключа:
+1. Скопируйте содержимое файла ключа в буфер обмена. В **PowerShell**:
    ```powershell
-   Get-Content "$env:USERPROFILE\.udmc\updater.key"
+   Get-Content "$env:USERPROFILE\.udmc\updater.key" | Set-Clipboard
    ```
-2. В репозитории: **Settings → Secrets and variables → Actions → New repository secret**.
-3. Имя: `TAURI_SIGNING_PRIVATE_KEY`, значение: весь текст из шага 1. Сохраните.
-4. Ещё один секрет: `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`, значение оставьте пустым.
+   В **cmd** та же задача решается так:
+   ```cmd
+   type "%USERPROFILE%\.udmc\updater.key" | clip
+   ```
+   Ничего не выведется на экран — текст уже в буфере. Можно просто открыть файл в «Блокноте» и скопировать вручную: `%USERPROFILE%\.udmc\updater.key`.
+
+2. Откройте страницу создания секрета — прямая ссылка (замените логин, если он другой):
+   **https://github.com/metraveer/udmc/settings/secrets/actions/new**
+
+   Если ссылка не открывается: на странице репозитория вверху вкладка **Settings** (последняя справа, со значком шестерёнки) → в левом меню найдите раздел **Security** → **Secrets and variables** → **Actions** → зелёная кнопка **New repository secret**.
+
+3. **Name**: `TAURI_SIGNING_PRIVATE_KEY`
+   **Secret**: вставьте текст из буфера (`Ctrl + V`) → **Add secret**.
+
+4. Нажмите **New repository secret** ещё раз:
+   **Name**: `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`
+   **Secret**: оставьте пустым → **Add secret**.
+
+   Если GitHub не даёт сохранить пустое значение, впишите один пробел.
 
 > **Храните файл `%USERPROFILE%\.udmc\updater.key` в надёжном месте.** Если он потеряется, установленные у людей копии перестанут получать обновления.
 
 ## 5. Оформить витрину репозитория
 
-На главной странице репозитория справа нажмите шестерёнку рядом с «About»:
+На главной странице репозитория (https://github.com/metraveer/udmc) справа нажмите шестерёнку рядом с заголовком «About»:
 
 - **Description**: `Раздача модов Minecraft-сервера на компьютеры игроков без отдельного лаунчера`
 - **Website**: оставьте пустым
 - **Topics**: `minecraft`, `minecraft-server`, `modpack`, `fabric`, `neoforge`, `modrinth`, `curseforge`, `tauri`, `rust`, `server-administration`
 - Галочки: оставьте **Releases**, снимите **Packages** и **Deployments**
 
-**Картинка для ссылок** (как выглядит проект, когда ссылку кидают в чат): **Settings → General → Social preview → Upload an image**, загрузите `docs/images/01-server.png`.
+**Картинка для ссылок** (как выглядит проект, когда ссылку кидают в чат): откройте https://github.com/metraveer/udmc/settings, прокрутите до раздела **Social preview** и нажмите **Edit → Upload an image**. Файл: `H:\UDMC\docs\images\01-server.png`.
 
 ## 6. Выпустить первый релиз
 
@@ -62,9 +86,11 @@ git tag v0.15.0
 git push origin v0.15.0
 ```
 
-GitHub соберёт установщик сам (~15 минут). Затем:
+GitHub соберёт установщик сам (~15 минут). Следить за сборкой: https://github.com/metraveer/udmc/actions
 
-1. Откройте **Releases** — там появится черновик.
+Затем:
+
+1. Откройте https://github.com/metraveer/udmc/releases — там появится черновик (**Draft**).
 2. Проверьте, что приложены `UDMC Control_0.15.0_x64-setup.exe`, файл `.sig` и `latest.json`.
 3. Впишите описание (можно скопировать раздел 0.15.0 из [CHANGELOG.md](../CHANGELOG.md)).
 4. Нажмите **Publish release**.
@@ -92,3 +118,5 @@ git push origin v0.16.0
 | В релизе нет `.sig` или `latest.json` | Не добавлен секрет `TAURI_SIGNING_PRIVATE_KEY` (шаг 4). |
 | Плашка обновления не появляется | Проверьте, что в релизе есть `latest.json` и что релиз опубликован, а не остался черновиком. |
 | `git push` просит пароль | GitHub не принимает пароли — нужен токен из шага 3. |
+| `'Get-Content' is not recognized` | Команда выполнена в cmd. Откройте PowerShell (`Win + X` → Терминал) или используйте вариант для cmd из шага 4. |
+| В **Settings** нет раздела Secrets | Вы смотрите настройки профиля, а не репозитория. Нужен адрес вида `github.com/ЛОГИН/udmc/settings`. |
