@@ -28,12 +28,30 @@ public final class AgentLoginNotice {
         "The UDMC client did not answer the server: it is most likely not installed."
         + " / Клиент UDMC не ответил серверу: скорее всего, мод не установлен.";
 
+    private static final String RESTART_FALLBACK =
+        "UDMC: %1$s\n\n"
+        + "Close the game and start it again: the client updates itself.\n"
+        + "Закройте игру и запустите снова: клиент обновится сам.";
+
+    /**
+     * A client that already belongs to this project repairs itself: it compares its own file
+     * with the published one at every launch and replaces it. Telling such a player to
+     * download anything is wrong - the only thing they have to do is restart. The download
+     * steps are for the cases where no working channel exists yet: no mod at all, or a mod
+     * that belongs to another project and cannot verify this server's signature.
+     */
+    private static boolean selfHealing(String messageKey) {
+        return "udmc_sync.login.outdated".equals(messageKey) || "udmc_sync.login.rebuilt".equals(messageKey);
+    }
+
     public static Component component(AgentLoginProtocol.Decision decision) {
         String reasonFallback = "udmc_sync.login.missing".equals(decision.messageKey())
             ? MISSING_FALLBACK : decision.messageFallback();
         var reason = Component.translatableWithFallback(decision.messageKey(), reasonFallback, decision.args().toArray());
-        MutableComponent notice = Component.translatableWithFallback("udmc_sync.login.notice", CLEAN_CLIENT_FALLBACK,
-            reason, AgentNotice.link(decision.downloadUrl()));
+        MutableComponent notice = selfHealing(decision.messageKey())
+            ? Component.translatableWithFallback("udmc_sync.login.restart", RESTART_FALLBACK, reason)
+            : Component.translatableWithFallback("udmc_sync.login.notice", CLEAN_CLIENT_FALLBACK,
+                reason, AgentNotice.link(decision.downloadUrl()));
         // The numbers an administrator asks for first: without them the only way to tell a
         // stale client from a foreign one is to open files on someone else's computer.
         notice.append("\n\n").append(Component.translatableWithFallback("udmc_sync.login.server", SERVER_FALLBACK,

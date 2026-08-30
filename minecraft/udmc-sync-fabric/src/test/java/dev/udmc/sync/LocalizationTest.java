@@ -41,6 +41,24 @@ public final class LocalizationTest {
             check(rendered.contains(fragment), "Login notice must state " + fragment + ": " + rendered);
         }
         check(login.getContents() instanceof TranslatableContents contents && contents.getKey().equals("udmc_sync.login.notice"), "Login notice must use a Minecraft translation with a clean-client fallback");
+        // A client that belongs to this project repairs itself at the next launch: telling
+        // that player to download a file sends them to do by hand what already happens.
+        for (var healing : List.of("udmc_sync.login.outdated", "udmc_sync.login.rebuilt")) {
+            var advice = AgentLoginNotice.component(new AgentLoginProtocol.Decision(false, true, healing,
+                en.get(healing), List.of("0.17.1", "0.17.0"), "https://127.0.0.1/udmc", "0.17.1", "0.17.1", "udmc-main", "0.17.0", "udmc-main"));
+            check(((TranslatableContents) advice.getContents()).getKey().equals("udmc_sync.login.restart"),
+                healing + " must ask for a restart, not for a download");
+            check(!advice.getString().contains("https://127.0.0.1/udmc"), healing + " must not send the player to download anything");
+            for (var word : List.of("Скачайте", "Download", "download")) {
+                check(!en.get(healing).contains(word) && !ru.get(healing).contains(word),
+                    healing + " states what happened; the advice line says what to do, and they must not contradict");
+            }
+        }
+        for (var manual : List.of("udmc_sync.login.missing", "udmc_sync.login.foreign")) {
+            var advice = AgentLoginNotice.component(new AgentLoginProtocol.Decision(false, true, manual,
+                en.get(manual), List.of("udmc-main"), "https://127.0.0.1/udmc", "0.17.1", "0.17.1", "udmc-main", "", ""));
+            check(advice.getString().contains("https://127.0.0.1/udmc"), manual + " has no working channel and must give the address");
+        }
         // A player without the mod reads only the fallback, on a screen where the link is not
         // clickable: it has to spell out the steps and put the address on a line of its own.
         var fallback = ((TranslatableContents) login.getContents()).getFallback();
