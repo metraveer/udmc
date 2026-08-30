@@ -1,6 +1,6 @@
 [package]
 name = "udmc-control"
-version = "0.17.1"
+version = "0.18.0"
 description = "Windows administration app for UDMC Sync"
 authors = ["UDMC Sync contributors"]
 edition = "2021"

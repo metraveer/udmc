@@ -1,6 +1,6 @@
 {
   "name": "udmc-sync",
-  "version": "0.17.1",
+  "version": "0.18.0",
   "private": true,
   "type": "module",
   "description": "UDMC Sync distributes a Minecraft server's mods and pack files to managed clients.",
