@@ -15,7 +15,7 @@ public final class NeoForgeEntrypoint {
     private UdmcHttpApi api;
 
     public NeoForgeEntrypoint(IEventBus modBus) {
-        UdmcSync.LOGGER.info("UDMC Sync loaded (NeoForge).");
+        UdmcSync.LOGGER.info("UDMC loaded (NeoForge).");
         // The client adapter must never be resolved on a dedicated server.
         if (FMLEnvironment.dist == Dist.CLIENT) {
             NeoForgeClient.register(modBus);

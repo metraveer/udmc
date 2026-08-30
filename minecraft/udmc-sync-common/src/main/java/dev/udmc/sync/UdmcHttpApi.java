@@ -62,7 +62,7 @@ public final class UdmcHttpApi {
 
     public void attachServer(MinecraftServer minecraftServer) {
         this.minecraftServer = minecraftServer;
-        UdmcSync.LOGGER.info("UDMC Sync attached to the dedicated server runtime.");
+        UdmcSync.LOGGER.info("UDMC attached to the dedicated server runtime.");
     }
 
     public void start() throws IOException {
@@ -76,7 +76,7 @@ public final class UdmcHttpApi {
         }, new ThreadPoolExecutor.CallerRunsPolicy());
         server.setExecutor(workers);
         server.start();
-        UdmcSync.LOGGER.info("UDMC Sync API listening on {}:{}", config.apiHost, config.apiPort);
+        UdmcSync.LOGGER.info("UDMC API listening on {}:{}", config.apiHost, config.apiPort);
 
         if ("change-me".equals(config.adminToken)) {
             UdmcSync.LOGGER.warn("UDMC adminToken is still change-me. Edit config/udmc-sync.json.");
@@ -648,8 +648,8 @@ public final class UdmcHttpApi {
         }
         if (path.equals("/agents/install")) {
             String url = agents.downloadUrl().replace("&", "&amp;").replace("\"", "&quot;").replace("<", "&lt;").replace(">", "&gt;");
-            byte[] body = ("<!doctype html><html lang=\"en\"><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>UDMC Sync</title>"
-                + "<body><main><h1>UDMC Sync</h1><p><a href=\"" + url + "\" download=\"udmc-sync-client.jar\">Download client agent / Скачать клиентский мод</a></p>"
+            byte[] body = ("<!doctype html><html lang=\"en\"><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>UDMC</title>"
+                + "<body><main><h1>UDMC</h1><p><a href=\"" + url + "\" download=\"udmc-sync-client.jar\">Download client agent / Скачать клиентский мод</a></p>"
                 + "<ol><li>Close Minecraft.</li><li>Place udmc-sync-client.jar in the mods folder of your game profile. Replace the old UDMC client JAR, if present.</li>"
                 + "<li>Use the server's Minecraft version and loader. Start the game and wait for synchronization. Restart when requested.</li></ol>"
                 + "<ol lang=\"ru\"><li>Закройте Minecraft.</li><li>Положите udmc-sync-client.jar в папку mods вашего игрового профиля. Если там есть старый UDMC, замените его, не оставляйте два файла.</li>"

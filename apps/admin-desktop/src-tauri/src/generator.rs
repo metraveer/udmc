@@ -260,9 +260,9 @@ fn customize_jar(template: &[u8], bootstrap: &Value) -> Result<Vec<u8>, String> 
             let mut metadata: Value = serde_json::from_reader(&mut file).map_err(error)?;
             metadata["environment"] = json!(if server { "server" } else { "client" });
             metadata["name"] = json!(if server {
-                "UDMC Sync Server"
+                "UDMC Server"
             } else {
-                "UDMC Sync Client"
+                "UDMC Client"
             });
             metadata["mixins"] = json!([if server {
                 "udmc_sync.mixins.json"
@@ -292,9 +292,9 @@ fn customize_jar(template: &[u8], bootstrap: &Value) -> Result<Vec<u8>, String> 
             }
             mods[0]["displayName"] = toml::Value::String(
                 if server {
-                    "UDMC Sync Server"
+                    "UDMC Server"
                 } else {
-                    "UDMC Sync Client"
+                    "UDMC Client"
                 }
                 .into(),
             );
@@ -811,7 +811,7 @@ mod tests {
                 let metadata: toml::Value = toml::from_str(&body).unwrap();
                 assert_eq!(
                     metadata["mods"][0]["displayName"].as_str(),
-                    Some("UDMC Sync Client")
+                    Some("UDMC Client")
                 );
                 assert_eq!(
                     metadata["mods"][0]["version"].as_str(),
@@ -857,7 +857,7 @@ mod tests {
                 let metadata: toml::Value = toml::from_str(&body).unwrap();
                 assert_eq!(
                     metadata["mods"][0]["displayName"].as_str(),
-                    Some("UDMC Sync Server")
+                    Some("UDMC Server")
                 );
             }
         }

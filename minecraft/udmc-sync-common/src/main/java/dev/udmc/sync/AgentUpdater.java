@@ -178,7 +178,7 @@ final class AgentUpdater {
         }
         String pending = String.valueOf(status(gameDir).get("state"));
         if (pending.equals("waiting") || pending.equals("scheduled")) return true;
-        progress.update("UDMC Sync " + descriptor.getProperty("version"), 0, Long.parseLong(descriptor.getProperty("size")));
+        progress.update("UDMC " + descriptor.getProperty("version"), 0, Long.parseLong(descriptor.getProperty("size")));
         Path tempDir = ManagedPaths.internal(gameDir, "agent-downloads");
         Files.createDirectories(tempDir);
         Path downloaded = Files.createTempFile(tempDir, "client-", ".jar");
@@ -193,7 +193,7 @@ final class AgentUpdater {
                 while ((count = input.read(buffer)) != -1) {
                     total += count;
                     if (total > size) throw Messages.error("udmc_sync.error.agent_size");
-                    output.write(buffer, 0, count); progress.update("UDMC Sync " + descriptor.getProperty("version"), total, size);
+                    output.write(buffer, 0, count); progress.update("UDMC " + descriptor.getProperty("version"), total, size);
                 }
                 if (total != size) throw Messages.error("udmc_sync.error.agent_size");
             }

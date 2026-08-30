@@ -8,7 +8,7 @@ config="udmc_sync.neoforge.mixins.json"
 [[mods]]
 modId="udmc_sync"
 version="${mod_version}"
-displayName="UDMC Sync"
+displayName="UDMC"
 description="Managed modpack synchronization. Server and client roles are configured by UDMC Control."
 
 [[dependencies.udmc_sync]]

@@ -5,7 +5,7 @@ import net.minecraft.network.chat.Component;
 
 /** A translated notice for modded clients with a bilingual fallback for clean clients. */
 public final class AgentLoginNotice {
-    private static final String CLEAN_CLIENT_FALLBACK = "UDMC Sync: the client synchronizer is missing, incompatible, or outdated. / Клиентский синхронизатор отсутствует, несовместим или устарел.\nDownload and installation instructions / Скачать и установить: %2$s";
+    private static final String CLEAN_CLIENT_FALLBACK = "UDMC: the client synchronizer is missing, incompatible, or outdated. / Клиентский синхронизатор отсутствует, несовместим или устарел.\nDownload and installation instructions / Скачать и установить: %2$s";
 
     private AgentLoginNotice() {}
 

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:udmc-sync:manifest:v1",
-  "title": "UDMC Sync Manifest",
+  "title": "UDMC Manifest",
   "type": "object",
   "required": ["schemaVersion", "pack", "minecraft", "publishedAt", "files"],
   "properties": {

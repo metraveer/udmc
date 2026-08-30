@@ -21,7 +21,7 @@
   "udmc_sync.login.missing": "The client synchronizer is not installed.",
   "udmc_sync.login.incompatible": "The client synchronizer belongs to another server or uses an incompatible protocol.",
   "udmc_sync.login.outdated": "The client synchronizer is outdated.",
-  "udmc_sync.login.notice": "UDMC Sync: %1$s\nDownload and installation instructions: %2$s",
+  "udmc_sync.login.notice": "UDMC: %1$s\nDownload and installation instructions: %2$s",
   "udmc_sync.title.confirm_disable": "Remove this file from the game?",
   "udmc_sync.button.disable": "Disable and back up",
   "udmc_sync.button.previous": "Previous",

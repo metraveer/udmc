@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "id": "udmc_sync",
   "version": "${version}",
-  "name": "UDMC Sync",
+  "name": "UDMC",
   "description": "Distributes managed modpack files from a Minecraft server to Fabric clients.",
-  "authors": ["UDMC Sync contributors"],
+  "authors": ["UDMC contributors"],
   "license": "All-Rights-Reserved",
   "environment": "*",
   "entrypoints": {

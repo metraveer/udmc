@@ -1,4 +1,4 @@
-# UDMC Sync API
+# UDMC API
 
 Локальный URL по умолчанию:
 

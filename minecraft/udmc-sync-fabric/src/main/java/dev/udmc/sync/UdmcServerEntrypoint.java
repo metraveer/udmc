@@ -39,7 +39,7 @@ public final class UdmcServerEntrypoint implements DedicatedServerModInitializer
             api.attachServer(server);
         } catch (Exception error) {
             stopServer();
-            throw new IllegalStateException("Failed to start UDMC Sync server API", error);
+            throw new IllegalStateException("Failed to start UDMC server API", error);
         }
     }
 

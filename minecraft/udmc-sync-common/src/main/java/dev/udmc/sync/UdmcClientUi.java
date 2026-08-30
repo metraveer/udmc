@@ -87,7 +87,7 @@ public final class UdmcClientUi {
     private static final class StatusScreen extends Screen {
         private State displayed;
         private int index;
-        StatusScreen() { super(Component.literal("UDMC Sync")); }
+        StatusScreen() { super(Component.literal("UDMC")); }
 
         @Override
         protected void init() {
@@ -95,7 +95,7 @@ public final class UdmcClientUi {
             if (displayed == null) return;
             int contentWidth = Math.max(140, Math.min(width - 32, 540));
             int x = (width - contentWidth) / 2;
-            addRenderableWidget(new MultiLineTextWidget(x, 18, Component.literal("UDMC Sync · ").append(displayed.title), font).setMaxWidth(contentWidth).setCentered(true));
+            addRenderableWidget(new MultiLineTextWidget(x, 18, Component.literal("UDMC · ").append(displayed.title), font).setMaxWidth(contentWidth).setCentered(true));
             boolean conflict = !displayed.conflicts.isEmpty();
             index = Math.min(index, Math.max(0, displayed.conflicts.size() - 1));
             var file = conflict ? displayed.conflicts.get(index) : null;

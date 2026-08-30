@@ -1,6 +1,6 @@
 # UDMC Control
 
-Windows-приложение администратора UDMC Sync на Tauri 2.
+Windows-приложение администратора UDMC на Tauri 2.
 
 ```powershell
 npm run admin:dev
