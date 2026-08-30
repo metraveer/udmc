@@ -60,11 +60,7 @@ git push -u origin main
 3. **Name**: `TAURI_SIGNING_PRIVATE_KEY`
    **Secret**: вставьте текст из буфера (`Ctrl + V`) → **Add secret**.
 
-4. Нажмите **New repository secret** ещё раз:
-   **Name**: `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`
-   **Secret**: оставьте пустым → **Add secret**.
-
-   Если GitHub не даёт сохранить пустое значение, впишите один пробел.
+Больше ничего добавлять не нужно: ключ проекта создан без пароля, второй секрет сборке не требуется.
 
 ### Зачем нужен этот ключ и при чём тут ваш компьютер
 

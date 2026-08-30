@@ -21,9 +21,10 @@
    ```
 2. Откройте https://github.com/metraveer/udmc/settings/secrets/actions/new
 3. **Name**: `TAURI_SIGNING_PRIVATE_KEY` → **Secret**: вставьте (`Ctrl+V`) → **Add secret**
-4. Ещё раз **New repository secret**: **Name** `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`, поле Secret оставьте пустым → **Add secret**
 
-Проверить, что получилось: на https://github.com/metraveer/udmc/settings/secrets/actions должны быть обе строки.
+Нужен только этот один секрет. Ключ проекта создан без пароля, поэтому секрет `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` не требуется — если вы его уже создали, его можно удалить, сборка его не читает.
+
+Проверить, что получилось: на https://github.com/metraveer/udmc/settings/secrets/actions должна быть строка `TAURI_SIGNING_PRIVATE_KEY`.
 
 **Сделайте резервную копию файла** `%USERPROFILE%\.udmc\updater.key` (менеджер паролей, флешка). Обратно из GitHub его не прочитать.
 
