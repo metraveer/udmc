@@ -6,7 +6,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -92,7 +91,7 @@ public final class NeoForgeMetadataTest {
             Files.write(second, embedded("otherroot", "[3,4)", "2", library));
             fails(() -> ModMetadata.read(second, "mods/second.jar"));
             System.out.println("NeoForge metadata checks passed: " + assertions + " assertions.");
-        } finally { try (var paths = Files.walk(root)) { for (Path path : paths.sorted(Comparator.reverseOrder()).toList()) Files.deleteIfExists(path); } }
+        } finally { TestMods.deleteTree(root); }
     }
 
     private static List<ModMetadata.Mod> read(Path root, String name, String metadata) throws Exception {

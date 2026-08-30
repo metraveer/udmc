@@ -3,7 +3,6 @@ package dev.udmc.sync;
 import com.sun.net.httpserver.HttpServer;
 import java.net.InetSocketAddress;
 import java.nio.file.Files;
-import java.util.Comparator;
 import java.util.concurrent.CountDownLatch;
 
 /** Isolated loopback fixture for inspecting native Control; no Minecraft installation is touched. */
@@ -31,7 +30,7 @@ public final class AccessUiFixture {
             stopped.await();
         } finally {
             api.stop(); control.stop(0);
-            try (var paths = Files.walk(root)) { for (var path : paths.sorted(Comparator.reverseOrder()).toList()) Files.deleteIfExists(path); }
+            TestMods.deleteTree(root);
         }
     }
 }

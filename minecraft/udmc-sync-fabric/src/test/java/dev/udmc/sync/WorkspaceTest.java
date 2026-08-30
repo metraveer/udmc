@@ -11,7 +11,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.util.Comparator;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -26,9 +25,7 @@ public final class WorkspaceTest {
         Path directory = Files.createTempDirectory("udmc-workspace-test-");
         try { http(directory); }
         finally {
-            try (var paths = Files.walk(directory)) {
-                for (Path path : paths.sorted(Comparator.reverseOrder()).toList()) Files.deleteIfExists(path);
-            }
+            TestMods.deleteTree(directory);
         }
         System.out.println("Workspace tests passed: all mutation preconditions, independent admins, sessions, leases, expiry, revocation during streamed upload, no stale writes.");
     }

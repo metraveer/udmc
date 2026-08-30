@@ -9,7 +9,6 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.security.KeyPairGenerator;
 import java.util.Base64;
-import java.util.Comparator;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
@@ -109,7 +108,7 @@ public final class AgentUpdateTest {
             bootstrapRewrite(root.resolve("generation"));
             System.out.println("Agent update checks passed: signed releases, secret/platform/role rejection, idempotent delivery, login policy, post-exit replacement, backup, tampering and stale original protection.");
         } finally {
-            try (var paths = Files.walk(root)) { for (Path path : paths.sorted(Comparator.reverseOrder()).toList()) Files.deleteIfExists(path); }
+            TestMods.deleteTree(root);
         }
     }
 

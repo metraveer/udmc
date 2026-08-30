@@ -9,7 +9,6 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.util.Comparator;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -28,7 +27,7 @@ public final class AdminAccessTest {
             http(root.resolve("http"));
             System.out.println("Admin access tests passed: owner approval, role isolation, single-use invites, revocation, persistence, expiry, HTTP authorization.");
         } finally {
-            try (var paths = Files.walk(root)) { for (Path path : paths.sorted(Comparator.reverseOrder()).toList()) Files.deleteIfExists(path); }
+            TestMods.deleteTree(root);
         }
     }
 

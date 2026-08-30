@@ -1,12 +1,36 @@
 package dev.udmc.sync;
 
 import com.google.gson.JsonObject;
+import java.io.IOException;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 final class TestMods {
+    /**
+     * Removes a fixture directory. A live API keeps background writers alive for a moment
+     * after a test returns, so a temp file can vanish between being listed and being
+     * deleted: that is a race in the teardown, not a failure of what was tested.
+     */
+    static void deleteTree(Path root) throws IOException {
+        if (!Files.exists(root)) return;
+        Files.walkFileTree(root, new SimpleFileVisitor<Path>() {
+            @Override public FileVisitResult visitFile(Path file, BasicFileAttributes attributes) { return remove(file); }
+            @Override public FileVisitResult visitFileFailed(Path file, IOException error) { return FileVisitResult.CONTINUE; }
+            @Override public FileVisitResult postVisitDirectory(Path directory, IOException error) { return remove(directory); }
+            private FileVisitResult remove(Path path) {
+                try { Files.deleteIfExists(path); } catch (IOException ignored) { /* Another thread got there first. */ }
+                return FileVisitResult.CONTINUE;
+            }
+        });
+    }
+
     static String atLeast(String version) { return LoaderPlatform.TYPE.equals("neoforge") ? "[" + version + ",)" : ">=" + version; }
     static String range(String lower, String upper) { return LoaderPlatform.TYPE.equals("neoforge") ? "[" + lower + "," + upper + ")" : ">=" + lower + " <" + upper; }
     static byte[] jar(String id, String version) throws Exception { return jar(id, version, new JsonObject(), new JsonObject()); }

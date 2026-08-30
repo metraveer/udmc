@@ -11,7 +11,6 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
-import java.util.Comparator;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -140,9 +139,7 @@ public final class SecurityTest {
             System.out.println("Security tests passed: signatures, HTTPS policy, replay, transactional downloads, personal files, server adoption, secret JAR protection.");
         } finally {
             server.stop(0);
-            try (var files = Files.walk(root)) {
-                for (Path path : files.sorted(Comparator.reverseOrder()).toList()) Files.deleteIfExists(path);
-            }
+            TestMods.deleteTree(root);
         }
     }
 

@@ -3,7 +3,6 @@ package dev.udmc.sync;
 import com.google.gson.JsonObject;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -74,7 +73,7 @@ public final class ModCheckTest {
             }
             diagnosticsAndServerRemoval(root.resolve("unmanaged"), Files.readAllBytes(dependent));
             System.out.println("Mod checks passed: renamed personal mods, conflicts, stale consent, backups, missing dependencies, duplicate IDs, publication guards.");
-        } finally { try (var paths = Files.walk(root)) { for (Path path : paths.sorted(Comparator.reverseOrder()).toList()) Files.deleteIfExists(path); } }
+        } finally { TestMods.deleteTree(root); }
     }
     private static void diagnosticsAndServerRemoval(Path game, byte[] dependent) throws Exception {
         Files.createDirectories(game.resolve("mods"));

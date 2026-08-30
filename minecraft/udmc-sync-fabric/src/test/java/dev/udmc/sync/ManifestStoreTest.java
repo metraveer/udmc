@@ -3,7 +3,6 @@ package dev.udmc.sync;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Comparator;
 
 public final class ManifestStoreTest {
     public static void main(String[] args) throws Exception {
@@ -17,11 +16,7 @@ public final class ManifestStoreTest {
             testPaths();
             System.out.println("ManifestStore tests passed: draft lifecycle, migration, rollback, blob integrity, path validation, detach.");
         } finally {
-            try (var files = Files.walk(root)) {
-                for (Path file : files.sorted(Comparator.reverseOrder()).toList()) {
-                    Files.deleteIfExists(file);
-                }
-            }
+            TestMods.deleteTree(root);
         }
     }
 

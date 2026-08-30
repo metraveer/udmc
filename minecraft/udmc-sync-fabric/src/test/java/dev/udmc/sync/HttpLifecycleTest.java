@@ -18,7 +18,6 @@ import java.nio.file.StandardOpenOption;
 import java.security.KeyPairGenerator;
 import java.time.Duration;
 import java.util.Base64;
-import java.util.Comparator;
 import java.util.Map;
 
 public final class HttpLifecycleTest {
@@ -51,9 +50,7 @@ public final class HttpLifecycleTest {
             System.out.println("HTTP lifecycle tests passed: signed publication, side selection, client sync/removal, personal files, stale revisions, empty/large files, concurrent slow upload, failed upload cleanup, size limits.");
         } finally {
             api.stop();
-            try (var paths = Files.walk(root)) {
-                for (Path path : paths.sorted(Comparator.reverseOrder()).toList()) Files.deleteIfExists(path);
-            }
+            TestMods.deleteTree(root);
         }
     }
 
