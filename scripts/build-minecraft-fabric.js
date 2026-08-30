@@ -18,7 +18,11 @@ const command = await exists(localGradle) ? localGradle : await exists(runtimeGr
 for (const template of catalog) {
   if (!["fabric", "neoforge"].includes(template.loader)) throw new Error(`Unsupported agent loader: ${template.loader}`);
   const projectDir = path.resolve(`minecraft/udmc-sync-${template.loader}`);
-  await run(command, ["build", `-Pminecraft_version=${template.minecraft}`, `-Ploader_version=${template.loaderVersion}`, `-Pmod_version=${version}`], projectDir);
+  // UDMC_AGENT_GRADLE_ARGS lets a release build ask for jars only ("-x check"):
+  // the agent test suite is the continuous-integration job's responsibility and
+  // its fixtures need a machine that can bind local ports.
+  const extra = (process.env.UDMC_AGENT_GRADLE_ARGS || "").split(" ").filter(Boolean);
+  await run(command, ["build", `-Pminecraft_version=${template.minecraft}`, `-Ploader_version=${template.loaderVersion}`, `-Pmod_version=${version}`, ...extra], projectDir);
   await copyFile(path.join(projectDir, "build", template.minecraft, "libs", `udmc-sync-${template.loader}-${template.minecraft}-${version}.jar`),
     path.join(templatesDir, `${template.id}.jar`));
 }

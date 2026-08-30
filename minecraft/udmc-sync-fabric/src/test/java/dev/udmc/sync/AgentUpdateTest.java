@@ -188,9 +188,28 @@ public final class AgentUpdateTest {
         String old = Hashes.sha256(root.resolve("mods/agent.jar"));
         Process child = new ProcessBuilder(java(), "-Xmx96m", "-cp", System.getProperty("java.class.path"), AgentUpdateTest.class.getName(), "child", root.toString())
             .redirectErrorStream(true).redirectOutput(root.resolve("child.log").toFile()).start();
+        Path result = root.resolve("udmc-sync/agent-update/result.properties");
+        // Windows locks a loaded JAR, so the update waits for the process to exit and an
+        // external helper swaps the file. Elsewhere the swap happens immediately in place
+        // and the running JVM simply keeps its old inode until it restarts.
+        if (!System.getProperty("os.name").toLowerCase(java.util.Locale.ROOT).contains("win")) {
+            try {
+                await(() -> Files.exists(result) && AgentUpdateHelper.read(result).getProperty("state").equals("applied"), 15000);
+                check(Hashes.sha256(root.resolve("mods/agent.jar")).equals(Hashes.sha256(root.resolve("next.jar"))), "In-place update replaces the JAR at once");
+                check(Hashes.sha256(root.resolve("udmc-sync/agent-update/previous.jar")).equals(old), "In-place update retains a backup");
+                try (var reader = new ZipFile(root.resolve("mods/agent.jar").toFile())) {
+                    check(reader.getEntry("test-content.txt") != null, "Replaced JAR must stay readable");
+                }
+                Files.writeString(root.resolve("exit"), "exit");
+                check(child.waitFor(10, TimeUnit.SECONDS) && child.exitValue() == 0,
+                    "Fixture JVM must exit cleanly: " + Files.readString(root.resolve("child.log")));
+            } finally {
+                if (child.isAlive()) { child.destroyForcibly(); child.waitFor(5, TimeUnit.SECONDS); }
+            }
+            return;
+        }
         ProcessHandle helper = null;
         try {
-            Path result = root.resolve("udmc-sync/agent-update/result.properties");
             await(() -> Files.exists(result) && AgentUpdateHelper.read(result).getProperty("state").equals("waiting"), 15000);
             var task = AgentUpdateHelper.read(root.resolve("udmc-sync/agent-update/task.properties"));
             helper = ProcessHandle.of(Long.parseLong(task.getProperty("helperPid"))).orElseThrow();

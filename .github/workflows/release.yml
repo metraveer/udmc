@@ -56,8 +56,11 @@ jobs:
           npm test
           npm run version:check
 
+      # Agent tests run in the CI workflow on Linux; here only the jars are needed.
       - name: Build agent templates
         run: npm run minecraft:build
+        env:
+          UDMC_AGENT_GRADLE_ARGS: -x check
 
       # tauri-action calls the Tauri CLI directly and skips the repository's
       # preadmin:build hook, so the offline UI assets are prepared explicitly here.
