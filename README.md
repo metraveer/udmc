@@ -6,7 +6,7 @@
 
 Администратор собирает модпак в Windows-приложении, игроки получают его автоматически при запуске обычной игры.
 
-[![Скачать](https://img.shields.io/github/v/release/OWNER/REPO?label=%D1%81%D0%BA%D0%B0%D1%87%D0%B0%D1%82%D1%8C&style=for-the-badge)](../../releases/latest)
+[![Скачать](https://img.shields.io/github/v/release/metraveer/udmc?label=%D1%81%D0%BA%D0%B0%D1%87%D0%B0%D1%82%D1%8C&style=for-the-badge)](../../releases/latest)
 [![Лицензия MIT](https://img.shields.io/badge/%D0%BB%D0%B8%D1%86%D0%B5%D0%BD%D0%B7%D0%B8%D1%8F-MIT-blue?style=for-the-badge)](LICENSE)
 [![Windows](https://img.shields.io/badge/Windows-10%2F11-0078D4?style=for-the-badge&logo=windows)](../../releases/latest)
 

@@ -34,7 +34,7 @@
       "dialog": false,
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDM0RDQyMUI3NTMyNDdBNDYKUldSR2VpUlR0eUhVTkw4M2RwU0VFcy9rcUNLK25KVEZRdkQ4YnE1QXdCcFY2bXZubHZnMEE1V2sK",
       "endpoints": [
-        "https://github.com/UDMC-PLACEHOLDER/releases/latest/download/latest.json"
+        "https://github.com/metraveer/udmc/releases/latest/download/latest.json"
       ]
     }
   },
