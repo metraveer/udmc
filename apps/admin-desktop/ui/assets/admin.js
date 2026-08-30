@@ -179,6 +179,7 @@ serverTools = initServerTools({ adminGet, adminJson, refresh: () => refresh({ si
   getDirty: () => Boolean(draftState?.changes?.dirty)
 });
 document.getElementById("dashOpenBuild").addEventListener("click", () => navigateTo("overview"));
+document.getElementById("packRestartButton").addEventListener("click", () => { if (!buildBusy) openRestartWithDelay(); });
 document.getElementById("filesBulkClear").addEventListener("click", () => { tableSelection.clear(); renderFilteredFiles(); });
 document.getElementById("filesBulkRemove").addEventListener("click", () => {
   if (buildBusy || !tableSelection.size) return;
@@ -780,6 +781,12 @@ function openPublishDialog() {
     removedMods ? t("Удаление модов может нарушить зависимости и повредить содержимое мира. Сделайте резервную копию мира.") : ""
   ].filter(Boolean).join(" ");
   elements.publishRestartNote.hidden = !draftState.changes.serverRestartRecommended && !removedMods;
+  // Publish-and-restart needs remote power actions; without them the reason is on the button.
+  const restartButton = document.getElementById("publishRestartButton");
+  restartButton.disabled = !canRestartFromPanel();
+  restartButton.title = canRestartFromPanel()
+    ? t("Опубликует сборку и сразу предложит перезапуск с предупреждением игроков.")
+    : t("Остановка и перезапуск из панели выключены. Включите их на странице «Сервер» в блоке «Действия сервера».");
   elements.publishDialog.showModal();
   elements.publishVersionInput.select();
 }
@@ -791,6 +798,7 @@ async function publishVersion(event) {
     elements.publishDialog.close(); showToast(t("Подключение изменилось. Проверьте сборку заново."), "error"); return;
   }
   const submitButton = event.submitter;
+  const withRestart = submitButton?.id === "publishRestartButton";
   const version = elements.publishVersionInput.value.trim();
   setBusy(submitButton, true);
   setBuildBusy(true);
@@ -799,10 +807,12 @@ async function publishVersion(event) {
     const payload = await adminJson("/admin/publish", { version, expectedRevision: publishRevision });
     elements.publishDialog.close();
     addActivity(t("Опубликована версия {0}.", payload.pack.version), "success");
-    showToast(needsServerRestart
+    showToast(needsServerRestart && !withRestart
       ? t("Версия {0} опубликована. Изменения на сервере вступят в силу после перезапуска - см. страницу «Сервер».", payload.pack.version)
       : t("Версия {0} опубликована", payload.pack.version));
     await refresh({ silent: true });
+    // The restart is offered only after the publication really succeeded.
+    if (withRestart) openRestartWithDelay();
   } catch (error) {
     if (error.status === 409) { elements.publishDialog.close(); await refresh({ silent: true }); }
     handleError(error);
@@ -1005,6 +1015,7 @@ function renderDraftState() {
   }
   if (manifest) fillManifest(manifest);
   renderDraftValidationChip();
+  renderPackRestartNotice();
   renderDashboard();
 }
 
@@ -1040,6 +1051,7 @@ function renderServerStatus(status) {
   elements.stopServerButton.disabled = buildBusy || !powerEnabled;
   elements.restartServerButton.title = powerEnabled ? t("Перезапустить сервер") : t("Разрешите остановку и перезапуск выше");
   elements.stopServerButton.title = powerEnabled ? t("Остановить сервер") : t("Разрешите остановку и перезапуск выше");
+  renderPackRestartNotice();
   renderDashboard();
 
   const rconEnabled = Boolean(status.rcon?.enabled);
@@ -1076,6 +1088,34 @@ function resetServerStatus() {
   elements.restartServerButton.disabled = true;
   elements.stopServerButton.disabled = true;
   renderDashboard();
+}
+
+// The running process keeps serving the release it started with, so a published
+// pack only reaches players after a restart.
+function serverRunsOldRelease() {
+  const loaded = serverStatus?.loadedReleaseSequence;
+  return Boolean(serverStatus && manifest && typeof loaded === "number" && loaded >= 0
+    && manifest.releaseSequence > loaded && !serverStatus.power);
+}
+
+function canRestartFromPanel() {
+  return serverStatus?.capabilities?.powerActions === true;
+}
+
+function openRestartWithDelay() {
+  document.getElementById("powerDelaySelect").value = (serverStatus?.players?.online || 0) > 0 ? "60" : "0";
+  openPowerDialog("restart");
+}
+
+function renderPackRestartNotice() {
+  const notice = document.getElementById("packRestartNotice");
+  const stale = serverRunsOldRelease();
+  notice.hidden = !stale;
+  if (!stale) return;
+  document.getElementById("packRestartText").textContent = canRestartFromPanel()
+    ? t("Сервер ещё работает на прежней версии сборки: изменения дойдут до игроков после перезапуска.")
+    : t("Сервер ещё работает на прежней версии сборки: перезапустите его вручную, чтобы изменения дошли до игроков.");
+  document.getElementById("packRestartButton").hidden = !canRestartFromPanel();
 }
 
 function renderDraftValidationChip() {
@@ -1127,13 +1167,11 @@ function renderDashboard() {
       () => { navigateTo("overview"); serverTools.showValidation("server"); setBuildTab("validation"); });
     if (changes?.dirty) add("warn", "file-pen-line", t("Игроки ещё не видят изменения черновика: {0}. Опубликуйте сборку.", countText("changes", changes.total)),
       () => { navigateTo("overview"); setBuildTab("draft"); });
-    const loaded = serverStatus.loadedReleaseSequence;
-    if (!serverStatus.power && manifest && typeof loaded === "number" && loaded >= 0 && manifest.releaseSequence > loaded) {
-      const canPower = serverStatus.capabilities?.powerActions === true;
-      add("warn", "refresh-cw", canPower
+    if (serverRunsOldRelease()) {
+      add("warn", "refresh-cw", canRestartFromPanel()
         ? t("Сервер работает на прежней версии сборки: изменения вступят в силу после перезапуска. Нажмите, чтобы перезапустить с предупреждением игроков.")
         : t("Сервер работает на прежней версии сборки: перезапустите его вручную, чтобы игроки получили обновление."),
-        canPower ? () => { document.getElementById("powerDelaySelect").value = (serverStatus.players?.online || 0) > 0 ? "60" : "0"; openPowerDialog("restart"); } : null);
+        canRestartFromPanel() ? openRestartWithDelay : null);
     }
     const openAgents = () => { navigateTo("generator"); document.getElementById("agentDeliverySection").scrollIntoView({ block: "center" }); };
     if (agentUpdateSnapshot.pending) add("warn", "hourglass", t("Обновление агентов готово: перезапустите Minecraft-сервер, чтобы он начал работать на новой версии."),

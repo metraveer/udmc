@@ -900,6 +900,61 @@ test("several out-of-pack files are selected and removed with one confirmed acti
   assert.equal(ui.errors.length, 0);
 });
 
+test("publish-and-restart publishes first and then opens the restart dialog", async t => {
+  const draft = { schemaVersion: 1, releaseSequence: 2, pack: { id: "udmc-main", name: "Test pack", version: "1.0.0" },
+    minecraft: { version: "26.2", loader: { type: "fabric", version: "0.19.3" } }, files: [] };
+  const published = [];
+  const ui = await createAdmin(t, { fetch: ({ url, options }) => {
+    if (url.pathname === "/manifest") return response({ schemaVersion: 1, releaseSequence: 2, pack: { id: "udmc-main", name: "Test pack", version: "1.0.0" }, minecraft: { version: "26.2", loader: { type: "fabric", version: "0.19.3" } }, files: [] });
+    if (url.pathname === "/admin/status") return response({ state: "online", minecraftVersion: "26.2",
+      loader: { type: "fabric", version: "0.19.3" }, players: { online: 3, max: 20, names: ["A", "B", "C"] }, performance: { tps: 20 },
+      access: { id: "test-owner", role: "owner", name: "Test PC" }, uptimeSeconds: 900, loadedReleaseSequence: 1,
+      capabilities: { commands: true, modValidation: true, powerActions: true } });
+    if (url.pathname === "/admin/validation") return response({ revision: "rev-1", ok: true, checkedAt: "2026-08-31T10:00:00Z", issues: [] });
+    if (url.pathname === "/admin/publish") { published.push(JSON.parse(options.body)); return response({ pack: { version: "1.0.1" } }); }
+    if (url.pathname === "/admin/files") return response({ revision: "rev-1", draft, published: { files: [] },
+      files: [{ path: "mods/new.jar", side: "both", size: 10, sha256: "a".repeat(64), change: "added" }],
+      changes: { added: 1, updated: 0, removed: 0, total: 1, dirty: true, serverRestartRecommended: true } });
+  } });
+  // The pack page repeats the "restart needed" signal from the server page.
+  ui.w.document.querySelector('[data-view="overview"]').click();
+  await until(() => ui.$("packRestartNotice").hidden === false);
+  assert.match(ui.$("packRestartText").textContent, /работает на прежней версии сборки/);
+  ui.click("publishOpenButton");
+  assert.equal(ui.$("publishDialog").open, true);
+  assert.equal(ui.$("publishRestartButton").disabled, false);
+  ui.$("publishRestartButton").click();
+  await until(() => ui.$("powerDialog").open, "The restart dialog follows a successful publication");
+  assert.equal(published.length, 1, "The pack is published exactly once");
+  assert.equal(ui.$("powerDelaySelect").value, "60", "Online players preselect the announced delay");
+  await new Promise(resolve => setTimeout(resolve, 60));
+  assert.equal(ui.errors.length, 0);
+});
+
+test("publish-and-restart is greyed out when the server forbids power actions", async t => {
+  const draft = { schemaVersion: 1, releaseSequence: 2, pack: { id: "udmc-main", name: "Test pack", version: "1.0.0" },
+    minecraft: { version: "26.2", loader: { type: "fabric", version: "0.19.3" } }, files: [] };
+  const ui = await createAdmin(t, { fetch: ({ url }) => {
+    if (url.pathname === "/manifest") return response({ schemaVersion: 1, releaseSequence: 2, pack: { id: "udmc-main", name: "Test pack", version: "1.0.0" }, minecraft: { version: "26.2", loader: { type: "fabric", version: "0.19.3" } }, files: [] });
+    if (url.pathname === "/admin/status") return response({ state: "online", minecraftVersion: "26.2",
+      loader: { type: "fabric", version: "0.19.3" }, players: { online: 0, max: 20, names: [] }, performance: { tps: 20 },
+      access: { id: "test-owner", role: "owner", name: "Test PC" }, uptimeSeconds: 900, loadedReleaseSequence: 1,
+      capabilities: { commands: true, modValidation: true, powerActions: false } });
+    if (url.pathname === "/admin/validation") return response({ revision: "rev-1", ok: true, checkedAt: "2026-08-31T10:00:00Z", issues: [] });
+    if (url.pathname === "/admin/files") return response({ revision: "rev-1", draft, published: { files: [] },
+      files: [{ path: "mods/new.jar", side: "both", size: 10, sha256: "a".repeat(64), change: "added" }],
+      changes: { added: 1, updated: 0, removed: 0, total: 1, dirty: true, serverRestartRecommended: true } });
+  } });
+  ui.w.document.querySelector('[data-view="overview"]').click();
+  await until(() => ui.$("packRestartNotice").hidden === false);
+  assert.equal(ui.$("packRestartButton").hidden, true, "Without power rights the pack notice only explains");
+  assert.match(ui.$("packRestartText").textContent, /перезапустите его вручную/);
+  ui.click("publishOpenButton");
+  assert.equal(ui.$("publishRestartButton").disabled, true);
+  assert.match(ui.$("publishRestartButton").title, /Остановка и перезапуск из панели выключены/);
+  assert.equal(ui.errors.length, 0);
+});
+
 test("a stale running pack offers a delayed restart with a player countdown", async t => {
   const power = [];
   const ui = await createAdmin(t, { fetch: ({ url, options }) => {

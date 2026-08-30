@@ -119,7 +119,7 @@
   "Порт RCON должен быть от 1 до 65535.": "The RCON port must be between 1 and 65535.",
   "Введите пароль RCON.": "Enter the RCON password.",
   "Разрешите остановку и перезапуск на странице сервера": "Allow stop and restart on the Server page",
-  "Перезапустить сервер": "Restart server",
+  "Перезапустить сервер": "Restart the server",
   "Остановить сервер": "Stop server",
   "Мир будет сохранён. Повторный запуск выполнит UDMC wrapper или панель хостинга.": "The world will be saved. The UDMC wrapper or hosting panel will start the server again.",
   "Мир будет сохранён, после чего Minecraft-сервер завершит работу.": "The world will be saved, then the Minecraft server will shut down.",
@@ -1134,5 +1134,9 @@
   "Не удалось установить обновление: {0}": "Could not install the update: {0}",
   "У вас последняя версия UDMC Control": "You have the latest UDMC Control",
   "Дождитесь завершения операции с сервером и повторите.": "Wait for the server operation to finish and try again.",
-  "Позже": "Later"
+  "Позже": "Later",
+  "Опубликовать и перезапустить": "Publish and restart",
+  "Опубликует сборку и сразу предложит перезапуск с предупреждением игроков.": "Publishes the pack and immediately offers a restart with a player warning.",
+  "Сервер ещё работает на прежней версии сборки: изменения дойдут до игроков после перезапуска.": "The server still runs the previous pack version: changes reach players after a restart.",
+  "Сервер ещё работает на прежней версии сборки: перезапустите его вручную, чтобы изменения дошли до игроков.": "The server still runs the previous pack version: restart it manually so the changes reach players."
 }

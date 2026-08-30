@@ -244,7 +244,9 @@ dialog { overscroll-behavior: contain; }
 h1, h2, p { margin-top: 0; }
 h1 { margin-bottom: 0; font-family: "Segoe UI Variable Display", "Segoe UI", ui-sans-serif, system-ui, sans-serif; font-size: 20px; font-weight: 750; letter-spacing: -0.01em; line-height: 1.15; }
 h2 { margin-bottom: 0; font-family: "Segoe UI Variable Display", "Segoe UI", ui-sans-serif, system-ui, sans-serif; font-size: 14px; font-weight: 720; line-height: 1.25; }
-.header-actions, .modal-actions, .form-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+/* Three actions do not fit one modal row: wrapping keeps every button reachable
+   instead of pushing the first one outside the dialog. */
+.header-actions, .modal-actions, .form-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
 
 .button, .icon-button, .field-icon-button {
   display: inline-flex;
@@ -514,6 +516,8 @@ button.attention-row:hover { border-color: var(--line-strong); color: var(--ink)
 @keyframes udmc-spin { to { transform: rotate(360deg); } }
 .attention-row svg.spin-icon { animation: udmc-spin 1.2s linear infinite; }
 @media (prefers-reduced-motion: reduce) { .attention-row svg.spin-icon { animation: none; } }
+.pack-restart-notice { grid-template-columns: 20px minmax(0, 1fr) auto; margin-bottom: 14px; }
+.pack-restart-notice .button { white-space: nowrap; }
 .draft-validation-chip {
   justify-self: start;
   margin-top: 4px;
@@ -777,6 +781,7 @@ button.attention-row:hover { border-color: var(--line-strong); color: var(--ink)
 .empty-activity { display: grid; place-items: center; min-height: 280px; color: var(--muted); }
 
 .modal { width: min(430px, calc(100vw - 32px)); border: 1px solid var(--line-strong); border-radius: 10px; padding: 0; background: transparent; box-shadow: var(--shadow); }
+#publishDialog { width: min(520px, calc(100vw - 32px)); }
 .modal::backdrop { background: rgba(5, 6, 8, 0.62); backdrop-filter: blur(2px); }
 .modal-card { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 14px; padding: 18px; background: var(--surface); }
 .modal-icon { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 8px; box-shadow: var(--bevel-raised); }
