@@ -1,0 +1,26 @@
+modLoader="javafml"
+loaderVersion="[4,)"
+license="All-Rights-Reserved"
+
+[[mixins]]
+config="udmc_sync.neoforge.mixins.json"
+
+[[mods]]
+modId="udmc_sync"
+version="${mod_version}"
+displayName="UDMC Sync"
+description="Managed modpack synchronization. Server and client roles are configured by UDMC Control."
+
+[[dependencies.udmc_sync]]
+modId="neoforge"
+type="required"
+versionRange="[${loader_version},)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.udmc_sync]]
+modId="minecraft"
+type="required"
+versionRange="[${minecraft_version}]"
+ordering="NONE"
+side="BOTH"

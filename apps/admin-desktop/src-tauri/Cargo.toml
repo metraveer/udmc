@@ -1,0 +1,32 @@
+[package]
+name = "udmc-control"
+version = "0.15.0"
+description = "Windows administration app for UDMC Sync"
+authors = ["UDMC Sync contributors"]
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+serde_json = "1"
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+base64 = "0.22"
+toml = "1.1.4"
+sha1 = "0.10"
+sha2 = "0.10"
+ed25519-dalek = { version = "2.2", features = ["pkcs8", "rand_core"] }
+rand_core = { version = "0.6", features = ["getrandom"] }
+zip = { version = "8.6", default-features = false, features = ["deflate"] }
+keyring = { version = "3.6", features = ["windows-native"] }
+tauri-plugin-dialog = "2"
+tauri-plugin-opener = "2"
+tauri-plugin-single-instance = "2"
+tauri-plugin-updater = "2"
+tauri-plugin-process = "2"
+url = "2"
+reqwest = { version = "0.13", default-features = false, features = ["blocking", "native-tls"] }
+rcon = { version = "0.6", features = ["rt-tokio"] }
+tokio = { version = "1", features = ["net", "time", "io-util"] }

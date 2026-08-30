@@ -1,0 +1,54 @@
+name: Ошибка
+description: Сообщить о воспроизводимой проблеме UDMC Sync
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: dropdown
+    id: component
+    attributes:
+      label: Компонент
+      options:
+        - UDMC Control
+        - Server Agent
+        - Client Agent
+        - Документация или сборка
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Версия UDMC Sync
+      placeholder: 0.2.1
+    validations:
+      required: true
+  - type: input
+    id: minecraft
+    attributes:
+      label: Minecraft, загрузчик (Fabric/NeoForge) и Java
+      placeholder: Minecraft 26.2, Fabric Loader 0.19.3, Java 25
+  - type: textarea
+    id: steps
+    attributes:
+      label: Как воспроизвести
+      description: Не вставляйте admin-токены и другие секреты.
+      placeholder: Опишите последовательность действий и фактический результат.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Ожидаемый результат
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Логи
+      render: text
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Проверка
+      options:
+        - label: Я удалил из логов токены, приватные адреса и персональные данные.
+          required: true

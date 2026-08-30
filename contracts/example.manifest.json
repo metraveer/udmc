@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "pack": {
+    "id": "udmc-main",
+    "name": "Main Server Pack",
+    "version": "0.1.0"
+  },
+  "minecraft": {
+    "version": "26.2",
+    "loader": {
+      "type": "fabric",
+      "version": "0.19.3"
+    }
+  },
+  "publishedAt": "2026-08-26T00:00:00.000Z",
+  "files": [
+    {
+      "path": "mods/example-client.jar",
+      "side": "client",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "size": 12345,
+      "downloadPath": "/files/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.jar",
+      "updatedAt": "2026-08-26T00:00:00.000Z"
+    }
+  ]
+}

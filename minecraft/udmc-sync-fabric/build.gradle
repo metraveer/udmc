@@ -1,0 +1,185 @@
+plugins {
+    id "net.fabricmc.fabric-loom" version "${loom_version}" apply false
+    id "net.fabricmc.fabric-loom-remap" version "${loom_version}" apply false
+    id "maven-publish"
+}
+
+def legacyMinecraft = project.minecraft_version.startsWith("1.")
+apply plugin: legacyMinecraft ? "net.fabricmc.fabric-loom-remap" : "net.fabricmc.fabric-loom"
+def javaRelease = legacyMinecraft ? 21 : 25
+def resourceModules = [
+    '26.2': ['fabric-api-base': '2.0.4+ece063239e', 'fabric-resource-loader-v1': '2.0.13+9edec1269e'],
+    '26.1.2': ['fabric-api-base': '2.0.3+ece063234c', 'fabric-resource-loader-v1': '2.0.10+7c44c7324c'],
+    '1.21.1': ['fabric-api-base': '0.4.42+6573ed8c19', 'fabric-resource-loader-v0': '1.3.1+5b5275af19']
+][project.minecraft_version]
+if (resourceModules == null) throw new GradleException("No verified resource-loader modules for ${project.minecraft_version}")
+layout.buildDirectory = layout.projectDirectory.dir("build/${project.minecraft_version}")
+sourceSets.main.java.srcDir("src/platform/" + (project.minecraft_version == "26.2" ? "modern" : "classic"))
+sourceSets.main.java.srcDir("src/network/" + (legacyMinecraft ? "classic" : "modern"))
+sourceSets.main.java.srcDir("../udmc-sync-common/src/main/java")
+sourceSets.main.resources.srcDir("../udmc-sync-common/src/main/resources")
+sourceSets.test.java.srcDir("src/fabricTest/java")
+if (project.hasProperty("udmc_run_dir")) {
+    loom.runs.client.runDir(project.property("udmc_run_dir").toString())
+    loom.runs.server.runDir(project.property("udmc_run_dir").toString())
+}
+if (project.hasProperty("udmc_packaged_test")) {
+    tasks.withType(net.fabricmc.loom.task.RunGameTask).configureEach {
+        javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(javaRelease) }
+        // Discover the generated JAR and its nested modules from mods, not development outputs.
+        setClasspath(sourceSets.main.runtimeClasspath.filter { file ->
+            !sourceSets.main.output.files.contains(file) && (project.hasProperty('udmc_test_without_agent')
+                || !resourceModules.keySet().any { module -> file.name.startsWith(module + '-') })
+        })
+        doFirst {
+            if (!project.hasProperty("udmc_run_dir")) throw new GradleException("Packaged tests require an isolated run directory")
+            def run = file(project.property("udmc_run_dir")).toPath().toRealPath()
+            def qa = file('../../.qa').toPath().toRealPath()
+            if (!run.startsWith(qa) || !(run.fileName.toString() in ['client', 'server'])) throw new GradleException("Only isolated .qa client/server directories are allowed")
+            def fixture = new groovy.json.JsonSlurper().parse(run.parent.resolve('fixture.json').toFile())
+            if (fixture.isolatedRuntimeFixture != true || fixture.template != "fabric-${project.minecraft_version}") throw new GradleException("Fixture platform mismatch")
+            if (project.hasProperty('udmc_test_without_agent') && !fileTree(run.resolve('mods')).matching { include '**/*.jar' }.isEmpty()) {
+                throw new GradleException("A without-agent fixture must have an empty mods directory")
+            }
+        }
+    }
+}
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+    archivesName = "${project.archives_base_name}-${project.minecraft_version}"
+}
+
+dependencies {
+    resourceModules.each { module, moduleVersion ->
+        add(legacyMinecraft ? 'modImplementation' : 'implementation', include("net.fabricmc.fabric-api:${module}:${moduleVersion}"))
+    }
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    if (legacyMinecraft) {
+        mappings loom.officialMojangMappings()
+        modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    } else {
+        implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    }
+}
+
+processResources {
+    inputs.property "version", project.version
+    inputs.property "minecraft_version", project.minecraft_version
+    inputs.property "java_version", javaRelease
+    inputs.property "loader_version", project.loader_version
+    inputs.property "bundled_mods", groovy.json.JsonOutput.toJson(resourceModules)
+
+    filesMatching("fabric.mod.json") {
+        expand "version": project.version, "minecraft_version": project.minecraft_version, "java_version": javaRelease
+    }
+    filesMatching("udmc_sync*.mixins.json") { expand "java_version": javaRelease }
+    filesMatching("udmc-platform.properties") {
+        expand "minecraft_version": project.minecraft_version, "loader_type": "fabric", "loader_version": project.loader_version, "language_loader_version": "0", "mod_version": project.mod_version,
+            "bundled_mods": groovy.json.JsonOutput.toJson(resourceModules)
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    it.options.release = javaRelease
+}
+
+java {
+    withSourcesJar()
+    sourceCompatibility = JavaVersion.toVersion(javaRelease)
+    targetCompatibility = JavaVersion.toVersion(javaRelease)
+}
+
+tasks.register("storeTest", JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = "dev.udmc.sync.ManifestStoreTest"
+}
+
+check.dependsOn storeTest
+tasks.register("securityTest", JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = "dev.udmc.sync.SecurityTest"
+}
+check.dependsOn securityTest
+tasks.register("serverLifecycleTest", JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = "dev.udmc.sync.FabricServerLifecycleTest"
+}
+check.dependsOn serverLifecycleTest
+tasks.register("agentPackageTest", JavaExec) {
+    dependsOn testClasses
+    def packagedJar = tasks.named(legacyMinecraft ? "remapJar" : "jar")
+    dependsOn packagedJar
+    doFirst { args packagedJar.get().archiveFile.get().asFile.absolutePath }
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = "dev.udmc.sync.FabricAgentPackageTest"
+}
+check.dependsOn agentPackageTest
+tasks.register("modCheckTest", JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = "dev.udmc.sync.ModCheckTest"
+    if (project.hasProperty("udmc_test_jar")) args project.property("udmc_test_jar").toString()
+}
+check.dependsOn modCheckTest
+
+tasks.register("localizationTest", JavaExec) {
+    dependsOn testClasses
+    def packagedJar = tasks.named(legacyMinecraft ? "remapJar" : "jar")
+    dependsOn packagedJar
+    doFirst { args packagedJar.get().archiveFile.get().asFile.absolutePath }
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = "dev.udmc.sync.LocalizationTest"
+}
+check.dependsOn localizationTest
+
+tasks.register("accessTest", JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = "dev.udmc.sync.AdminAccessTest"
+}
+check.dependsOn accessTest
+
+tasks.register("httpTest", JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = "dev.udmc.sync.HttpLifecycleTest"
+    maxHeapSize = "64m"
+}
+check.dependsOn httpTest
+
+tasks.register("workspaceTest", JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = "dev.udmc.sync.WorkspaceTest"
+}
+check.dependsOn workspaceTest
+tasks.register("agentUpdateTest", JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = "dev.udmc.sync.AgentUpdateTest"
+}
+check.dependsOn agentUpdateTest
+
+tasks.register("accessUiFixture", JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = "dev.udmc.sync.AccessUiFixture"
+}
+
+tasks.register("agentRuntimeFixture", JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = "dev.udmc.sync.AgentRuntimeFixture"
+    if (project.hasProperty("udmc_fixture")) args project.property("udmc_fixture").toString(), project.findProperty("udmc_action") ?: "serve"
+}
+
+test {
+    // Store checks run through the dependency-free Java entry point above.
+    failOnNoDiscoveredTests = false
+}

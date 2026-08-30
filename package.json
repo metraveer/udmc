@@ -1,0 +1,52 @@
+{
+  "name": "udmc-sync",
+  "version": "0.15.0",
+  "private": true,
+  "type": "module",
+  "description": "UDMC Sync distributes a Minecraft server's mods and pack files to managed clients.",
+  "scripts": {
+    "version": "node scripts/sync-version.js",
+    "version:sync": "node scripts/sync-version.js",
+    "version:check": "node scripts/sync-version.js --check",
+    "release:build": "node scripts/release-build.js",
+    "server": "node scripts/run-server.js",
+    "server:direct": "node apps/sync-server/src/server.js",
+    "admin:prepare": "node scripts/prepare-admin-assets.js",
+    "preadmin:dev": "node scripts/prepare-admin-assets.js",
+    "preadmin:preview": "node scripts/prepare-admin-assets.js",
+    "preadmin:build": "node scripts/prepare-admin-assets.js",
+    "admin:dev": "cd apps/admin-desktop && tauri dev",
+    "admin:preview": "node scripts/preview-admin-ui.js",
+    "admin:build": "cd apps/admin-desktop && tauri build",
+    "admin:test": "cargo test --manifest-path apps/admin-desktop/src-tauri/Cargo.toml",
+    "admin:test:instance": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-single-instance.ps1",
+    "minecraft:build": "node scripts/build-minecraft-fabric.js",
+    "admin": "node apps/admin-cli/src/index.js",
+    "smoke": "node scripts/smoke-test.js",
+    "pretest": "node scripts/prepare-admin-assets.js",
+    "test": "node --experimental-vm-modules --test scripts/file-intake.test.js scripts/modrinth.test.js scripts/access.test.js scripts/protected-settings.test.js scripts/admin-ui.test.js scripts/http.test.js scripts/workspace-access.test.js scripts/server-profiles.test.js scripts/i18n.test.js"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "2.11.4",
+    "acorn": "8.15.0",
+    "dompurify": "3.4.14",
+    "fflate": "0.8.3",
+    "i18next": "26.4.0",
+    "jsdom": "26.1.0",
+    "lucide": "1.34.0",
+    "marked": "18.0.11",
+    "minecraft-protocol": "1.66.2",
+    "smol-toml": "1.8.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "overrides": {
+    "@azure/msal-node": {
+      "uuid": "11.1.1"
+    },
+    "yggdrasil": {
+      "uuid": "11.1.1"
+    }
+  }
+}

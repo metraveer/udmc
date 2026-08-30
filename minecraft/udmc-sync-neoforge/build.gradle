@@ -1,0 +1,78 @@
+plugins {
+    id 'java-library'
+    id 'net.neoforged.moddev' version '2.0.144'
+}
+
+version = project.mod_version
+group = 'dev.udmc'
+base.archivesName = "udmc-sync-neoforge-${project.minecraft_version}"
+layout.buildDirectory = layout.projectDirectory.dir("build/${project.minecraft_version}")
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+java.withSourcesJar()
+
+sourceSets.main.java.srcDirs('../udmc-sync-common/src/main/java', '../udmc-sync-fabric/src/platform/classic')
+sourceSets.main.java.srcDir('../udmc-sync-fabric/src/network/classic')
+sourceSets.main.resources.srcDir('../udmc-sync-common/src/main/resources')
+sourceSets.test.java.srcDir('../udmc-sync-fabric/src/test/java')
+sourceSets.test.compileClasspath += sourceSets.main.compileClasspath
+sourceSets.test.runtimeClasspath += sourceSets.main.runtimeClasspath
+
+neoForge {
+    version = project.loader_version
+    runs {
+        client {
+            client()
+        }
+        server {
+            server()
+            programArgument '--nogui'
+        }
+        configureEach {
+            if (project.hasProperty('udmc_run_dir')) gameDirectory = file(project.property('udmc_run_dir'))
+        }
+    }
+    if (!project.hasProperty('udmc_packaged_test')) {
+        mods { udmc_sync { sourceSet(sourceSets.main) } }
+    }
+}
+
+processResources {
+    inputs.properties minecraft_version: project.minecraft_version, loader_version: project.loader_version, mod_version: project.mod_version
+    filesMatching('META-INF/neoforge.mods.toml') {
+        expand minecraft_version: project.minecraft_version, loader_version: project.loader_version, mod_version: project.mod_version
+    }
+    filesMatching('udmc-platform.properties') {
+        expand minecraft_version: project.minecraft_version, loader_type: 'neoforge', loader_version: project.loader_version, language_loader_version: '4.0.43', mod_version: project.mod_version, bundled_mods: '{}'
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 21
+    options.encoding = 'UTF-8'
+}
+
+['storeTest': 'ManifestStoreTest', 'securityTest': 'SecurityTest', 'modCheckTest': 'ModCheckTest',
+ 'accessTest': 'AdminAccessTest', 'httpTest': 'HttpLifecycleTest', 'workspaceTest': 'WorkspaceTest', 'agentUpdateTest': 'AgentUpdateTest', 'metadataTest': 'NeoForgeMetadataTest', 'localizationTest': 'LocalizationTest'].each { taskName, entrypoint ->
+    tasks.register(taskName, JavaExec) {
+        dependsOn testClasses
+        classpath = sourceSets.test.runtimeClasspath
+        javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(21) }
+        mainClass = "dev.udmc.sync.${entrypoint}"
+        if (taskName == 'localizationTest') {
+            dependsOn tasks.named('jar')
+            doFirst { args tasks.named('jar').get().archiveFile.get().asFile.absolutePath }
+        }
+        if (taskName == 'httpTest') maxHeapSize = '64m'
+    }
+    check.dependsOn taskName
+}
+
+test { failOnNoDiscoveredTests = false }
+
+tasks.register('agentRuntimeFixture', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(21) }
+    mainClass = 'dev.udmc.sync.AgentRuntimeFixture'
+    if (project.hasProperty('udmc_fixture')) args project.property('udmc_fixture').toString(), project.findProperty('udmc_action') ?: 'serve'
+}

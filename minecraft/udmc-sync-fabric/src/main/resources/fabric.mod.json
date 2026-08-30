@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "id": "udmc_sync",
+  "version": "${version}",
+  "name": "UDMC Sync",
+  "description": "Distributes managed modpack files from a Minecraft server to Fabric clients.",
+  "authors": ["UDMC Sync contributors"],
+  "license": "All-Rights-Reserved",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "dev.udmc.sync.FabricEntrypoint"
+    ],
+    "client": [
+      "dev.udmc.sync.UdmcClientEntrypoint"
+    ],
+    "server": [
+      "dev.udmc.sync.UdmcServerEntrypoint"
+    ]
+  },
+  "mixins": [
+    { "config": "udmc_sync.mixins.json", "environment": "server" },
+    { "config": "udmc_sync.client.mixins.json", "environment": "client" }
+  ],
+  "depends": {
+    "fabricloader": ">=0.19.3",
+    "minecraft": "=${minecraft_version}",
+    "java": ">=${java_version}"
+  }
+}

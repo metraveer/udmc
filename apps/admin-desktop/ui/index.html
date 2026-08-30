@@ -1,0 +1,491 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <title>UDMC Control</title>
+    <link rel="stylesheet" href="./assets/styles.css">
+    <script defer src="./vendor/lucide.js"></script>
+    <script type="module" src="./assets/admin.js"></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand" aria-label="UDMC Control">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="m16.5 9.4-9-5.19M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="M3.3 7 12 12l8.7-5M12 22V12"/></svg>
+          </span>
+          <span class="brand-copy"><strong>UDMC</strong><small>Control</small></span>
+        </div>
+
+        <nav class="nav" aria-label="Разделы" data-i18n-aria-label='Разделы'>
+          <button class="nav-item active" type="button" data-view="dashboard">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13h6V4H4v9ZM14 20h6v-9h-6v9ZM4 20h6v-3H4v3ZM14 7h6V4h-6v3Z"/></svg>
+            <span data-i18n='Сервер'>Сервер</span>
+          </button>
+          <button class="nav-item" type="button" data-view="overview">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16.5 9.4-9-5.19M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="M3.3 7 12 12l8.7-5M12 22V12"/></svg>
+            <span data-i18n='Сборка'>Сборка</span>
+          </button>
+          <button class="nav-item" type="button" data-view="modrinth"><i data-lucide="search"></i><span data-i18n='Каталог модов'>Каталог модов</span></button>
+          <button class="nav-item" type="button" data-view="console">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 17 6-6-6-6M12 19h8"/></svg>
+            <span data-i18n='Консоль'>Консоль</span>
+          </button>
+          <button class="nav-item" type="button" data-view="devices"><i data-lucide="monitor-check"></i><span data-i18n='Устройства'>Устройства</span><span id="deviceRequestCount" class="nav-count" hidden>0</span></button>
+          <button class="nav-item" type="button" data-view="dependencies"><i data-lucide="blocks"></i><span data-i18n='Компоненты'>Компоненты</span></button>
+          <button class="nav-item" type="button" data-view="activity">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18"/><path d="m7 16 4-5 4 3 4-6"/></svg>
+            <span data-i18n='Журнал'>Журнал</span><span id="activityCount" class="nav-count" hidden>0</span>
+          </button>
+          <button class="nav-item" type="button" data-view="settings"><i data-lucide="sliders-horizontal"></i><span data-i18n='Настройки'>Настройки</span></button>
+        </nav>
+
+        <div class="connection-card">
+          <div class="server-profile-picker"><label for="serverProfileSelect" data-i18n='Серверы'>Серверы</label><button id="addServerProfileButton" class="sidebar-icon" type="button" title="Добавить сервер" aria-label="Добавить сервер" data-i18n-title='Добавить сервер' data-i18n-aria-label='Добавить сервер'><i data-lucide="plus"></i></button><button id="serverProfileSettingsButton" class="sidebar-icon" type="button" title="Настроить сервер" aria-label="Настроить сервер" data-i18n-title='Настроить сервер' data-i18n-aria-label='Настроить сервер'><i data-lucide="settings-2"></i></button><select id="serverProfileSelect" aria-label="Текущий сервер" data-i18n-aria-label='Текущий сервер'></select></div>
+          <div class="connection-status">
+            <div class="connection-head"><span id="statusDot" class="status-dot"></span><strong id="statusBadge" data-i18n='Не подключено'>Не подключено</strong></div>
+            <span id="serverLabel" class="server-label">127.0.0.1:3077</span>
+            <span id="rconSidebarStatus" class="sidebar-rcon" data-i18n='RCON не проверен'>RCON не проверен</span>
+          </div>
+        </div>
+        <small id="appVersion" class="app-version">UDMC Control</small>
+      </aside>
+
+      <main class="workspace">
+        <header class="workspace-header">
+          <div><p id="viewEyebrow" class="eyebrow" data-i18n='Мониторинг'>Мониторинг</p><h1 id="viewTitle" data-i18n='Сервер'>Сервер</h1></div>
+          <div class="header-actions">
+            <button id="refreshButton" class="icon-button" type="button" title="Обновить данные" aria-label="Обновить данные" data-i18n-title='Обновить данные' data-i18n-aria-label='Обновить данные'>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8.1 8.1 0 0 0-15.5-2M4 4v5h5M4 13a8.1 8.1 0 0 0 15.5 2M20 20v-5h-5"/></svg>
+            </button>
+            <button id="publishOpenButton" class="button primary" type="button" hidden>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 21h14a2 2 0 0 0 2-2v-4M3 15v4a2 2 0 0 0 2 2"/></svg>
+              <span id="publishButtonLabel" data-i18n='Опубликовать'>Опубликовать</span>
+            </button>
+          </div>
+        </header>
+
+        <div id="appUpdateBanner" class="app-update-banner" role="status" hidden><i data-lucide="download"></i><span id="appUpdateText"></span><button id="appUpdateInstall" class="button primary" type="button"><span data-i18n='Обновить и перезапустить'>Обновить и перезапустить</span></button><button id="appUpdateLater" class="text-button" type="button" data-i18n='Позже'>Позже</button></div>
+        <div id="workspacePresence" class="workspace-presence" role="status" hidden><i data-lucide="users"></i><span id="workspacePresenceText"></span></div>
+        <section id="dashboardView" class="view active" data-view-panel="dashboard">
+          <div class="summary-strip server-summary" aria-label="Состояние сервера" data-i18n-aria-label='Состояние сервера'>
+            <div class="summary-item"><span data-i18n='Состояние'>Состояние</span><strong id="serverState">-</strong></div>
+            <div class="summary-item"><span data-i18n='Игроки'>Игроки</span><strong id="serverPlayers">-</strong></div>
+            <div class="summary-item"><span>TPS</span><strong id="serverTps">-</strong></div>
+            <div class="summary-item"><span data-i18n='Работает'>Работает</span><strong id="serverUptime">-</strong></div>
+          </div>
+
+          <section class="surface attention-surface">
+            <div class="section-heading"><div><span class="section-kicker" data-i18n='Сводка'>Сводка</span><h2 data-i18n='Требует внимания'>Требует внимания</h2></div><span id="attentionBadge" class="state-badge neutral" data-i18n='Нет данных'>Нет данных</span></div>
+            <div id="attentionList" class="attention-list"><p class="muted-copy" data-i18n='Подключитесь к серверу, чтобы увидеть сводку.'>Подключитесь к серверу, чтобы увидеть сводку.</p></div>
+          </section>
+
+          <div class="dashboard-grid">
+            <section class="surface server-status-surface">
+              <div class="section-heading"><div><span class="section-kicker">Runtime</span><h2 data-i18n='Состояние процесса'>Состояние процесса</h2></div><span id="liveBadge" class="state-badge" data-i18n='Нет данных'>Нет данных</span></div>
+              <dl class="facts-list">
+                <div><dt data-i18n='Подпись обновлений'>Подпись обновлений</dt><dd id="manifestSecurityStatus" data-i18n='Не проверена'>Не проверена</dd></div>
+                <div><dt data-i18n='Транспорт API'>Транспорт API</dt><dd id="apiTransportStatus">-</dd></div>
+                <div><dt>MOTD</dt><dd id="serverMotd">-</dd></div>
+                <div><dt data-i18n='Порт игры'>Порт игры</dt><dd id="serverGamePort">-</dd></div>
+                <div><dt data-i18n='Среда'>Среда</dt><dd id="serverEnvironment">-</dd></div>
+                <div><dt data-i18n='Миры'>Миры</dt><dd id="serverWorlds">-</dd></div>
+                <div><dt data-i18n='Средний тик'>Средний тик</dt><dd id="serverTickTime">-</dd></div>
+                <div><dt>Java</dt><dd id="serverJava">-</dd></div>
+              </dl>
+              <div class="memory-meter">
+                <div class="memory-copy"><span data-i18n='Память JVM'>Память JVM</span><strong id="serverMemoryText">-</strong></div>
+                <div class="meter-track"><span id="serverMemoryBar"></span></div>
+              </div>
+            </section>
+
+            <div class="dashboard-stack">
+              <section class="surface build-surface">
+                <div class="section-heading"><div><span class="section-kicker" data-i18n='Сборка'>Сборка</span><h2 id="dashPackName">-</h2></div><button id="dashOpenBuild" class="text-button" type="button"><span data-i18n='Открыть сборку'>Открыть сборку</span><i data-lucide="arrow-right"></i></button></div>
+                <dl class="facts-list">
+                  <div><dt data-i18n='Опубликована'>Опубликована</dt><dd id="dashPublishedVersion">-</dd></div>
+                  <div><dt data-i18n='Файлов в сборке'>Файлов в сборке</dt><dd id="dashFileCount">-</dd></div>
+                  <div><dt data-i18n='Черновик'>Черновик</dt><dd id="dashDraftState">-</dd></div>
+                  <div><dt data-i18n='Проверка состава'>Проверка состава</dt><dd id="dashValidation">-</dd></div>
+                </dl>
+              </section>
+              <section class="surface players-surface">
+                <div class="section-heading"><div><span class="section-kicker" data-i18n='Онлайн'>Онлайн</span><h2 data-i18n='Игроки'>Игроки</h2></div><span id="playerCountBadge" class="file-count">0 / 0</span></div>
+                <div id="playerList" class="player-list"><div class="empty-players" data-i18n='Никого нет на сервере'>Никого нет на сервере</div></div>
+              </section>
+            </div>
+          </div>
+
+          <section class="surface server-actions-surface">
+            <div class="section-heading"><div><span class="section-kicker" data-i18n='Управление'>Управление</span><h2 data-i18n='Действия сервера'>Действия сервера</h2></div></div>
+            <form id="settingsForm" class="inline-setting"><label class="toggle-row"><span><strong data-i18n='Разрешить остановку и перезапуск из панели'>Разрешить остановку и перезапуск из панели</strong></span><input id="powerActionsInput" type="checkbox"><i aria-hidden="true"></i></label><button class="icon-button" type="submit" title="Сохранить разрешение" aria-label="Сохранить разрешение" data-i18n-title='Сохранить разрешение' data-i18n-aria-label='Сохранить разрешение'><i data-lucide="save"></i></button></form>
+            <div class="server-actions">
+              <button class="button subtle" type="button" data-quick-command="save-all flush"><svg viewBox="0 0 24 24"><path d="M15.2 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8.8Z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg><span data-i18n='Сохранить мир'>Сохранить мир</span></button>
+              <button class="button subtle" type="button" data-quick-command="list"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg><span data-i18n='Проверить игроков'>Проверить игроков</span></button>
+              <span class="actions-spacer"></span>
+              <button id="restartServerButton" class="button warning" type="button" disabled><svg viewBox="0 0 24 24"><path d="M20 11a8.1 8.1 0 0 0-15.5-2M4 4v5h5M4 13a8.1 8.1 0 0 0 15.5 2M20 20v-5h-5"/></svg><span data-i18n='Перезапустить'>Перезапустить</span></button>
+              <button id="stopServerButton" class="button danger-outline" type="button" disabled><svg viewBox="0 0 24 24"><rect width="14" height="14" x="5" y="5" rx="2"/></svg><span data-i18n='Остановить'>Остановить</span></button>
+            </div>
+          </section>
+        </section>
+
+        <section id="overviewView" class="view" data-view-panel="overview">
+          <form id="packSettingsForm" class="pack-settings"><label class="field"><span data-i18n='Название сборки'>Название сборки</span><input id="packNameInput" maxlength="128" required value="Основная сборка"></label><button class="icon-button" type="submit" title="Сохранить название сборки" aria-label="Сохранить название сборки" data-i18n-title='Сохранить название сборки' data-i18n-aria-label='Сохранить название сборки'><i data-lucide="save"></i></button><div class="pack-platform"><span id="detectedMinecraft" data-i18n='Minecraft не определён'>Minecraft не определён</span><span id="detectedLoader" data-i18n='Загрузчик не определён'>Загрузчик не определён</span></div></form>
+          <div class="summary-strip" aria-label="Состояние сборки" data-i18n-aria-label='Состояние сборки'>
+            <div class="summary-item"><span data-i18n='У игроков'>У игроков</span><strong id="currentVersion">-</strong></div>
+            <div class="summary-item"><span data-i18n='В черновике'>В черновике</span><strong id="currentFileCount">-</strong></div>
+            <div class="summary-item"><span data-i18n='Объём черновика'>Объём черновика</span><strong id="currentTotalSize">-</strong></div>
+            <div class="summary-item wide"><span data-i18n='Среда'>Среда</span><strong id="currentPlatform">-</strong></div>
+          </div>
+
+          <section id="draftBar" class="draft-bar clean" aria-live="polite">
+            <span class="draft-bar-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg></span>
+            <div class="draft-bar-copy"><strong id="draftStatusTitle" data-i18n='Черновик совпадает с опубликованной сборкой'>Черновик совпадает с опубликованной сборкой</strong><small id="draftStatusText" data-i18n='Игроки используют актуальную версию'>Игроки используют актуальную версию</small><button id="draftValidationChip" class="draft-validation-chip" type="button" hidden></button></div>
+            <div id="draftChangeCounts" class="draft-change-counts" hidden></div>
+            <button id="resetDraftButton" class="button subtle" type="button" hidden><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg><span data-i18n='Отменить изменения'>Отменить изменения</span></button>
+          </section>
+
+          <div id="buildTabs" class="section-tabs" role="tablist" aria-label="Сборка" data-i18n-aria-label='Сборка'>
+            <button type="button" role="tab" aria-selected="true" data-build-tab="draft"><i data-lucide="file-pen-line"></i><span data-i18n='Черновик'>Черновик</span> <span id="draftTabCount">0</span></button>
+            <button type="button" role="tab" aria-selected="false" tabindex="-1" data-build-tab="published"><i data-lucide="package-check"></i><span data-i18n='Опубликовано'>Опубликовано</span> <span id="publishedTabCount">0</span></button>
+            <button type="button" role="tab" aria-selected="false" tabindex="-1" data-build-tab="server"><i data-lucide="hard-drive"></i><span data-i18n='Вне сборки'>Вне сборки</span></button>
+            <button type="button" role="tab" aria-selected="false" tabindex="-1" data-build-tab="validation"><i data-lucide="shield-check"></i><span data-i18n='Проверка'>Проверка</span></button>
+          </div>
+          <section class="surface upload-surface" data-build-panel="draft">
+            <div class="section-heading"><div><span class="section-kicker" data-i18n='Черновик'>Черновик</span><h2 data-i18n='Подготовить файлы'>Подготовить файлы</h2></div><span class="state-badge neutral" data-i18n='Не видны игрокам до публикации'>Не видны игрокам до публикации</span></div>
+            <div class="upload-layout">
+              <label class="drop-zone" id="dropZone">
+                <input id="fileInput" type="file" multiple>
+                <span class="drop-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 21h14a2 2 0 0 0 2-2v-4M3 15v4a2 2 0 0 0 2 2"/></svg></span>
+                <span class="drop-copy"><strong id="dropTitle" data-i18n='Перетащите файлы сюда'>Перетащите файлы сюда</strong><small id="dropSubtitle" data-i18n='или нажмите, чтобы выбрать на компьютере'>или нажмите, чтобы выбрать на компьютере</small></span>
+              </label>
+            </div>
+            <div id="selectedFiles" class="staged-files" hidden>
+              <div class="staged-bulk">
+                <strong id="selectedFilesTitle" data-i18n='Выбрано файлов: 0'>Выбрано файлов: 0</strong>
+                <label><span data-i18n='Папка для всех'>Папка для всех</span><select id="bulkRootInput"><option value="" data-i18n='Не менять'>Не менять</option><option value="mods/">mods</option><option value="config/">config</option><option value="resourcepacks/">resourcepacks</option><option value="shaderpacks/">shaderpacks</option></select></label>
+                <label><span data-i18n='Назначение для всех'>Назначение для всех</span><select id="bulkSideInput"><option value="" data-i18n='Не менять'>Не менять</option><option value="both" data-i18n='Клиент + сервер'>Клиент + сервер</option><option value="client" data-i18n='Только клиент'>Только клиент</option><option value="server" data-i18n='Только сервер'>Только сервер</option></select></label>
+                <button id="clearSelectedButton" class="icon-button compact-icon" type="button" title="Очистить выбор" aria-label="Очистить выбор" data-i18n-title='Очистить выбор' data-i18n-aria-label='Очистить выбор'><svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 15H6L5 6M10 11v5M14 11v5"/></svg></button>
+              </div>
+              <div id="stagedFileList" class="staged-file-list"></div>
+              <div class="staged-footer"><span id="stagedValidation" class="staged-validation"></span><button id="uploadButton" class="button dark" type="button" disabled><svg viewBox="0 0 24 24"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 21h14a2 2 0 0 0 2-2v-4M3 15v4a2 2 0 0 0 2 2"/></svg><span data-i18n='Добавить в черновик'>Добавить в черновик</span></button></div>
+            </div>
+          </section>
+
+          <section class="surface files-surface" data-build-panel="draft published">
+            <div class="section-heading files-heading"><div><span id="filesHeadingKicker" class="section-kicker" data-i18n='Черновик'>Черновик</span><h2 id="filesHeadingTitle" data-i18n='Изменения к публикации'>Изменения к публикации</h2></div><span id="visibleFileCount" class="file-count" data-i18n='0 файлов'>0 файлов</span></div>
+            <div class="table-toolbar">
+              <label class="search-field"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><input id="fileSearchInput" type="search" placeholder="Найти файл" aria-label="Найти файл" data-i18n-placeholder='Найти файл' data-i18n-aria-label='Найти файл'></label>
+              <div id="filesBulkBar" class="inventory-bulk files-bulk" hidden><strong id="filesBulkCount"></strong><button id="filesBulkRemove" class="button danger-outline" type="button" data-i18n='Удалить выбранные из сборки'>Удалить выбранные из сборки</button><button id="filesBulkClear" class="text-button" type="button" data-i18n='Снять выбор'>Снять выбор</button></div>
+              <div class="segmented compact" id="fileSideFilter" aria-label="Фильтр по назначению" data-i18n-aria-label='Фильтр по назначению'><button class="active" type="button" data-side-filter="all" data-i18n='Все'>Все</button><button type="button" data-side-filter="client" data-i18n='Клиент'>Клиент</button><button type="button" data-side-filter="server" data-i18n='Сервер'>Сервер</button></div>
+            </div>
+            <div class="table-wrap"><table><thead><tr><th data-i18n='Файл'>Файл</th><th data-i18n='Папка'>Папка</th><th data-i18n='Назначение'>Назначение</th><th data-i18n='Состояние'>Состояние</th><th data-i18n='Размер'>Размер</th><th><span class="sr-only" data-i18n='Действия'>Действия</span></th></tr></thead><tbody id="filesTable"></tbody></table></div>
+          </section>
+          <section class="inventory-section" data-build-panel="server" hidden>
+            <div class="section-heading"><div><span class="section-kicker" data-i18n='Установлены вручную'>Установлены вручную</span><h2 data-i18n='Файлы вне сборки'>Файлы вне сборки</h2></div><button id="scanServerFilesButton" class="button subtle" type="button"><i data-lucide="folder-search"></i><span data-i18n='Обновить список'>Обновить список</span></button></div>
+            <details class="field-help"><summary><i data-lucide="circle-help"></i><span data-i18n='Что означает «Под управление»?'>Что означает «Под управление»?</span></summary><p data-i18n='Эти файлы лежат на сервере, но не входят в сборку: UDMC их не обновляет, не раздаёт игрокам и не учитывает при проверках. «Под управление» добавляет файл в черновик с выбранным назначением - после публикации он станет частью сборки. Удаление на этой вкладке касается только файла на сервере, применяется после публикации и сохраняет резервную копию; личные моды игроков не затрагиваются.'>Эти файлы лежат на сервере, но не входят в сборку: UDMC их не обновляет, не раздаёт игрокам и не учитывает при проверках. «Под управление» добавляет файл в черновик с выбранным назначением - после публикации он станет частью сборки. Удаление на этой вкладке касается только файла на сервере, применяется после публикации и сохраняет резервную копию; личные моды игроков не затрагиваются.</p></details>
+            <div id="serverInventory" class="inventory-list"><p class="muted-copy" data-i18n='Подключитесь к серверу: список загрузится сам.'>Подключитесь к серверу: список загрузится сам.</p></div>
+          </section>
+          <section class="validation-section" data-build-panel="validation" hidden>
+            <div class="section-heading"><div><span class="section-kicker" data-i18n='Автоматически'>Автоматически</span><h2 data-i18n='Совместимость модов'>Совместимость модов</h2></div><button id="validateModsButton" class="button subtle" type="button"><i data-lucide="scan-line"></i><span data-i18n='Проверить снова'>Проверить снова</span></button></div>
+            <p class="muted-copy" data-i18n='Проверка запускается сама: при каждом изменении черновика и после каждой публикации. Результат для черновика также виден в его строке, для сервера - на странице «Сервер».'>Проверка запускается сама: при каждом изменении черновика и после каждой публикации. Результат для черновика также виден в его строке, для сервера - на странице «Сервер».</p>
+            <label class="field validation-target"><span data-i18n='Состав для проверки'>Состав для проверки</span><select id="validationTarget"><option value="draft" data-i18n='После публикации черновика'>После публикации черновика</option><option value="server" data-i18n='Сейчас на сервере'>Сейчас на сервере</option></select></label>
+            <div id="validationResult" class="validation-result" role="status"></div>
+            <details class="field-help"><summary><i data-lucide="circle-help"></i><span data-i18n='Что проверяется?'>Что проверяется?</span></summary><p data-i18n='Обязательные зависимости, версии, дубликаты и назначение из метаданных JAR. Черновик проверяется для сервера и клиентов. Личные моды игроков проверяются их агентом при запуске. Проверка не гарантирует совместимость мира: перед изменением модов нужна его резервная копия.'>Обязательные зависимости, версии, дубликаты и назначение из метаданных JAR. Черновик проверяется для сервера и клиентов. Личные моды игроков проверяются их агентом при запуске. Проверка не гарантирует совместимость мира: перед изменением модов нужна его резервная копия.</p></details>
+          </section>
+        </section>
+
+        <section id="modrinthView" class="view" data-view-panel="modrinth">
+          <div id="catalogSources" class="section-tabs" role="tablist" aria-label="Источник модов" data-i18n-aria-label='Источник модов'>
+            <button id="modrinthSourceTab" type="button" role="tab" data-catalog-source="modrinth" aria-selected="true" aria-controls="modrinthPanel">Modrinth</button>
+            <button id="githubSourceTab" type="button" role="tab" data-catalog-source="github" aria-selected="false" aria-controls="githubPanel" tabindex="-1">GitHub Releases</button>
+            <button id="curseforgeSourceTab" type="button" role="tab" data-catalog-source="curseforge" aria-selected="false" aria-controls="curseforgePanel" tabindex="-1">CurseForge</button>
+          </div>
+          <div id="modrinthPanel" role="tabpanel" aria-labelledby="modrinthSourceTab">
+          <div class="section-heading"><div><span class="section-kicker">Modrinth</span><h2 data-i18n='Моды для вашей сборки'>Моды для вашей сборки</h2></div><span id="modrinthPlatform" class="state-badge neutral" data-i18n='Подключите сервер'>Подключите сервер</span></div>
+          <form id="modrinthSearchForm" class="catalog-search"><label class="search-field"><i data-lucide="search"></i><input id="modrinthQuery" type="search" maxlength="120" placeholder="Название мода" aria-label="Название мода" data-i18n-placeholder='Название мода' data-i18n-aria-label='Название мода'></label><button class="button primary" type="submit"><i data-lucide="search"></i><span data-i18n='Найти'>Найти</span></button><div class="catalog-filters"><label class="field"><span data-i18n='Загрузчик'>Загрузчик</span><select id="modrinthLoader" aria-label="Загрузчик для каталога" data-i18n-aria-label='Загрузчик для каталога'></select></label><label class="field"><span>Minecraft</span><select id="modrinthMinecraft" aria-label="Minecraft для каталога" data-i18n-aria-label='Minecraft для каталога'></select></label><label class="field"><span data-i18n='Категория'>Категория</span><select id="modrinthCategory"><option value="" data-i18n='Все категории'>Все категории</option><option value="adventure" data-i18n='Приключения'>Приключения</option><option value="decoration" data-i18n='Декор'>Декор</option><option value="economy" data-i18n='Экономика'>Экономика</option><option value="equipment" data-i18n='Снаряжение'>Снаряжение</option><option value="food" data-i18n='Еда'>Еда</option><option value="game-mechanics" data-i18n='Игровые механики'>Игровые механики</option><option value="library" data-i18n='Библиотеки'>Библиотеки</option><option value="magic" data-i18n='Магия'>Магия</option><option value="management" data-i18n='Администрирование'>Администрирование</option><option value="minigame" data-i18n='Мини-игры'>Мини-игры</option><option value="mobs" data-i18n='Мобы'>Мобы</option><option value="optimization" data-i18n='Оптимизация'>Оптимизация</option><option value="social" data-i18n='Общение'>Общение</option><option value="storage" data-i18n='Хранилища'>Хранилища</option><option value="technology" data-i18n='Технологии'>Технологии</option><option value="transportation" data-i18n='Транспорт'>Транспорт</option><option value="utility" data-i18n='Утилиты'>Утилиты</option><option value="worldgen" data-i18n='Генерация мира'>Генерация мира</option><option value="cursed" data-i18n='Проклятые'>Проклятые</option></select></label><label class="field"><span data-i18n='Порядок'>Порядок</span><select id="modrinthSort"><option value="downloads" data-i18n='Популярные'>Популярные</option><option value="newest" data-i18n='Новые'>Новые</option><option value="updated" data-i18n='Недавно обновлённые'>Недавно обновлённые</option><option value="relevance" data-i18n='По совпадению'>По совпадению</option></select></label></div></form>
+          <details class="field-help"><summary><i data-lucide="circle-help"></i><span data-i18n='Что устанавливается?'>Что устанавливается?</span></summary><p data-i18n='Только моды под загрузчик и версию подключённого сервера и их обязательные зависимости. Вход в Modrinth не нужен. Назначение берётся из метаданных автора. Миры, сборки целиком, шейдеры и ресурсы через каталог пока не устанавливаются. Моды исполняют код: выбирайте авторов, которым доверяете, и делайте резервную копию мира.'>Только моды под загрузчик и версию подключённого сервера и их обязательные зависимости. Вход в Modrinth не нужен. Назначение берётся из метаданных автора. Миры, сборки целиком, шейдеры и ресурсы через каталог пока не устанавливаются. Моды исполняют код: выбирайте авторов, которым доверяете, и делайте резервную копию мира.</p></details>
+          <p id="modrinthStatus" class="connection-summary" role="status" data-i18n='Загрузка каталога...'>Загрузка каталога...</p>
+          <progress id="modrinthProgress" hidden aria-label="Подготовка модов" data-i18n-aria-label='Подготовка модов'></progress>
+          <section id="modrinthSelection" class="catalog-selection" hidden>
+            <div class="section-heading"><h2 id="modrinthProjectTitle"></h2><button id="modrinthCancel" class="button subtle" type="button"><i data-lucide="x"></i><span data-i18n='Отменить выбор'>Отменить выбор</span></button></div>
+            <p id="modrinthProjectSummary" class="muted-copy"></p>
+            <div class="catalog-version-actions"><label class="field"><span data-i18n='Версия мода'>Версия мода</span><select id="modrinthVersion"></select></label><label class="field"><span data-i18n='Назначение'>Назначение</span><select id="modrinthSide"></select></label><button id="modrinthResolve" class="button subtle" type="button"><i data-lucide="git-branch"></i><span data-i18n='Подобрать зависимости'>Подобрать зависимости</span></button></div>
+            <details class="field-help"><summary><i data-lucide="circle-help"></i><span data-i18n='Почему такое назначение?'>Почему такое назначение?</span></summary><p id="modrinthSideHelp"></p></details>
+            <div class="catalog-project-links"><button id="modrinthProjectLink" class="text-button" type="button"><i data-lucide="external-link"></i><span data-i18n='Открыть на Modrinth'>Открыть на Modrinth</span></button><span id="modrinthLicense" class="muted-copy"></span></div>
+          </section>
+          <section id="modrinthPlan" class="catalog-plan" hidden><div class="section-heading"><h2 data-i18n='Будет добавлено'>Будет добавлено</h2><span id="modrinthPlanSummary" class="file-count"></span><button id="modrinthInstall" class="button primary" type="button" disabled><i data-lucide="download"></i><span data-i18n='Добавить в черновик'>Добавить в черновик</span></button></div><div id="modrinthPlanFiles"></div><div id="modrinthWarnings" class="security-note"></div></section>
+          <section id="modrinthDetails" class="catalog-details" hidden>
+            <details open><summary data-i18n='Изображения'>Изображения</summary><div id="modrinthGallery" class="catalog-gallery"></div></details>
+            <details open><summary data-i18n='Описание автора'>Описание автора</summary><div class="translate-row"><button id="modrinthTranslate" class="text-button" type="button" hidden><i data-lucide="languages"></i><span data-i18n='Перевести'>Перевести</span></button></div><div id="modrinthDescription" class="catalog-description"></div></details>
+          </section>
+          <div id="modrinthResults" class="catalog-results"></div>
+          <div id="modrinthPagination" class="catalog-pagination"><button id="modrinthPrevious" class="icon-button" type="button" disabled title="Предыдущая страница" aria-label="Предыдущая страница" data-i18n-title='Предыдущая страница' data-i18n-aria-label='Предыдущая страница'><i data-lucide="chevron-left"></i></button><button id="modrinthNext" class="icon-button" type="button" disabled title="Следующая страница" aria-label="Следующая страница" data-i18n-title='Следующая страница' data-i18n-aria-label='Следующая страница'><i data-lucide="chevron-right"></i></button></div>
+          <dialog id="catalogImageDialog" class="catalog-image-dialog"><div class="section-heading"><strong id="catalogImageTitle"></strong><button class="icon-button" type="button" data-close-dialog="catalogImageDialog" title="Закрыть изображение" aria-label="Закрыть изображение" data-i18n-title='Закрыть изображение' data-i18n-aria-label='Закрыть изображение'><i data-lucide="x"></i></button></div><img id="catalogImagePreview" alt=""></dialog>
+          </div>
+          <div id="githubPanel" role="tabpanel" aria-labelledby="githubSourceTab" hidden>
+            <div class="section-heading"><h2 data-i18n='Релизы автора'>Релизы автора</h2><span id="githubPlatform" class="state-badge neutral"></span></div>
+            <form id="githubSearchForm" class="catalog-search"><label class="field"><span data-i18n='Репозиторий GitHub'>Репозиторий GitHub</span><input id="githubRepository" type="text" maxlength="220" placeholder="FabricMC/fabric-api" required spellcheck="false"></label><button class="button primary" type="submit"><i data-lucide="search"></i><span data-i18n='Найти релизы'>Найти релизы</span></button></form>
+            <details class="field-help"><summary><i data-lucide="circle-help"></i><span data-i18n='Чем отличается от Modrinth?'>Чем отличается от Modrinth?</span></summary><p data-i18n='Только опубликованные JAR из публичного репозитория автора. У GitHub нет общего списка версий Minecraft и графа зависимостей: они проверяются по JAR перед публикацией сборки. Публичный репозиторий сам по себе не даёт права раздавать файлы: проверьте лицензию выбранного мода. Частные репозитории, исполняемые установщики и архивы сборок не поддерживаются.'>Только опубликованные JAR из публичного репозитория автора. У GitHub нет общего списка версий Minecraft и графа зависимостей: они проверяются по JAR перед публикацией сборки. Публичный репозиторий сам по себе не даёт права раздавать файлы: проверьте лицензию выбранного мода. Частные репозитории, исполняемые установщики и архивы сборок не поддерживаются.</p></details>
+            <p id="githubStatus" class="connection-summary" role="status" data-i18n='Укажите репозиторий автора мода.'>Укажите репозиторий автора мода.</p>
+            <progress id="githubProgress" hidden aria-label="Подготовка JAR" data-i18n-aria-label='Подготовка JAR'></progress>
+            <section id="githubSelection" class="catalog-selection" hidden>
+              <div class="section-heading"><h2 id="githubReleaseTitle"></h2><button id="githubCancel" class="button subtle" type="button"><i data-lucide="x"></i><span data-i18n='Отменить выбор'>Отменить выбор</span></button></div>
+              <div class="github-asset-actions"><label class="field"><span data-i18n='Файл релиза'>Файл релиза</span><select id="githubAsset"></select></label><button id="githubPrepare" class="button subtle" type="button"><i data-lucide="scan-line"></i><span data-i18n='Подготовить JAR'>Подготовить JAR</span></button></div>
+              <div class="catalog-project-links"><button id="githubProjectLink" class="text-button" type="button"><i data-lucide="external-link"></i><span data-i18n='Репозиторий и лицензия'>Репозиторий и лицензия</span></button><span id="githubLicense" class="muted-copy"></span></div>
+              <section id="githubPrepared" class="catalog-plan" hidden>
+                <p id="githubJarSummary" class="muted-copy"></p>
+                <label class="field github-side"><span data-i18n='Назначение'>Назначение</span><select id="githubSide"></select></label>
+                <label class="check-row"><input id="githubRights" type="checkbox"><span data-i18n='Лицензия этого JAR или разрешение автора допускает его раздачу моим игрокам.'>Лицензия этого JAR или разрешение автора допускает его раздачу моим игрокам.</span></label>
+                <button id="githubInstall" class="button primary" type="button" disabled><i data-lucide="download"></i><span data-i18n='Добавить в черновик'>Добавить в черновик</span></button>
+              </section>
+              <details class="catalog-details" open><summary data-i18n='Описание релиза'>Описание релиза</summary><div class="translate-row"><button id="githubTranslate" class="text-button" type="button" hidden><i data-lucide="languages"></i><span data-i18n='Перевести'>Перевести</span></button></div><div id="githubDescription" class="catalog-description"></div></details>
+            </section>
+            <div id="githubResults" class="catalog-results"></div>
+            <div class="catalog-pagination"><button id="githubPrevious" class="icon-button" type="button" disabled title="Предыдущая страница" aria-label="Предыдущая страница" data-i18n-title='Предыдущая страница' data-i18n-aria-label='Предыдущая страница'><i data-lucide="chevron-left"></i></button><button id="githubNext" class="icon-button" type="button" disabled title="Следующая страница" aria-label="Следующая страница" data-i18n-title='Следующая страница' data-i18n-aria-label='Следующая страница'><i data-lucide="chevron-right"></i></button></div>
+          </div>
+          <div id="curseforgePanel" role="tabpanel" aria-labelledby="curseforgeSourceTab" hidden>
+            <div class="section-heading"><h2 data-i18n='Каталог CurseForge'>Каталог CurseForge</h2><span id="curseforgePlatform" class="state-badge neutral"></span></div>
+            <section id="curseforgeKeySetup" class="surface key-setup">
+              <p data-i18n='CurseForge выдаёт данные только по личному ключу API. Создайте бесплатный ключ в консоли CurseForge for Studios и сохраните его здесь: он попадёт в защищённое хранилище Windows этого профиля и не покидает ваш компьютер.'>CurseForge выдаёт данные только по личному ключу API. Создайте бесплатный ключ в консоли CurseForge for Studios и сохраните его здесь: он попадёт в защищённое хранилище Windows этого профиля и не покидает ваш компьютер.</p>
+              <form id="curseforgeKeyForm" class="catalog-search"><label class="field"><span data-i18n='Ключ API CurseForge'>Ключ API CurseForge</span><input id="curseforgeKeyInput" type="password" maxlength="128" autocomplete="off" spellcheck="false" required></label><button class="button primary" type="submit"><i data-lucide="key-round"></i><span data-i18n='Сохранить ключ'>Сохранить ключ</span></button></form>
+              <button id="curseforgeKeyHelp" class="text-button" type="button"><i data-lucide="external-link"></i><span data-i18n='Как получить ключ: console.curseforge.com'>Как получить ключ: console.curseforge.com</span></button>
+              <details class="field-help"><summary><i data-lucide="circle-help"></i><span data-i18n='Зачем нужен ключ?'>Зачем нужен ключ?</span></summary><p data-i18n='Нужен ключ организации Core API: зарегистрируйтесь на console.curseforge.com, создайте организацию и скопируйте ключ со страницы «API keys» (вид $2a$10$...). Свежий ключ может активироваться несколько минут. Не подходят: UUID-токены со старого сайта авторов legacy.curseforge.com («My API Tokens» — это загрузка своих модов) и персональный Profile API key (cfc_pat_...) из раздела Profile консоли. Ключ бесплатный; UDMC использует его только для поиска и загрузки модов, авторы которых разрешили раздачу через API.'>Нужен ключ организации Core API: зарегистрируйтесь на console.curseforge.com, создайте организацию и скопируйте ключ со страницы «API keys» (вид $2a$10$...). Свежий ключ может активироваться несколько минут. Не подходят: UUID-токены со старого сайта авторов legacy.curseforge.com («My API Tokens» — это загрузка своих модов) и персональный Profile API key (cfc_pat_...) из раздела Profile консоли. Ключ бесплатный; UDMC использует его только для поиска и загрузки модов, авторы которых разрешили раздачу через API.</p></details>
+            </section>
+            <section id="curseforgeCatalog" hidden>
+              <form id="curseforgeSearchForm" class="catalog-search"><label class="search-field"><i data-lucide="search"></i><input id="curseforgeQuery" type="search" maxlength="120" placeholder="Название мода" aria-label="Название мода" data-i18n-placeholder='Название мода' data-i18n-aria-label='Название мода'></label><button class="button primary" type="submit"><i data-lucide="search"></i><span data-i18n='Найти'>Найти</span></button><button id="curseforgeForgetKey" class="button subtle" type="button"><i data-lucide="key-round"></i><span data-i18n='Удалить ключ'>Удалить ключ</span></button></form>
+              <details class="field-help"><summary><i data-lucide="circle-help"></i><span data-i18n='Чем отличается от Modrinth?'>Чем отличается от Modrinth?</span></summary><p data-i18n='Показываются только моды, авторы которых разрешили раздачу через официальный API CurseForge; остальные устанавливаются вручную со страницы мода. Обязательные зависимости не устанавливаются автоматически: их укажет проверка состава перед публикацией. Фильтры версии и загрузчика следуют подключённому серверу.'>Показываются только моды, авторы которых разрешили раздачу через официальный API CurseForge; остальные устанавливаются вручную со страницы мода. Обязательные зависимости не устанавливаются автоматически: их укажет проверка состава перед публикацией. Фильтры версии и загрузчика следуют подключённому серверу.</p></details>
+              <p id="curseforgeStatus" class="connection-summary" role="status" data-i18n='Введите название мода или откройте популярные.'>Введите название мода или откройте популярные.</p>
+              <progress id="curseforgeProgress" hidden aria-label="Подготовка JAR" data-i18n-aria-label='Подготовка JAR'></progress>
+              <section id="curseforgeSelection" class="catalog-selection" hidden>
+                <div class="section-heading"><h2 id="curseforgeModTitle"></h2><button id="curseforgeCancel" class="button subtle" type="button"><i data-lucide="x"></i><span data-i18n='Отменить выбор'>Отменить выбор</span></button></div>
+                <div class="github-asset-actions"><label class="field"><span data-i18n='Файл мода'>Файл мода</span><select id="curseforgeFile"></select></label><button id="curseforgePrepare" class="button subtle" type="button"><i data-lucide="scan-line"></i><span data-i18n='Подготовить JAR'>Подготовить JAR</span></button></div>
+                <div class="catalog-project-links"><button id="curseforgeModLink" class="text-button" type="button"><i data-lucide="external-link"></i><span data-i18n='Открыть на CurseForge'>Открыть на CurseForge</span></button></div>
+                <section id="curseforgePrepared" class="catalog-plan" hidden>
+                  <p id="curseforgeJarSummary" class="muted-copy"></p>
+                  <label class="field github-side"><span data-i18n='Назначение'>Назначение</span><select id="curseforgeSide"></select></label>
+                  <label class="check-row"><input id="curseforgeRights" type="checkbox"><span data-i18n='Лицензия этого JAR или разрешение автора допускает его раздачу моим игрокам.'>Лицензия этого JAR или разрешение автора допускает его раздачу моим игрокам.</span></label>
+                  <button id="curseforgeInstall" class="button primary" type="button" disabled><i data-lucide="download"></i><span data-i18n='Добавить в черновик'>Добавить в черновик</span></button>
+                </section>
+                <details class="catalog-details" open><summary data-i18n='Описание автора'>Описание автора</summary><div class="translate-row"><button id="curseforgeTranslate" class="text-button" type="button" hidden><i data-lucide="languages"></i><span data-i18n='Перевести'>Перевести</span></button></div><div id="curseforgeDescription" class="catalog-description"></div></details>
+              </section>
+              <div id="curseforgeResults" class="catalog-results"></div>
+              <div class="catalog-pagination"><button id="curseforgePrevious" class="icon-button" type="button" disabled title="Предыдущая страница" aria-label="Предыдущая страница" data-i18n-title='Предыдущая страница' data-i18n-aria-label='Предыдущая страница'><i data-lucide="chevron-left"></i></button><button id="curseforgeNext" class="icon-button" type="button" disabled title="Следующая страница" aria-label="Следующая страница" data-i18n-title='Следующая страница' data-i18n-aria-label='Следующая страница'><i data-lucide="chevron-right"></i></button></div>
+            </section>
+          </div>
+        </section>
+
+        <section id="settingsView" class="view" data-view-panel="settings">
+          <section class="surface settings-block">
+            <div class="section-heading"><div><span class="section-kicker" data-i18n='Приложение'>Приложение</span><h2 data-i18n='Язык интерфейса'>Язык интерфейса</h2></div></div>
+            <label class="field settings-language"><span data-i18n='Язык приложения'>Язык приложения</span><select id="languageSelect" aria-label="Язык приложения" data-i18n-aria-label="Язык приложения"><option value="en">English</option><option value="ru">Русский</option></select></label>
+            <p class="muted-copy" data-i18n='Выбор общий для всех серверов и сохраняется между запусками. При первом запуске язык определяется по системе.'>Выбор общий для всех серверов и сохраняется между запусками. При первом запуске язык определяется по системе.</p>
+          </section>
+          <section class="surface settings-block">
+            <div class="section-heading"><div><span class="section-kicker" data-i18n='Каталог модов'>Каталог модов</span><h2 data-i18n='Переводчик описаний'>Переводчик описаний</h2></div><span id="translatorState" class="state-badge neutral" data-i18n='Не настроен'>Не настроен</span></div>
+            <p class="muted-copy" data-i18n='У описаний модов в каталоге появляется кнопка «Перевести», когда язык интерфейса русский. Перевод выполняет официальный API Яндекс Переводчика по вашему ключу; текст описания отправляется в Яндекс только после нажатия кнопки.'>У описаний модов в каталоге появляется кнопка «Перевести», когда язык интерфейса русский. Перевод выполняет официальный API Яндекс Переводчика по вашему ключу; текст описания отправляется в Яндекс только после нажатия кнопки.</p>
+            <form id="translatorForm" class="settings-editor" novalidate>
+              <label class="field"><span data-i18n='API-ключ Яндекс Переводчика'>API-ключ Яндекс Переводчика</span><input id="translatorKeyInput" type="password" maxlength="128" autocomplete="off" spellcheck="false"></label>
+              <label class="field"><span data-i18n='Идентификатор каталога Yandex Cloud (folder id)'>Идентификатор каталога Yandex Cloud (folder id)</span><input id="translatorFolderInput" maxlength="64" spellcheck="false" placeholder="b1g..."></label>
+              <div class="form-actions"><button id="translatorEditCancelButton" class="button subtle" type="button" hidden><span data-i18n='Отмена'>Отмена</span></button><button class="button primary" type="submit"><i data-lucide="key-round"></i><span data-i18n='Сохранить и проверить'>Сохранить и проверить</span></button></div>
+            </form>
+            <div id="translatorConfigured" hidden>
+              <p id="translatorConfiguredSummary" class="muted-copy"></p>
+              <div class="form-actions">
+                <button id="translatorTestButton" class="button subtle" type="button"><i data-lucide="languages"></i><span data-i18n='Проверить перевод'>Проверить перевод</span></button>
+                <button id="translatorReplaceButton" class="button subtle" type="button"><i data-lucide="pencil"></i><span data-i18n='Заменить ключ'>Заменить ключ</span></button>
+                <button id="translatorForgetButton" class="button danger-outline" type="button"><i data-lucide="trash-2"></i><span data-i18n='Удалить ключ переводчика'>Удалить ключ переводчика</span></button>
+              </div>
+            </div>
+            <button id="translatorHelp" class="text-button" type="button"><i data-lucide="external-link"></i><span data-i18n='Создать ключ в Yandex AI Studio'>Создать ключ в Yandex AI Studio</span></button>
+            <details class="field-help"><summary><i data-lucide="circle-help"></i><span data-i18n='Как настроить переводчик?'>Как настроить переводчик?</span></summary>
+              <ol class="translator-steps">
+                <li data-i18n='Нажмите «Создать ключ в Yandex AI Studio» выше и войдите со своим аккаунтом Яндекса. При первом входе сервис попросит создать платёжный аккаунт - действует пробный период и бесплатная квота перевода.'>Нажмите «Создать ключ в Yandex AI Studio» выше и войдите со своим аккаунтом Яндекса. При первом входе сервис попросит создать платёжный аккаунт - действует пробный период и бесплатная квота перевода.</li>
+                <li data-i18n='В правом верхнем углу интерфейса AI Studio нажмите кнопку «Создать API-ключ», в открывшемся окне нажмите «Создать» (описание и срок действия можно не менять).'>В правом верхнем углу интерфейса AI Studio нажмите кнопку «Создать API-ключ», в открывшемся окне нажмите «Создать» (описание и срок действия можно не менять).</li>
+                <li data-i18n='Сразу скопируйте «Секретный ключ» (вида AQVN...) - после закрытия окна он больше не показывается. Сервисный аккаунт и права на перевод Яндекс создаст автоматически.'>Сразу скопируйте «Секретный ключ» (вида AQVN...) - после закрытия окна он больше не показывается. Сервисный аккаунт и права на перевод Яндекс создаст автоматически.</li>
+                <li data-i18n='Идентификатор каталога (folder id, начинается с b1g): откройте консоль по кнопке ниже - идентификатор показан в списке каталогов рядом с названием, а после входа в каталог виден в адресной строке (console.yandex.cloud/folders/b1g...).'>Идентификатор каталога (folder id, начинается с b1g): откройте консоль по кнопке ниже - идентификатор показан в списке каталогов рядом с названием, а после входа в каталог виден в адресной строке (console.yandex.cloud/folders/b1g...).</li>
+                <li data-i18n='Вставьте секретный ключ и идентификатор каталога в поля выше и нажмите «Сохранить переводчик».'>Вставьте секретный ключ и идентификатор каталога в поля выше и нажмите «Сохранить переводчик».</li>
+              </ol>
+              <p data-i18n='Подойдёт и ключ, созданный по старой схеме: сервисный аккаунт с ролью ai.translate.user и его API-ключ. Если в будущих версиях WebView2 заработает встроенный переводчик Chromium, приложение использует его автоматически и без ключа.'>Подойдёт и ключ, созданный по старой схеме: сервисный аккаунт с ролью ai.translate.user и его API-ключ. Если в будущих версиях WebView2 заработает встроенный переводчик Chromium, приложение использует его автоматически и без ключа.</p>
+              <button id="translatorConsoleLink" class="text-button" type="button"><i data-lucide="external-link"></i><span data-i18n='Открыть консоль (узнать folder id)'>Открыть консоль (узнать folder id)</span></button>
+              <button id="translatorDocsLink" class="text-button" type="button"><i data-lucide="external-link"></i><span data-i18n='Официальная инструкция Яндекса по API-ключу'>Официальная инструкция Яндекса по API-ключу</span></button>
+            </details>
+          </section>
+        </section>
+
+        <section id="consoleView" class="view" data-view-panel="console">
+          <section class="surface console-surface">
+            <div class="section-heading console-heading">
+              <div><span class="section-kicker" data-i18n='Команды'>Команды</span><h2 data-i18n='Консоль сервера'>Консоль сервера</h2></div>
+              <div class="console-heading-actions"><span id="rconConsoleStatus" class="state-badge neutral" hidden data-i18n='Не проверен'>Не проверен</span><span id="commandTransportLabel" class="transport-badge">UDMC Agent</span><button id="clearConsoleButton" class="icon-button compact-icon" type="button" title="Очистить консоль" aria-label="Очистить консоль" data-i18n-title='Очистить консоль' data-i18n-aria-label='Очистить консоль'><svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 15H6L5 6M10 11v5M14 11v5"/></svg></button></div>
+            </div>
+            <div id="consoleOutput" class="console-output" aria-live="polite"><div class="console-empty" data-i18n='Консоль готова'>Консоль готова</div></div>
+            <p id="rconCoordinationWarning" class="security-note" hidden data-i18n="RCON не участвует в блокировке UDMC. Команды из других панелей или программ могут выполняться одновременно.">RCON не участвует в блокировке UDMC. Команды из других панелей или программ могут выполняться одновременно.</p>
+            <div class="quick-commands" aria-label="Быстрые команды" data-i18n-aria-label='Быстрые команды'>
+              <button type="button" data-quick-command="help">help</button>
+              <button type="button" data-quick-command="list">list</button>
+              <button type="button" data-quick-command="save-all flush">save-all</button>
+              <button type="button" data-quick-command="whitelist list">whitelist</button>
+              <button type="button" data-quick-command="time query daytime">time</button>
+            </div>
+            <form id="commandForm" class="command-form">
+              <span class="command-prefix">&gt;</span>
+              <input id="commandInput" type="text" maxlength="512" placeholder="Введите команду" autocomplete="off" spellcheck="false" data-i18n-placeholder='Введите команду'>
+              <button id="commandSubmitButton" class="button primary icon-submit" type="submit" title="Выполнить команду" aria-label="Выполнить команду" data-i18n-title='Выполнить команду' data-i18n-aria-label='Выполнить команду'><svg viewBox="0 0 24 24"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg></button>
+            </form>
+          </section>
+          <section class="command-reference">
+            <div class="section-heading"><div><span id="commandCatalogSource" class="section-kicker" data-i18n='Нет данных сервера'>Нет данных сервера</span><h2 data-i18n='Справочник команд'>Справочник команд</h2></div><button id="refreshCommandsButton" class="icon-button" type="button" title="Получить команды сервера" aria-label="Получить команды сервера" data-i18n-title='Получить команды сервера' data-i18n-aria-label='Получить команды сервера'><i data-lucide="refresh-cw"></i></button></div>
+            <input id="commandSearch" type="search" placeholder="Название или назначение команды" aria-label="Найти команду" data-i18n-placeholder='Название или назначение команды' data-i18n-aria-label='Найти команду'>
+            <div id="commandCatalog" class="command-catalog"><p class="muted-copy" data-i18n='Подключите UDMC Agent, чтобы получить команды этого сервера.'>Подключите UDMC Agent, чтобы получить команды этого сервера.</p></div>
+          </section>
+          <details id="rconSettings" class="connection-details"><summary><i data-lucide="settings-2"></i><span data-i18n='Подключение RCON'>Подключение RCON</span></summary>
+            <form id="rconForm" class="surface settings-surface span-full">
+              <div class="section-heading"><div><span class="section-kicker">TCP</span><h2>RCON</h2></div><div class="protected-heading-actions"><span id="rconDetectedBadge" class="state-badge neutral" data-i18n='Не определён'>Не определён</span><button class="icon-button compact-icon" type="button" data-edit-setting="rcon" title="Изменить подключение RCON" aria-label="Изменить подключение RCON" data-i18n-title='Изменить подключение RCON' data-i18n-aria-label='Изменить подключение RCON'><i data-lucide="pencil"></i></button></div></div>
+              <div class="rcon-status-row"><span id="rconConnectionStatus" class="state-badge neutral" data-i18n='Доступ не проверен'>Доступ не проверен</span><small id="rconCheckedAt"></small></div>
+              <p class="security-note" data-i18n='RCON не шифрует пароль. Для доступа через интернет используйте VPN или консоль UDMC по HTTPS.'>RCON не шифрует пароль. Для доступа через интернет используйте VPN или консоль UDMC по HTTPS.</p>
+              <label class="toggle-row rcon-toggle"><span><strong data-i18n='Использовать RCON для консоли'>Использовать RCON для консоли</strong><small data-i18n='Иначе команды выполняет UDMC Agent'>Иначе команды выполняет UDMC Agent</small></span><input id="rconEnabledInput" disabled type="checkbox"><i aria-hidden="true"></i></label>
+              <div id="rconFields" class="rcon-fields">
+                <label class="field"><span data-i18n='Домен или IP'>Домен или IP</span><input id="rconHostInput" readonly type="text" placeholder="mc.example.com" autocomplete="url"></label>
+                <label class="field"><span data-i18n='Порт'>Порт</span><input id="rconPortInput" readonly type="number" min="1" max="65535" value="25575"></label>
+                <label class="field"><span data-i18n='Пароль RCON'>Пароль RCON</span><input id="rconPasswordInput" readonly type="password" placeholder="Пароль из server.properties" autocomplete="off" data-i18n-placeholder='Пароль из server.properties'></label>
+                <label class="check-row"><input id="rememberRconPasswordInput" disabled type="checkbox"><span data-i18n='Запомнить пароль'>Запомнить пароль</span></label>
+              </div>
+              <div class="form-actions"><button id="testRconButton" class="button subtle" type="button"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg><span data-i18n='Проверить'>Проверить</span></button></div>
+            </form>
+          </details>
+        </section>
+
+        <dialog id="serverProfileDialog" class="server-profile-dialog" aria-labelledby="serverProfileTitle">
+          <div class="profile-dialog-heading"><h2 id="serverProfileTitle" data-i18n='Настройка сервера'>Настройка сервера</h2><button id="serverProfileCloseButton" class="icon-button" type="button" data-close-dialog="serverProfileDialog" title="Закрыть настройки" aria-label="Закрыть настройки" data-i18n-title='Закрыть настройки' data-i18n-aria-label='Закрыть настройки'><i data-lucide="x"></i></button></div>
+          <div id="profileStorageError" class="security-note" role="alert" hidden></div>
+        <div class="profile-dialog-body">
+          <nav class="dialog-nav" role="tablist" aria-label="Разделы настройки сервера" data-i18n-aria-label='Разделы настройки сервера'>
+            <button id="agentConnectTab" type="button" role="tab" aria-selected="true" data-agent-mode="connect"><i data-lucide="plug-zap"></i><span data-i18n='Подключение'>Подключение</span></button>
+            <button id="agentJoinTab" type="button" role="tab" aria-selected="false" data-agent-mode="join"><i data-lucide="ticket"></i><span data-i18n='По приглашению'>По приглашению</span></button>
+            <button id="agentCreateTab" type="button" role="tab" aria-selected="false" data-agent-mode="create"><i data-lucide="package-check"></i><span data-i18n='Создать JAR'>Создать JAR</span></button>
+            <button id="agentDeliveryTab" type="button" role="tab" aria-selected="false" data-agent-mode="agents"><i data-lucide="refresh-cw"></i><span data-i18n='Агенты и игроки'>Агенты и игроки</span></button>
+          </nav>
+        <section id="generatorView" class="profile-agent-settings dialog-content">
+          <div class="agent-panel dialog-section" data-agent-panel="connect">
+          <form id="serverProfileForm" class="profile-name-form"><label class="field"><span data-i18n='Имя сервера в панели'>Имя сервера в панели</span><input id="serverProfileName" maxlength="80" required></label><button class="icon-button" type="submit" title="Сохранить имя сервера" aria-label="Сохранить имя сервера" data-i18n-title='Сохранить имя сервера' data-i18n-aria-label='Сохранить имя сервера'><i data-lucide="save"></i></button></form>
+          <div class="agent-address">
+            <div class="form-grid"><div class="field"><div class="protected-label"><label for="serverUrlInput" data-i18n='Адрес UDMC'>Адрес UDMC</label><button class="icon-button compact-icon" type="button" data-edit-setting="connection" title="Изменить адрес UDMC" aria-label="Изменить адрес UDMC" data-i18n-title='Изменить адрес UDMC' data-i18n-aria-label='Изменить адрес UDMC'><i data-lucide="pencil"></i></button></div><input id="serverUrlInput" type="text" placeholder="sync.example.com или IP:3077" autocomplete="url" readonly data-i18n-placeholder='sync.example.com или IP:3077'></div><label class="field"><span data-i18n='Название этого компьютера'>Название этого компьютера</span><input id="deviceNameInput" maxlength="64" autocomplete="off"></label></div>
+            <div class="address-toolbar"><details class="field-help"><summary><i data-lucide="circle-help"></i><span data-i18n='Какой адрес нужен?'>Какой адрес нужен?</span></summary><p data-i18n='Один адрес для панели и клиентских JAR, не порт входа в Minecraft. Домен без порта означает HTTPS через уже настроенный прокси. Прямое подключение: IP:3077. «На этом ПК» подходит для проверки локального сервера, но игрокам с других компьютеров нужен доступный им адрес.'>Один адрес для панели и клиентских JAR, не порт входа в Minecraft. Домен без порта означает HTTPS через уже настроенный прокси. Прямое подключение: IP:3077. «На этом ПК» подходит для проверки локального сервера, но игрокам с других компьютеров нужен доступный им адрес.</p></details><button id="localConnectionButton" class="text-button" type="button" data-i18n='На этом ПК'>На этом ПК</button></div>
+            <label class="check-row standalone-check"><input id="allowHttpConnection" disabled type="checkbox"><span data-i18n='Доверенная сеть: разрешить HTTP без шифрования'>Доверенная сеть: разрешить HTTP без шифрования</span></label>
+          </div>
+          <form id="connectionForm">
+            <div class="section-heading"><h2 data-i18n='Доступ с этого компьютера'>Доступ с этого компьютера</h2><span id="connectionIdentity" class="state-badge neutral" data-i18n='Не проверен'>Не проверен</span></div>
+            <details id="manualConnection" class="connection-details"><summary><i data-lucide="key-round"></i><span data-i18n='Ключ подключения'>Ключ подключения</span></summary>
+              <div class="field"><div class="protected-label"><label for="tokenInput" data-i18n='Ключ владельца или устройства'>Ключ владельца или устройства</label><button class="icon-button compact-icon" type="button" data-edit-setting="token" title="Изменить ключ подключения" aria-label="Изменить ключ подключения" data-i18n-title='Изменить ключ подключения' data-i18n-aria-label='Изменить ключ подключения'><i data-lucide="pencil"></i></button></div><span class="password-field"><input id="tokenInput" readonly maxlength="1024" type="password" placeholder="Заполняется автоматически" autocomplete="off" data-i18n-placeholder='Заполняется автоматически'><button id="tokenVisibilityButton" class="field-icon-button" type="button" title="Показать токен" aria-label="Показать токен" data-i18n-title='Показать токен' data-i18n-aria-label='Показать токен'><svg class="eye-on" viewBox="0 0 24 24"><path d="M2.1 12a10.7 10.7 0 0 1 19.8 0 10.7 10.7 0 0 1-19.8 0Z"/><circle cx="12" cy="12" r="3"/></svg><svg class="eye-off" viewBox="0 0 24 24"><path d="m2 2 20 20M10.6 10.7a2 2 0 0 0 2.7 2.7M9.9 4.2A10.5 10.5 0 0 1 22 12a10.8 10.8 0 0 1-3 4.2M6.6 6.6A10.8 10.8 0 0 0 2 12a10.7 10.7 0 0 0 14.4 6"/></svg></button></span></div>
+            </details>
+            <details class="field-help"><summary><i data-lucide="circle-help"></i><span data-i18n='Другому администратору нужен мой JAR?'>Другому администратору нужен мой JAR?</span></summary><p data-i18n='Нет. Владелец выдаёт приглашение в разделе «Устройства» и подтверждает заявку. Серверный JAR хранит ключи владельца и подписи обновлений: его нельзя передавать другу для обычного доступа.'>Нет. Владелец выдаёт приглашение в разделе «Устройства» и подтверждает заявку. Серверный JAR хранит ключи владельца и подписи обновлений: его нельзя передавать другу для обычного доступа.</p></details>
+            <div class="form-actions"><button id="recoverIdentityButton" class="button subtle" type="button"><i data-lucide="archive-restore"></i><span data-i18n='Восстановить владельца из JAR'>Восстановить владельца из JAR</span></button><button id="connectButton" class="button primary" type="submit"><i data-lucide="plug-zap"></i><span data-i18n='Подключиться'>Подключиться</span></button></div>
+          </form>
+          </div>
+          <form id="joinForm" class="agent-panel dialog-section" data-agent-panel="join" hidden>
+            <h2 data-i18n='Приглашение от владельца'>Приглашение от владельца</h2><label class="field"><span data-i18n='Код приглашения'>Код приглашения</span><textarea id="invitationInput" rows="3" maxlength="4096" spellcheck="false" placeholder="UDMC1..."></textarea></label>
+            <div class="form-actions"><button id="joinButton" class="button primary" type="submit"><i data-lucide="send"></i><span data-i18n='Отправить заявку'>Отправить заявку</span></button></div>
+            <div id="joinStatus" class="connection-summary" role="status"></div>
+            <div id="pendingRequest" hidden><strong id="pendingName"></strong><code id="pendingVerification" class="verification-code"></code><p id="pendingDetails" class="connection-summary"></p><button id="checkAccessButton" class="button subtle" type="button"><i data-lucide="refresh-cw"></i><span data-i18n='Проверить ответ'>Проверить ответ</span></button><button id="cancelAccessButton" class="button subtle" type="button"><i data-lucide="x"></i><span data-i18n='Отменить заявку'>Отменить заявку</span></button></div>
+          </form>
+          <form id="generatorForm" class="generator-form agent-panel dialog-section" data-agent-panel="create" hidden>
+            <div class="section-heading"><div><span class="section-kicker" data-i18n='Установка агента'>Установка агента</span><h2 data-i18n='Сервер и игроки'>Сервер и игроки</h2></div><span id="generatorAvailability" class="state-badge neutral" data-i18n='Проверка компонентов'>Проверка компонентов</span></div>
+            <fieldset class="generator-group"><legend data-i18n='Проект'>Проект</legend><div class="form-grid">
+              <div class="field"><div class="protected-label"><label for="generatorPackId" data-i18n='ID проекта'>ID проекта</label><button class="icon-button compact-icon" type="button" data-edit-setting="project" title="Изменить ID проекта" aria-label="Изменить ID проекта" data-i18n-title='Изменить ID проекта' data-i18n-aria-label='Изменить ID проекта'><i data-lucide="pencil"></i></button></div><input id="generatorPackId" required pattern="[A-Za-z0-9_-]{1,64}" maxlength="64" value="udmc-main" spellcheck="false" readonly></div>
+              <div class="field"><span data-i18n='Сборка'>Сборка</span><strong id="generatorPackNameLabel" data-i18n='Основная сборка'>Основная сборка</strong><button class="text-button" type="button" data-go-pack data-i18n='Название и состав'>Название и состав</button></div>
+              <details class="field-help full"><summary><i data-lucide="circle-help"></i><span data-i18n='Нужно менять ID?'>Нужно менять ID?</span></summary><p data-i18n='Для одного сервера оставьте как есть. Для второго проекта придумайте другой ID. Прежний ID на этом ПК использует прежние ключи. Название сборки меняется в разделе «Сборка» и не влияет на ключи.'>Для одного сервера оставьте как есть. Для второго проекта придумайте другой ID. Прежний ID на этом ПК использует прежние ключи. Название сборки меняется в разделе «Сборка» и не влияет на ключи.</p></details>
+            </div></fieldset>
+            <fieldset class="generator-group"><legend><span data-i18n='Совместимость'>Совместимость</span><button class="icon-button compact-icon" type="button" data-edit-setting="platform" title="Изменить совместимость агентов" aria-label="Изменить совместимость агентов" data-i18n-title='Изменить совместимость агентов' data-i18n-aria-label='Изменить совместимость агентов'><i data-lucide="pencil"></i></button></legend><div class="generator-platform">
+              <label class="field"><span data-i18n='Загрузчик'>Загрузчик</span><select id="generatorLoader" disabled><option value="fabric">Fabric</option></select></label>
+              <label class="field"><span>Minecraft</span><select id="generatorMinecraft" disabled required></select></label>
+              <label class="field"><span data-i18n='Версия загрузчика'>Версия загрузчика</span><select id="generatorLoaderVersion" disabled required></select></label>
+            </div><div class="requirements-line"><span id="generatorJava" data-i18n='Java на игровых машинах'>Java на игровых машинах</span><button class="text-button" type="button" data-go-dependencies data-i18n='Компоненты'>Компоненты</button></div></fieldset>
+            <fieldset class="generator-group"><legend><span data-i18n='Сеть сервера'>Сеть сервера</span><button class="icon-button compact-icon" type="button" data-edit-setting="network" title="Изменить сеть агента" aria-label="Изменить сеть агента" data-i18n-title='Изменить сеть агента' data-i18n-aria-label='Изменить сеть агента'><i data-lucide="pencil"></i></button></legend>
+              <p id="generatorConnectionSummary" class="connection-summary"></p>
+              <div class="form-grid">
+                <label class="field"><span data-i18n='Прослушивать на сервере'>Прослушивать на сервере</span><select id="generatorApiHost" disabled><option value="127.0.0.1" data-i18n='Локально, за HTTPS-прокси'>Локально, за HTTPS-прокси</option><option value="0.0.0.0" data-i18n='На всех интерфейсах'>На всех интерфейсах</option></select></label>
+                <label class="check-row"><input id="generatorPortOverride" disabled type="checkbox"><span data-i18n='Прокси или проброс на другой порт'>Прокси или проброс на другой порт</span></label>
+                <label id="generatorApiPortField" class="field" hidden><span data-i18n='Порт агента за прокси / роутером'>Порт агента за прокси / роутером</span><input id="generatorApiPort" readonly type="number" min="1" max="65535" value="3077"></label>
+              </div>
+              <details class="field-help"><summary><i data-lucide="circle-help"></i><span data-i18n='Когда порты отличаются?'>Когда порты отличаются?</span></summary><p data-i18n='При прямом подключении порт берётся из адреса выше. HTTPS-прокси принимает соединения, например, на 443 и передаёт их агенту на 3077. Внутренний порт меняйте только если ваш прокси или роутер перенаправляет на другой порт. «Локально» разрешает соединения с этого же сервера; «На всех интерфейсах» нужно для прямого подключения извне.'>При прямом подключении порт берётся из адреса выше. HTTPS-прокси принимает соединения, например, на 443 и передаёт их агенту на 3077. Внутренний порт меняйте только если ваш прокси или роутер перенаправляет на другой порт. «Локально» разрешает соединения с этого же сервера; «На всех интерфейсах» нужно для прямого подключения извне.</p></details>
+            </fieldset>
+            <details class="connection-details"><summary><i data-lucide="key-round"></i><span data-i18n='Ключи проекта'>Ключи проекта</span></summary>
+              <div class="identity-toolbar"><button id="prepareIdentityButton" class="button subtle" type="button"><i data-lucide="key-round"></i><span data-i18n='Создать / загрузить ключи'>Создать / загрузить ключи</span></button></div>
+              <div id="generatorIdentity" class="identity-details" hidden><label class="field"><span data-i18n='Ключ восстановления владельца'>Ключ восстановления владельца</span><span class="password-field"><input id="generatorToken" type="password" readonly autocomplete="off"><button id="copyGeneratorToken" class="field-icon-button" type="button" title="Скопировать ключ владельца" aria-label="Скопировать ключ владельца" data-i18n-title='Скопировать ключ владельца' data-i18n-aria-label='Скопировать ключ владельца'><i data-lucide="copy"></i></button></span></label><div class="fingerprint"><span data-i18n='Отпечаток публичного ключа SHA-256'>Отпечаток публичного ключа SHA-256</span><code id="generatorFingerprint"></code></div></div>
+            </details>
+            <div class="generator-footer"><span class="security-note" data-i18n='Серверный JAR содержит секреты. Не передавайте его игрокам. Клиентский JAR загрузится на сервер после подключения панели.'>Серверный JAR содержит секреты. Не передавайте его игрокам. Клиентский JAR загрузится на сервер после подключения панели.</span><button id="generateAgentsButton" class="button primary" type="submit"><i data-lucide="package-check"></i><span data-i18n='Сформировать серверный JAR'>Сформировать серверный JAR</span></button></div>
+            <div id="generatorResult" class="generator-result" role="status" hidden></div>
+          </form>
+
+          <div class="agent-panel dialog-section" data-agent-panel="agents" hidden>
+          <section id="agentDeliverySection" class="agent-delivery" hidden>
+            <div class="section-heading"><h2 data-i18n='Агенты на сервере'>Агенты на сервере</h2><div class="heading-actions"><button id="agentUpdateButton" type="button" class="button subtle" disabled><i data-lucide="refresh-cw"></i><span data-i18n='Обновить агенты'>Обновить агенты</span></button><button id="agentUpdateRestartButton" type="button" class="button primary" disabled><i data-lucide="rotate-cw"></i><span data-i18n='Обновить и перезапустить'>Обновить и перезапустить</span></button></div></div>
+            <p id="agentDeliveryStatus" class="connection-summary" role="status"></p>
+            <progress id="agentDeliveryProgress" hidden aria-label="Передача агентов" data-i18n-aria-label='Передача агентов'></progress>
+            <div class="agent-download-row"><code id="agentDownloadUrl" hidden></code><button id="copyAgentDownloadButton" type="button" class="icon-button" title="Скопировать ссылку для игроков" aria-label="Скопировать ссылку для игроков" disabled data-i18n-title='Скопировать ссылку для игроков' data-i18n-aria-label='Скопировать ссылку для игроков'><i data-lucide="copy"></i></button><button id="agentClientUploadButton" type="button" class="button subtle"><i data-lucide="upload"></i><span data-i18n='Передать клиентский JAR'>Передать клиентский JAR</span></button></div>
+            <form id="agentPolicyForm" class="inline-setting"><label class="toggle-row"><span><strong data-i18n='Вход только с клиентским UDMC'>Вход только с клиентским UDMC</strong><small data-i18n='Если выключено, игрок получит предупреждение и ссылку, но сможет войти.'>Если выключено, игрок получит предупреждение и ссылку, но сможет войти.</small></span><input id="requireClientAgent" type="checkbox" disabled><i aria-hidden="true"></i></label><label class="field"><span data-i18n='Игровой адрес для игроков'>Игровой адрес для игроков</span><input id="gameAddressInput" maxlength="260" placeholder="play.example.com:25565" spellcheck="false" disabled><small class="muted-copy" data-i18n='После успешной проверки сборки игроки увидят кнопку «Подключиться к серверу» с этим адресом. Пустое поле скрывает кнопку.'>После успешной проверки сборки игроки увидят кнопку «Подключиться к серверу» с этим адресом. Пустое поле скрывает кнопку.</small></label><button id="agentPolicySave" type="submit" class="icon-button" title="Сохранить правило входа" aria-label="Сохранить правило входа" disabled data-i18n-title='Сохранить правило входа' data-i18n-aria-label='Сохранить правило входа'><i data-lucide="save"></i></button></form>
+            <p id="agentUpdateState" class="connection-summary" role="status"></p>
+            <button id="agentManualUpdateButton" class="text-button" type="button" hidden><i data-lucide="wrench"></i><span data-i18n='Скачать серверный JAR для ручной замены'>Скачать серверный JAR для ручной замены</span></button>
+          </section>
+          <p id="agentDeliveryEmpty" class="muted-copy" data-i18n='Подключитесь к серверу с установленным агентом UDMC, чтобы управлять раздачей и обновлением агентов.'>Подключитесь к серверу с установленным агентом UDMC, чтобы управлять раздачей и обновлением агентов.</p>
+          </div>
+        </section>
+        </div>
+        </dialog>
+        <section id="devicesView" class="view" data-view-panel="devices">
+          <div class="section-heading"><div><span class="section-kicker" data-i18n='Администраторы'>Администраторы</span><h2 data-i18n='Доступ к этому серверу'>Доступ к этому серверу</h2></div><button id="inviteDeviceButton" class="button primary" type="button" disabled><i data-lucide="user-plus"></i><span data-i18n='Пригласить'>Пригласить</span></button></div>
+          <p id="devicesStatus" class="connection-summary" role="status" data-i18n='Подключитесь к агенту.'>Подключитесь к агенту.</p>
+          <details class="field-help"><summary><i data-lucide="circle-help"></i><span data-i18n='Что видно в списке?'>Что видно в списке?</span></summary><p data-i18n='Отдельные ключи доступа приложений, не физическая проверка компьютеров. «Активен» означает запрос за последние 90 секунд. Название задаёт сам администратор. IP может принадлежать VPN или прокси; украденный ключ может выглядеть как прежнее устройство. Неожиданную активность проверьте с владельцем компьютера. Отзыв UDMC не меняет отдельный пароль RCON.'>Отдельные ключи доступа приложений, не физическая проверка компьютеров. «Активен» означает запрос за последние 90 секунд. Название задаёт сам администратор. IP может принадлежать VPN или прокси; украденный ключ может выглядеть как прежнее устройство. Неожиданную активность проверьте с владельцем компьютера. Отзыв UDMC не меняет отдельный пароль RCON.</p></details>
+          <div id="deviceList" class="device-list"></div><section id="activeInvitesSection" hidden><h2 data-i18n='Ожидают использования'>Ожидают использования</h2><div id="activeInvites"></div></section><section id="accessAuditSection" class="access-audit" hidden><h2 data-i18n='Журнал доступа'>Журнал доступа</h2><div id="accessAudit"></div></section>
+        </section>
+
+        <section id="dependenciesView" class="view" data-view-panel="dependencies">
+          <div class="section-heading"><div><span class="section-kicker" data-i18n='Windows-приложение'>Windows-приложение</span><h2 data-i18n='Встроенные компоненты'>Встроенные компоненты</h2></div><span id="dependencyAppVersion" class="state-badge neutral"></span></div>
+          <div id="bundledDependencies" class="dependency-list"></div>
+          <div class="section-heading dependency-heading"><div><span class="section-kicker" data-i18n='На сервере и компьютерах игроков'>На сервере и компьютерах игроков</span><h2 data-i18n='Игровая среда'>Игровая среда</h2></div></div>
+          <div class="dependency-list">
+            <article class="dependency-row"><i data-lucide="coffee"></i><div><strong>Java 25</strong><small data-i18n='Minecraft 26.1.2 и 26.2. Не требуется для админ-панели.'>Minecraft 26.1.2 и 26.2. Не требуется для админ-панели.</small></div><button class="icon-button" type="button" data-dependency="java25" title="Скачать Java 25 с Adoptium" aria-label="Скачать Java 25" data-i18n-title='Скачать Java 25 с Adoptium' data-i18n-aria-label='Скачать Java 25'><i data-lucide="external-link"></i></button></article>
+            <article class="dependency-row"><i data-lucide="coffee"></i><div><strong>Java 21</strong><small data-i18n='Minecraft 1.21.1. Может поставляться вместе с игровым лаунчером.'>Minecraft 1.21.1. Может поставляться вместе с игровым лаунчером.</small></div><button class="icon-button" type="button" data-dependency="java21" title="Скачать Java 21 с Adoptium" aria-label="Скачать Java 21" data-i18n-title='Скачать Java 21 с Adoptium' data-i18n-aria-label='Скачать Java 21'><i data-lucide="external-link"></i></button></article>
+            <article class="dependency-row"><i data-lucide="layers"></i><div><strong>Fabric Loader 0.19.3</strong><small data-i18n='На клиенте и сервере, с выбранной версией Minecraft.'>На клиенте и сервере, с выбранной версией Minecraft.</small></div><button class="icon-button" type="button" data-dependency="fabric" title="Открыть установщик Fabric" aria-label="Открыть установщик Fabric" data-i18n-title='Открыть установщик Fabric' data-i18n-aria-label='Открыть установщик Fabric'><i data-lucide="external-link"></i></button></article>
+            <article class="dependency-row"><i data-lucide="layers"></i><div><strong>NeoForge 21.1.248</strong><small data-i18n='Minecraft 1.21.1, Java 21. Только для проектов NeoForge.'>Minecraft 1.21.1, Java 21. Только для проектов NeoForge.</small></div><button class="icon-button" type="button" data-dependency="neoforge" title="Открыть загрузки NeoForge" aria-label="Открыть загрузки NeoForge" data-i18n-title='Открыть загрузки NeoForge' data-i18n-aria-label='Открыть загрузки NeoForge'><i data-lucide="external-link"></i></button></article>
+          </div>
+        </section>
+
+        <section id="activityView" class="view" data-view-panel="activity">
+          <section class="surface activity-surface">
+            <div class="section-heading"><div><span class="section-kicker" data-i18n='События'>События</span><h2 data-i18n='Журнал операций'>Журнал операций</h2></div><button id="clearLogButton" class="button subtle" type="button"><svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 15H6L5 6M10 11v5M14 11v5"/></svg><span data-i18n='Очистить'>Очистить</span></button></div>
+            <div id="logOutput" class="activity-list" aria-live="polite"><div class="empty-activity" data-i18n='Операций пока нет'>Операций пока нет</div></div>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <dialog id="publishDialog" class="modal"><form id="publishForm" class="modal-card"><div class="modal-icon publish" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 21h14a2 2 0 0 0 2-2v-4M3 15v4a2 2 0 0 0 2 2"/></svg></div><div class="modal-copy"><h2 data-i18n='Опубликовать сборку'>Опубликовать сборку</h2><p id="publishChangeSummary"><span id="publishFileCount">0</span> <span data-i18n='изменений станут доступны серверу и клиентам.'>изменений станут доступны серверу и клиентам.</span></p><p id="publishRestartNote" class="modal-note" hidden data-i18n='Изменяются серверные файлы. После публикации перезапустите Minecraft-сервер.'>Изменяются серверные файлы. После публикации перезапустите Minecraft-сервер.</p></div><label class="field"><span data-i18n='Новая версия'>Новая версия</span><input id="publishVersionInput" type="text" placeholder="0.1.1" required></label><div class="modal-actions"><button class="button subtle" type="button" data-close-dialog="publishDialog" data-i18n='Отмена'>Отмена</button><button class="button primary" type="submit" data-i18n='Опубликовать изменения'>Опубликовать изменения</button></div></form></dialog>
+
+    <dialog id="deleteDialog" class="modal"><form id="deleteForm" class="modal-card"><div class="modal-icon danger" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 15H6L5 6M10 11v5M14 11v5"/></svg></div><div class="modal-copy"><h2 data-i18n='Удалить из сборки'>Удалить из сборки</h2><p id="deleteFileName" class="modal-path"></p><p id="deleteDialogText" class="modal-note" data-i18n='Удаление попадёт в черновик и сработает только после публикации.'>Удаление попадёт в черновик и сработает только после публикации.</p></div><div class="modal-actions"><button class="button subtle" type="button" data-close-dialog="deleteDialog" data-i18n='Отмена'>Отмена</button><button class="button danger-solid" type="submit" data-i18n='Удалить из черновика'>Удалить из черновика</button></div></form></dialog>
+
+    <dialog id="resetDraftDialog" class="modal"><form id="resetDraftForm" class="modal-card"><div class="modal-icon warning" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></div><div class="modal-copy"><h2 data-i18n='Отменить изменения'>Отменить изменения</h2><p data-i18n='Черновик вернётся к опубликованной сборке. Добавленные файлы и настройки файлов будут забыты.'>Черновик вернётся к опубликованной сборке. Добавленные файлы и настройки файлов будут забыты.</p></div><div class="modal-actions"><button class="button subtle" type="button" data-close-dialog="resetDraftDialog" data-i18n='Назад'>Назад</button><button class="button warning" type="submit" data-i18n='Отменить все изменения'>Отменить все изменения</button></div></form></dialog>
+
+    <dialog id="powerDialog" class="modal"><form id="powerForm" class="modal-card"><div class="modal-icon warning" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2v10M18.4 6.6a9 9 0 1 1-12.8 0"/></svg></div><div class="modal-copy"><h2 id="powerDialogTitle" data-i18n='Перезапустить сервер'>Перезапустить сервер</h2><p id="powerDialogText" data-i18n='Игроки будут отключены, сервер сохранит мир и завершит работу.'>Игроки будут отключены, сервер сохранит мир и завершит работу.</p></div><label class="field"><span data-i18n='Когда выполнить'>Когда выполнить</span><select id="powerDelaySelect"><option value="0" data-i18n='Сейчас'>Сейчас</option><option value="60" data-i18n='Через 1 минуту, с отсчётом в чате'>Через 1 минуту, с отсчётом в чате</option><option value="300" data-i18n='Через 5 минут, с отсчётом в чате'>Через 5 минут, с отсчётом в чате</option></select><small class="muted-copy" data-i18n='При отсрочке игроки получат в чат отсчёт и напоминание перезапустить игру после обновления. Запланированное действие можно отменить на странице «Сервер».'>При отсрочке игроки получат в чат отсчёт и напоминание перезапустить игру после обновления. Запланированное действие можно отменить на странице «Сервер».</small></label><div class="modal-actions"><button class="button subtle" type="button" data-close-dialog="powerDialog" data-i18n='Отмена'>Отмена</button><button id="powerConfirmButton" class="button warning" type="submit" data-i18n='Перезапустить'>Перезапустить</button></div></form></dialog>
+
+    <dialog id="inviteDialog" class="modal"><div class="invite-modal"><h2 data-i18n='Приглашение администратора'>Приглашение администратора</h2><p id="inviteExpiry" class="connection-summary"></p><label class="field"><span data-i18n='Одноразовый код'>Одноразовый код</span><textarea id="inviteCode" readonly rows="4" spellcheck="false"></textarea></label><p class="connection-summary" data-i18n='Передайте код другу личным сообщением. После его заявки подтвердите устройство, сверив код проверки.'>Передайте код другу личным сообщением. После его заявки подтвердите устройство, сверив код проверки.</p><div class="modal-actions"><button class="button subtle" type="button" data-close-dialog="inviteDialog" data-i18n='Закрыть'>Закрыть</button><button id="copyInviteButton" class="button primary" type="button"><i data-lucide="copy"></i><span data-i18n='Скопировать'>Скопировать</span></button></div></div></dialog>
+    <dialog id="deviceDecisionDialog" class="modal"><form id="deviceDecisionForm" class="invite-modal"><h2 id="deviceDecisionTitle"></h2><p id="deviceDecisionText" class="connection-summary"></p><code id="deviceDecisionCode" class="verification-code"></code><label id="deviceApprovalCheck" class="check-row"><input id="deviceApprovalConfirmed" type="checkbox"><span data-i18n='Код совпадает с кодом у администратора'>Код совпадает с кодом у администратора</span></label><div class="modal-actions"><button class="button subtle" type="button" data-close-dialog="deviceDecisionDialog" data-i18n='Отмена'>Отмена</button><button id="deviceDecisionConfirm" class="button primary" type="submit" data-i18n='Подтвердить'>Подтвердить</button></div></form></dialog>
+    <dialog id="protectedSettingsDialog" class="modal protected-modal" aria-labelledby="protectedSettingsTitle" aria-describedby="protectedSettingsWarning"><form id="protectedSettingsForm" class="settings-editor" novalidate>
+      <div class="protected-editor-heading"><i data-lucide="lock-keyhole" aria-hidden="true"></i><h2 id="protectedSettingsTitle"></h2></div>
+      <p id="protectedSettingsWarning" class="protected-warning"></p>
+      <div id="protectedSettingsFields" class="form-stack"></div>
+      <label id="protectedProjectConfirmation" class="check-row" hidden><input id="protectedProjectConfirmed" type="checkbox"><span data-i18n='Понимаю, что меняю проект, а не название сборки'>Понимаю, что меняю проект, а не название сборки</span></label>
+      <p id="protectedSettingsError" class="protected-error" role="alert"></p>
+      <div class="modal-actions"><button id="protectedSettingsCancel" class="button subtle" type="button" data-i18n='Отмена'>Отмена</button><button id="protectedSettingsApply" class="button primary" type="submit"><i data-lucide="check"></i><span data-i18n='Применить'>Применить</span></button></div>
+    </form></dialog>
+    <dialog id="agentUpdateConfirmDialog" class="modal" aria-labelledby="agentUpdateConfirmTitle"><form id="agentUpdateConfirmForm" class="modal-card"><h2 id="agentUpdateConfirmTitle" data-i18n='Обновить синхронизаторы?'>Обновить синхронизаторы?</h2><p data-i18n='Будут подготовлены агенты из этой версии UDMC Control для подключённого сервера. Версия игры и загрузчик не меняются. Ключи и настройки сохранятся.'>Будут подготовлены агенты из этой версии UDMC Control для подключённого сервера. Версия игры и загрузчик не меняются. Ключи и настройки сохранятся.</p><p data-i18n='Серверный JAR заменится после остановки процесса с резервной копией. Клиентский JAR станет доступен для скачивания сразу; установленные агенты получат его при следующем запуске игры и попросят перезапуск.'>Серверный JAR заменится после остановки процесса с резервной копией. Клиентский JAR станет доступен для скачивания сразу; установленные агенты получат его при следующем запуске игры и попросят перезапуск.</p><p id="agentUpdateConfirmRestart" hidden data-i18n='Сразу после подготовки откроется окно перезапуска: там можно выбрать отсрочку, чтобы игроки увидели отсчёт в чате.'>Сразу после подготовки откроется окно перезапуска: там можно выбрать отсрочку, чтобы игроки увидели отсчёт в чате.</p><div class="modal-actions"><button type="button" class="button subtle" data-close-dialog="agentUpdateConfirmDialog" data-i18n='Отмена'>Отмена</button><button id="agentUpdateConfirmSubmit" type="submit" class="button primary" data-i18n='Подготовить обновление'>Подготовить обновление</button></div></form></dialog>
+    <div id="toastRegion" class="toast-region" aria-live="polite"></div>
+    <dialog id="bulkRemoveDialog" class="modal" aria-labelledby="bulkRemoveTitle"><form id="bulkRemoveForm" class="modal-card"><h2 id="bulkRemoveTitle">-</h2><p id="bulkRemoveText">-</p><div id="bulkRemoveList" class="bulk-remove-list"></div><div class="modal-actions"><button type="button" class="button subtle" data-close-dialog="bulkRemoveDialog" data-i18n='Отмена'>Отмена</button><button id="bulkRemoveConfirm" class="button danger-solid" type="submit" data-i18n='Удалить с сервера'>Удалить с сервера</button></div></form></dialog>
+    <dialog id="addProfileDialog" class="modal" aria-labelledby="addProfileTitle"><form id="addProfileForm" class="modal-card"><h2 id="addProfileTitle" data-i18n='Добавить сервер'>Добавить сервер</h2><label class="field"><span data-i18n='Имя в панели'>Имя в панели</span><input id="newServerProfileName" maxlength="80" required autocomplete="off"></label><div class="modal-actions"><button type="button" class="button subtle" data-close-dialog="addProfileDialog" data-i18n='Отмена'>Отмена</button><button type="submit" class="button primary" data-i18n='Добавить'>Добавить</button></div></form></dialog>
+    <dialog id="switchProfileDialog" class="modal" aria-labelledby="switchProfileTitle"><form id="switchProfileForm" class="modal-card"><h2 id="switchProfileTitle" data-i18n='Переключить сервер?'>Переключить сервер?</h2><p data-i18n='На компьютере выбраны файлы, которые ещё не добавлены в черновик. Этот выбор будет сброшен. Уже загруженный черновик сохранится на сервере.'>На компьютере выбраны файлы, которые ещё не добавлены в черновик. Этот выбор будет сброшен. Уже загруженный черновик сохранится на сервере.</p><div class="modal-actions"><button type="button" class="button subtle" data-close-dialog="switchProfileDialog" data-i18n='Остаться'>Остаться</button><button type="submit" class="button primary" data-i18n='Переключить'>Переключить</button></div></form></dialog>
+    <dialog id="languageDialog" class="modal"><form id="languageForm"><h2 data-i18n="Изменить язык?">Изменить язык?</h2><p data-i18n="На компьютере выбраны файлы, которые ещё не добавлены в черновик. Этот выбор будет сброшен. Уже загруженный черновик сохранится на сервере.">На компьютере выбраны файлы, которые ещё не добавлены в черновик. Этот выбор будет сброшен. Уже загруженный черновик сохранится на сервере.</p><div class="dialog-actions"><button type="button" class="button subtle" data-close-dialog="languageDialog" data-i18n="Отмена">Отмена</button><button type="submit" class="button primary" data-i18n="Переключить">Переключить</button></div></form></dialog>
+  </body>
+</html>

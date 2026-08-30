@@ -1,0 +1,70 @@
+name: Release
+
+# Publishing is manual on purpose: a tag alone must not ship a build that was never
+# verified on a real server. Run this workflow after the local release build passes.
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to publish, for example v0.15.0"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    name: Windows installer
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 25
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/admin-desktop/src-tauri
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: |
+          npm test
+          npm run version:check
+
+      - name: Build agent templates
+        run: npm run minecraft:build
+
+      - name: Build and publish the installer
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: apps/admin-desktop
+          tagName: ${{ github.event.inputs.tag || github.ref_name }}
+          releaseName: UDMC Control ${{ github.event.inputs.tag || github.ref_name }}
+          releaseBody: |
+            Установщик для Windows приложен ниже. Установленные копии обновятся сами.
+
+            Полный список изменений: [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md).
+          releaseDraft: true
+          prerelease: false
+          includeUpdaterJson: true

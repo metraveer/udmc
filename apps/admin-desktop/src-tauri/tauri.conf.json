@@ -1,0 +1,60 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "productName": "UDMC Control",
+  "version": "0.15.0",
+  "identifier": "dev.udmc.control",
+  "build": {
+    "beforeDevCommand": "",
+    "beforeBuildCommand": "",
+    "frontendDist": "../ui"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "label": "main",
+        "title": "UDMC Control",
+        "theme": "Dark",
+        "dragDropEnabled": false,
+        "width": 1240,
+        "height": 820,
+        "minWidth": 940,
+        "minHeight": 660,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; connect-src ipc: http://ipc.localhost http://*:* https://*:*; img-src 'self' data: https://cdn.modrinth.com https://media.forgecdn.net; style-src 'self'; script-src 'self'"
+    }
+  },
+  "plugins": {
+    "updater": {
+      "active": true,
+      "dialog": false,
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDM0RDQyMUI3NTMyNDdBNDYKUldSR2VpUlR0eUhVTkw4M2RwU0VFcy9rcUNLK25KVEZRdkQ4YnE1QXdCcFY2bXZubHZnMEE1V2sK",
+      "endpoints": [
+        "https://github.com/UDMC-PLACEHOLDER/releases/latest/download/latest.json"
+      ]
+    }
+  },
+  "bundle": {
+    "active": true,
+    "createUpdaterArtifacts": true,
+    "targets": [
+      "nsis"
+    ],
+    "windows": {
+      "allowDowngrades": false,
+      "nsis": {
+        "template": "windows/installer.nsi",
+        "installerIcon": null,
+        "installMode": "currentUser",
+        "languages": [
+          "Russian",
+          "English"
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "name": "udmc-control",
+  "version": "0.15.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "tauri": "tauri",
+    "dev": "tauri dev",
+    "build": "tauri build"
+  }
+}

@@ -1,0 +1,52 @@
+package dev.udmc.sync;
+
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.loading.FMLEnvironment;
+import net.neoforged.fml.loading.FMLPaths;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.server.ServerAboutToStartEvent;
+import net.neoforged.neoforge.event.server.ServerStartedEvent;
+import net.neoforged.neoforge.event.server.ServerStoppedEvent;
+
+@Mod(UdmcSync.MOD_ID)
+public final class NeoForgeEntrypoint {
+    private UdmcHttpApi api;
+
+    public NeoForgeEntrypoint(IEventBus modBus) {
+        UdmcSync.LOGGER.info("UDMC Sync loaded (NeoForge).");
+        // The client adapter must never be resolved on a dedicated server.
+        if (FMLEnvironment.dist == Dist.CLIENT) {
+            NeoForgeClient.register(modBus);
+        } else {
+            NeoForge.EVENT_BUS.addListener(this::starting);
+            NeoForge.EVENT_BUS.addListener(this::started);
+            NeoForge.EVENT_BUS.addListener(this::stopped);
+        }
+    }
+
+    private void starting(ServerAboutToStartEvent event) {
+        var gameDir = FMLPaths.GAMEDIR.get();
+        UdmcConfig config = UdmcConfig.load(gameDir);
+        if ("client".equals(config.role)) throw new IllegalStateException("Install the UDMC server JAR on the dedicated server.");
+        config.applyRuntimeEnvironment();
+        config.save(gameDir);
+        try {
+            ManifestStore store = new ManifestStore(gameDir, config);
+            store.syncRuntimeMetadata();
+            api = new UdmcHttpApi(gameDir, config, store);
+            api.start();
+        } catch (Exception e) {
+            if (api != null) api.stop();
+            api = null;
+            throw new IllegalStateException("Cannot start UDMC server API", e);
+        }
+    }
+
+    private void started(ServerStartedEvent event) { if (api != null) api.attachServer(event.getServer()); }
+    private void stopped(ServerStoppedEvent event) {
+        if (api != null) api.stop();
+        api = null;
+    }
+}
