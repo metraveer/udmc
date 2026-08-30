@@ -21,7 +21,7 @@
   "udmc_sync.login.missing": "Клиентский синхронизатор не установлен.",
   "udmc_sync.login.incompatible": "Клиентский синхронизатор относится к другому серверу или использует несовместимый протокол.",
   "udmc_sync.login.outdated": "Клиентский синхронизатор устарел.",
-  "udmc_sync.login.notice": "UDMC: %1$s\nСкачать и установить: %2$s",
+  "udmc_sync.login.notice": "UDMC: %1$s\n\nКак исправить:\n1. Откройте в браузере: %2$s\n2. Скачайте файл и положите его в папку mods\n3. Запустите игру и зайдите на сервер снова",
   "udmc_sync.title.confirm_disable": "Убрать файл из игры?",
   "udmc_sync.button.disable": "Убрать с копией",
   "udmc_sync.button.previous": "Предыдущий",
@@ -76,5 +76,8 @@
   "udmc_sync.diagnostic.cycle": "Циклический порядок загрузки модов: %1$s",
   "udmc_sync.diagnostic.overwrite": "Личный серверный мод будет перезаписан: %1$s",
   "udmc_sync.diagnostic.side": "%1$s назначен для %2$s, но метаданные требуют %3$s.",
-  "udmc_sync.diagnostic.inspect": "Не удалось проверить %1$s. Технические сведения: %2$s"
+  "udmc_sync.diagnostic.inspect": "Не удалось проверить %1$s. Технические сведения: %2$s",
+  "udmc_sync.button.install_page": "Открыть страницу установки",
+  "udmc_sync.button.copy_link": "Скопировать ссылку",
+  "udmc_sync.button.copied": "Ссылка скопирована"
 }

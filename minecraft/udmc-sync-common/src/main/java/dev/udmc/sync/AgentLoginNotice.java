@@ -5,7 +5,16 @@ import net.minecraft.network.chat.Component;
 
 /** A translated notice for modded clients with a bilingual fallback for clean clients. */
 public final class AgentLoginNotice {
-    private static final String CLEAN_CLIENT_FALLBACK = "UDMC: the client synchronizer is missing, incompatible, or outdated. / Клиентский синхронизатор отсутствует, несовместим или устарел.\nDownload and installation instructions / Скачать и установить: %2$s";
+    // A player without the mod has no translations for our keys, so this string carries the
+    // whole instruction in both languages. It is what most rejected players will ever read
+    // about UDMC, and on the vanilla disconnect screen the link cannot be clicked - hence
+    // the address on a line of its own, short enough to retype.
+    private static final String CLEAN_CLIENT_FALLBACK =
+        "UDMC: %1$s / Клиентскому UDMC нужна установка или обновление.\n\n"
+        + "1. Open in a browser / Откройте в браузере:\n"
+        + "%2$s\n"
+        + "2. Download the file into your mods folder / Скачайте файл в папку mods\n"
+        + "3. Start the game and join again / Запустите игру и зайдите снова";
 
     private AgentLoginNotice() {}
 

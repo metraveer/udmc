@@ -81,7 +81,7 @@ public final class AgentUpdateTest {
             var incompatible = AgentLoginProtocol.validate(new AgentLoginProtocol.Answer(1, "foreign", "test", Hashes.sha256(newer)));
             check(incompatible.reject() && incompatible.messageKey().equals("udmc_sync.login.incompatible"), "Another project is rejected with a typed reason");
             check(!missing.messageFallback().isBlank() && !outdated.messageFallback().isBlank() && !incompatible.messageFallback().isBlank(), "Login reasons require clean-client fallbacks");
-            check(AgentLoginProtocol.query().downloadUrl().endsWith("/agents/install"), "Login points to instructions");
+            check(AgentLoginProtocol.query().downloadUrl().endsWith("/udmc"), "Login points to instructions a player can retype");
             distribution.setRequired(false);
 
             fails(() -> distribution.setGameAddress("play.example/evil"));
@@ -154,6 +154,12 @@ public final class AgentUpdateTest {
             GSON.fromJson(descriptor.body(), AgentRelease.class).verify(config, "client");
             var page = http.send(java.net.http.HttpRequest.newBuilder(java.net.URI.create(base + "/agents/install")).GET().build(), java.net.http.HttpResponse.BodyHandlers.ofString());
             check(page.statusCode() == 200 && page.body().contains("mods") && !page.body().contains(config.adminToken), "Public instructions must contain no credentials");
+            // The address a rejected player retypes by hand must serve the same page, and the
+            // page has to name the file and the environment they are expected to match.
+            var shortPage = http.send(java.net.http.HttpRequest.newBuilder(java.net.URI.create(base + "/udmc")).GET().build(), java.net.http.HttpResponse.BodyHandlers.ofString());
+            check(shortPage.statusCode() == 200 && shortPage.body().equals(page.body()), "The short install address must serve the instructions");
+            check(shortPage.body().contains("udmc-sync-client.jar") && shortPage.body().contains(config.minecraftVersion)
+                && !shortPage.body().contains(config.adminToken), "Instructions must name the file and the required environment, never a credential");
             var freshForAddress = http.send(java.net.http.HttpRequest.newBuilder(java.net.URI.create(base + "/admin/files")).header("x-udmc-token", config.adminToken).GET().build(), java.net.http.HttpResponse.BodyHandlers.ofString());
             var badAddress = http.send(java.net.http.HttpRequest.newBuilder(java.net.URI.create(base + "/admin/agents/settings"))
                 .header("x-udmc-token", config.adminToken).header("x-udmc-session", "agent-test-session-1")

@@ -80,7 +80,7 @@ async function login(mode, reject, warning = false) {
       events.query = true;
       const query = proto.parsePacketBuffer("udmcQuery", packet.data).data;
       assert.equal(query.protocol, 1);
-      assert.ok(query.url.endsWith("/agents/install"));
+      assert.ok(query.url.endsWith("/udmc"));
       if (mode === "silent") return;
       const data = mode === "missing" ? undefined : proto.createPacketBuffer("udmcAnswer", {
         protocol: 1, pack: mode === "other" ? "other-project" : query.pack,
@@ -94,7 +94,7 @@ async function login(mode, reject, warning = false) {
     client.on("login", () => { events.joined = true; settle = setTimeout(() => finish(), 1200); });
     client.on("system_chat", packet => {
       const content = JSON.stringify(packet);
-      if (content.includes("/agents/install")) {
+      if (content.includes("/udmc")) {
         events.warning = true;
         assert.ok(content.includes("open_url"), "The optional-agent notice must have a clickable installation link");
       }

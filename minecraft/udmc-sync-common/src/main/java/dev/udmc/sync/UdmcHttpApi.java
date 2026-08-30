@@ -17,6 +17,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.ArrayList;
 import java.util.concurrent.CompletableFuture;
@@ -119,7 +120,9 @@ public final class UdmcHttpApi {
                 return;
             }
 
-            if ("GET".equals(method) && path.startsWith("/agents/")) {
+            // "/udmc" is the address a rejected player retypes from the disconnect screen,
+            // where the link cannot be clicked; it reaches the same public instructions.
+            if ("GET".equals(method) && (path.startsWith("/agents/") || "/udmc".equals(path))) {
                 handlePublicAgents(exchange, path);
                 return;
             }
@@ -646,17 +649,12 @@ public final class UdmcHttpApi {
             else respondJson(exchange, 200, release);
             return;
         }
-        if (path.equals("/agents/install")) {
-            String url = agents.downloadUrl().replace("&", "&amp;").replace("\"", "&quot;").replace("<", "&lt;").replace(">", "&gt;");
-            byte[] body = ("<!doctype html><html lang=\"en\"><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>UDMC</title>"
-                + "<body><main><h1>UDMC</h1><p><a href=\"" + url + "\" download=\"udmc-sync-client.jar\">Download client agent / Скачать клиентский мод</a></p>"
-                + "<ol><li>Close Minecraft.</li><li>Place udmc-sync-client.jar in the mods folder of your game profile. Replace the old UDMC client JAR, if present.</li>"
-                + "<li>Use the server's Minecraft version and loader. Start the game and wait for synchronization. Restart when requested.</li></ol>"
-                + "<ol lang=\"ru\"><li>Закройте Minecraft.</li><li>Положите udmc-sync-client.jar в папку mods вашего игрового профиля. Если там есть старый UDMC, замените его, не оставляйте два файла.</li>"
-                + "<li>Версия Minecraft и загрузчик должны совпадать с сервером. Запустите игру и дождитесь проверки. При необходимости перезапустите игру.</li></ol>"
-                + "<p>Install mods only from servers you trust. / Устанавливайте моды только с серверов, которым доверяете.</p></main></body></html>").getBytes(StandardCharsets.UTF_8);
+        // Two paths for one page: /udmc is short enough to retype from the disconnect
+        // screen, where the link cannot be clicked; /agents/install keeps older links alive.
+        if (path.equals("/udmc") || path.equals("/agents/install")) {
+            byte[] body = installPage().getBytes(StandardCharsets.UTF_8);
             exchange.getResponseHeaders().set("content-type", "text/html; charset=utf-8");
-            exchange.getResponseHeaders().set("content-security-policy", "default-src 'none'; base-uri 'none'; frame-ancestors 'none'");
+            exchange.getResponseHeaders().set("content-security-policy", "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'");
             exchange.sendResponseHeaders(200, body.length);
             exchange.getResponseBody().write(body);
             return;
@@ -860,6 +858,49 @@ public final class UdmcHttpApi {
         try (OutputStream output = exchange.getResponseBody()) {
             output.write(body);
         }
+    }
+
+    /**
+     * The page a rejected player lands on. It is the only instruction most of them will
+     * read, so it names the file, the folder and the order of steps outright, in both
+     * languages, and works on a phone screen without any external resources.
+     */
+    private String installPage() {
+        String url = escapeHtml(agents.downloadUrl());
+        String pack = escapeHtml(config.packName);
+        String loader = escapeHtml(config.loaderType.substring(0, 1).toUpperCase(Locale.ROOT) + config.loaderType.substring(1));
+        String environment = escapeHtml("Minecraft " + config.minecraftVersion + " · " + loader + " " + config.loaderVersion);
+        return "<!doctype html><html lang=\"ru\"><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
+            + "<title>UDMC - установка клиента</title><style>"
+            + "body{margin:0;padding:24px 16px;background:#16181d;color:#e6e8ec;font:16px/1.6 system-ui,Segoe UI,sans-serif}"
+            + "main{max-width:620px;margin:0 auto}h1{margin:0 0 4px;font-size:24px}"
+            + ".sub{margin:0 0 24px;color:#9aa0ab;font-size:14px}"
+            + ".get{display:inline-block;margin:0 0 28px;padding:14px 22px;border-radius:10px;background:#e0431f;color:#fff;font-weight:700;text-decoration:none}"
+            + "ol{margin:0;padding-left:22px}li{margin-bottom:14px}"
+            + "code{padding:2px 6px;border-radius:4px;background:#242832;font-size:14px}"
+            + "h2{margin:28px 0 8px;font-size:15px;color:#9aa0ab;text-transform:uppercase;letter-spacing:.06em}"
+            + ".en{color:#9aa0ab;font-size:14px}.note{margin-top:28px;padding-top:16px;border-top:1px solid #2b2f39;color:#9aa0ab;font-size:14px}"
+            + "</style><body><main>"
+            + "<h1>UDMC</h1><p class=\"sub\">" + pack + " &middot; " + environment + "</p>"
+            + "<p><a class=\"get\" href=\"" + url + "\" download=\"udmc-sync-client.jar\">Скачать мод (udmc-sync-client.jar)</a></p>"
+            + "<h2>Что делать дальше</h2><ol>"
+            + "<li>Закройте Minecraft, если он запущен.</li>"
+            + "<li>Откройте папку <code>mods</code> вашего игрового профиля. В стандартном лаунчере это <code>%appdata%\\.minecraft\\mods</code>, в сторонних - папка выбранной сборки.</li>"
+            + "<li>Положите туда скачанный файл. Если там уже лежит старый <code>udmc-sync-client.jar</code>, замените его - двух файлов быть не должно.</li>"
+            + "<li>Профиль должен быть на " + environment + ". Запустите игру и зайдите на сервер: остальные моды UDMC докачает сам.</li>"
+            + "</ol>"
+            + "<h2 lang=\"en\">In English</h2><ol class=\"en\" lang=\"en\">"
+            + "<li>Close Minecraft.</li>"
+            + "<li>Open the <code>mods</code> folder of your game profile.</li>"
+            + "<li>Put the downloaded file there, replacing any older <code>udmc-sync-client.jar</code>.</li>"
+            + "<li>The profile must run " + environment + ". Start the game and join: UDMC downloads the rest of the pack itself.</li>"
+            + "</ol>"
+            + "<p class=\"note\">Устанавливайте моды только с серверов, которым доверяете. / Install mods only from servers you trust.</p>"
+            + "</main></body></html>";
+    }
+
+    private static String escapeHtml(String value) {
+        return String.valueOf(value).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;");
     }
 
     private static double calculateTps(long averageTickNanos) {

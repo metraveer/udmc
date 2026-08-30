@@ -33,8 +33,15 @@ public final class LocalizationTest {
         var component = UdmcClientUi.component(message);
         check(component.getContents() instanceof TranslatableContents contents && contents.getKey().equals(message.key()), "Game screen must use Minecraft translations, not a preformatted literal");
         var login = AgentLoginNotice.component(new AgentLoginProtocol.Decision(false, true, "udmc_sync.login.missing",
-            en.get("udmc_sync.login.missing"), "https://127.0.0.1/agents/install"));
+            en.get("udmc_sync.login.missing"), "https://127.0.0.1/udmc"));
         check(login.getContents() instanceof TranslatableContents contents && contents.getKey().equals("udmc_sync.login.notice"), "Login notice must use a Minecraft translation with a clean-client fallback");
+        // A player without the mod reads only the fallback, on a screen where the link is not
+        // clickable: it has to spell out the steps and put the address on a line of its own.
+        var fallback = ((TranslatableContents) login.getContents()).getFallback();
+        check(fallback != null && fallback.contains("\n%2$s\n"), "The clean-client notice must give the address its own line");
+        for (var word : List.of("mods", "browser", "браузере")) {
+            check(fallback.contains(word), "The clean-client notice must say what to do: " + word);
+        }
         check(message.issue("client").get("args").equals(List.of("mods/{0}%s<test>.jar", "MOD", "LIBRARY", "[2.0,3.0)")), "HTTP parameters changed");
         check(Messages.failure(Messages.error("udmc_sync.error.hash", "mods/test.jar")).key().equals("udmc_sync.error.hash"), "Typed failure lost its translation key");
         var config = new UdmcConfig();

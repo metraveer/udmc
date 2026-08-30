@@ -32,7 +32,7 @@ final class AgentDistribution {
         result.put("requireClient", config.requireClientAgent);
         result.put("gameAddress", config.gameAddress);
         result.put("downloadUrl", downloadUrl());
-        result.put("instructionsUrl", config.serverUrl.replaceAll("/+$", "") + "/agents/install");
+        result.put("instructionsUrl", instructionsUrl());
         result.put("signed", !config.manifestPublicKey.isBlank() && !config.manifestPrivateKey.isBlank());
         result.put("clientBootstrap", clientBootstrap());
         AgentRelease release = release();
@@ -74,7 +74,8 @@ final class AgentDistribution {
     }
 
     String downloadUrl() { return config.serverUrl.replaceAll("/+$", "") + "/agents/download"; }
-    String instructionsUrl() { return config.serverUrl.replaceAll("/+$", "") + "/agents/install"; }
+    // Players retype this from a screen where links are not clickable, so it is short.
+    String instructionsUrl() { return config.serverUrl.replaceAll("/+$", "") + "/udmc"; }
 
     Path publicFile(String name) throws IOException {
         if (!name.matches("[a-f0-9]{64}\\.jar")) throw new ApiException(400, "CLIENT_AGENT_FILE_INVALID", "Invalid client agent file name.");

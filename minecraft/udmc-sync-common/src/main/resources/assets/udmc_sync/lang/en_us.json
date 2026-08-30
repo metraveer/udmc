@@ -21,7 +21,7 @@
   "udmc_sync.login.missing": "The client synchronizer is not installed.",
   "udmc_sync.login.incompatible": "The client synchronizer belongs to another server or uses an incompatible protocol.",
   "udmc_sync.login.outdated": "The client synchronizer is outdated.",
-  "udmc_sync.login.notice": "UDMC: %1$s\nDownload and installation instructions: %2$s",
+  "udmc_sync.login.notice": "UDMC: %1$s\n\nHow to fix:\n1. Open in a browser: %2$s\n2. Download the file into your mods folder\n3. Start the game and join again",
   "udmc_sync.title.confirm_disable": "Remove this file from the game?",
   "udmc_sync.button.disable": "Disable and back up",
   "udmc_sync.button.previous": "Previous",
@@ -76,5 +76,8 @@
   "udmc_sync.diagnostic.cycle": "Cyclic mod loading order: %1$s",
   "udmc_sync.diagnostic.overwrite": "A personal server mod would be overwritten: %1$s",
   "udmc_sync.diagnostic.side": "%1$s is assigned to %2$s, but its metadata requires %3$s.",
-  "udmc_sync.diagnostic.inspect": "Could not inspect %1$s. Technical details: %2$s"
+  "udmc_sync.diagnostic.inspect": "Could not inspect %1$s. Technical details: %2$s",
+  "udmc_sync.button.install_page": "Open install page",
+  "udmc_sync.button.copy_link": "Copy link",
+  "udmc_sync.button.copied": "Link copied"
 }
