@@ -18,6 +18,7 @@
     "admin:dev": "cd apps/admin-desktop && tauri dev",
     "admin:preview": "node scripts/preview-admin-ui.js",
     "admin:build": "cd apps/admin-desktop && tauri build",
+    "admin:compile": "cd apps/admin-desktop && tauri build --no-bundle",
     "admin:test": "cargo test --manifest-path apps/admin-desktop/src-tauri/Cargo.toml",
     "admin:test:instance": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-single-instance.ps1",
     "minecraft:build": "node scripts/build-minecraft-fabric.js",

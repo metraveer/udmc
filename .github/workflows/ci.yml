@@ -1,7 +1,11 @@
 name: CI
 
 on:
+  # Tags are handled by the release workflow: without this filter every release
+  # ran the whole suite twice and reported two results for one commit.
   push:
+    branches:
+      - "**"
   pull_request:
 
 permissions:
@@ -66,10 +70,10 @@ jobs:
       - run: cargo fmt --manifest-path apps/admin-desktop/src-tauri/Cargo.toml --check
       - run: cargo test --manifest-path apps/admin-desktop/src-tauri/Cargo.toml
       - run: cargo clippy --manifest-path apps/admin-desktop/src-tauri/Cargo.toml --all-targets -- -D warnings
-      - run: npm run admin:build
+      # Only the release workflow bundles and signs the installer: the signing key
+      # never reaches ordinary pushes, so CI compiles the application instead.
+      - run: npm run admin:compile
       - uses: actions/upload-artifact@v4
         with:
           name: udmc-control-windows
-          path: |
-            apps/admin-desktop/src-tauri/target/release/udmc-control.exe
-            apps/admin-desktop/src-tauri/target/release/bundle/nsis/*.exe
+          path: apps/admin-desktop/src-tauri/target/release/udmc-control.exe
