@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "productName": "UDMC Control",
-  "version": "0.16.0",
+  "version": "0.16.1",
   "identifier": "dev.udmc.control",
   "build": {
     "beforeDevCommand": "",
@@ -41,6 +41,12 @@
   "bundle": {
     "active": true,
     "createUpdaterArtifacts": true,
+    "icon": [
+      "icons/icon-32.png",
+      "icons/icon-128.png",
+      "icons/icon-256.png",
+      "icons/icon.ico"
+    ],
     "targets": [
       "nsis"
     ],
@@ -48,7 +54,7 @@
       "allowDowngrades": false,
       "nsis": {
         "template": "windows/installer.nsi",
-        "installerIcon": null,
+        "installerIcon": "icons/icon.ico",
         "installMode": "currentUser",
         "languages": [
           "Russian",

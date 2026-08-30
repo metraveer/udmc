@@ -1152,8 +1152,9 @@ function renderDashboard() {
       ? (powerWatch.sawDown ? t("Идёт перезапуск сервера: процесс завершился, ждём запуска. Обычно это занимает до пары минут.") : t("Идёт перезапуск сервера: мир сохраняется, процесс завершается..."))
       : (powerWatch.sawDown ? t("Сервер остановлен из панели. Запустите его штатным способом хостинга.") : t("Идёт остановка сервера: мир сохраняется, процесс завершается...")), null);
   }
+  const openConnection = () => { navigateTo("generator"); setAgentMode("connect"); };
   if (!serverStatus) {
-    if (!powerWatch) add("warn", "plug-zap", t("Нет подключения к серверу. Проверьте адрес и ключ в настройках сервера."), () => navigateTo("generator"));
+    if (!powerWatch) add("warn", "plug-zap", t("Нет подключения к серверу. Проверьте адрес и ключ в настройках сервера."), openConnection);
   } else {
     if (serverStatus.power?.executeAt) {
       const seconds = Math.max(0, Math.round((serverStatus.power.executeAt - Date.now()) / 1000));
@@ -1173,7 +1174,9 @@ function renderDashboard() {
         : t("Сервер работает на прежней версии сборки: перезапустите его вручную, чтобы игроки получили обновление."),
         canRestartFromPanel() ? openRestartWithDelay : null);
     }
-    const openAgents = () => { navigateTo("generator"); document.getElementById("agentDeliverySection").scrollIntoView({ block: "center" }); };
+    // Every signal opens exactly the section it is about: the dialog otherwise keeps
+    // whichever section was open last.
+    const openAgents = () => { navigateTo("generator"); setAgentMode("agents"); };
     if (agentUpdateSnapshot.pending) add("warn", "hourglass", t("Обновление агентов готово: перезапустите Minecraft-сервер, чтобы он начал работать на новой версии."),
       serverStatus.capabilities?.powerActions === true
         ? () => { document.getElementById("powerDelaySelect").value = (serverStatus.players?.online || 0) > 0 ? "60" : "0"; openPowerDialog("restart"); }
@@ -1185,7 +1188,7 @@ function renderDashboard() {
     try {
       const url = new URL(normalizedServerUrl());
       if (url.protocol === "http:" && !["127.0.0.1", "localhost", "[::1]"].includes(url.hostname)) {
-        add("warn", "shield-off", t("API работает по HTTP: трафик между панелью и сервером не шифруется."), () => navigateTo("generator"));
+        add("warn", "shield-off", t("API работает по HTTP: трафик между панелью и сервером не шифруется."), openConnection);
       }
     } catch { /* The address form is empty; the connection row already covers it. */ }
   }

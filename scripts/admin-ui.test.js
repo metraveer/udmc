@@ -726,6 +726,9 @@ test("an available agent update surfaces on the server page and opens the agents
   await until(() => [...ui.$("attentionList").querySelectorAll(".attention-row")].some(row => /на сервере 0\.5\.0, в приложении 0\.9\.0/.test(row.textContent)));
   [...ui.$("attentionList").querySelectorAll(".attention-row")].find(row => /обновление агентов/.test(row.textContent)).click();
   assert.equal(ui.$("serverProfileDialog").open, true, "The attention row must lead straight to the agents section");
+  assert.equal(ui.w.document.querySelector('[data-agent-panel="agents"]').hidden, false,
+    "The dialog opens on the agents section, not on whichever one was open last");
+  assert.equal(ui.$("agentConnectTab").getAttribute("aria-selected"), "false");
   assert.equal(ui.errors.length, 0);
 });
 
