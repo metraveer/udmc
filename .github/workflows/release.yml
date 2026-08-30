@@ -51,6 +51,11 @@ jobs:
       - name: Build agent templates
         run: npm run minecraft:build
 
+      # tauri-action calls the Tauri CLI directly and skips the repository's
+      # preadmin:build hook, so the offline UI assets are prepared explicitly here.
+      - name: Prepare offline UI assets
+        run: npm run admin:prepare
+
       - name: Build and publish the installer
         uses: tauri-apps/tauri-action@v0
         env:
