@@ -31,10 +31,17 @@ final class AgentDistribution {
         result.put("currentVersion", PlatformDefaults.get("agentVersion"));
         result.put("requireClient", config.requireClientAgent);
         result.put("gameAddress", config.gameAddress);
+        result.put("serverUrl", config.serverUrl);
         result.put("downloadUrl", downloadUrl());
         result.put("instructionsUrl", instructionsUrl());
         result.put("signed", !config.manifestPublicKey.isBlank() && !config.manifestPrivateKey.isBlank());
-        result.put("clientBootstrap", clientBootstrap());
+        result.put("packId", config.packId);
+        result.put("packName", config.packName);
+        // Which file this server needs: the panel carries one per game version and now picks
+        // by what the server actually runs instead of by settings someone typed into a form.
+        result.put("minecraftVersion", config.minecraftVersion);
+        result.put("loaderType", config.loaderType);
+        result.put("loaderVersion", config.loaderVersion);
         AgentRelease release = release();
         if (release != null) {
             Properties descriptor = release.verify(config, "client");
@@ -51,16 +58,6 @@ final class AgentDistribution {
             ));
         }
         return result;
-    }
-
-    Map<String, Object> clientBootstrap() {
-        Map<String, Object> value = new LinkedHashMap<>();
-        value.put("role", "client"); value.put("packId", config.packId); value.put("packName", config.packName);
-        value.put("serverUrl", config.serverUrl.replaceAll("/+$", ""));
-        value.put("manifestPublicKey", config.manifestPublicKey); value.put("requireSignedManifest", true);
-        value.put("allowInsecureHttp", config.allowInsecureHttp); value.put("minecraftVersion", config.minecraftVersion);
-        value.put("loaderType", config.loaderType); value.put("loaderVersion", config.loaderVersion);
-        return value;
     }
 
     AgentRelease release() throws IOException {
@@ -110,6 +107,22 @@ final class AgentDistribution {
         return describe();
     }
 
+    /**
+     * Publishes the file this server is running as the one players download. With one mod for
+     * everybody there is nothing to build and nothing to upload: what the server runs is what
+     * the player needs, so "the server hands out a version nobody has" cannot happen.
+     *
+     * <p>Quiet on failure by design. A development run has no packaged JAR to publish, and an
+     * agent that cannot offer a download is still a working agent.
+     */
+    void publishSelf() {
+        try {
+            publishClient(LoaderPlatform.agentPath());
+        } catch (Exception error) {
+            UdmcSync.LOGGER.info("UDMC is not handing out its own file: {}", error.getMessage());
+        }
+    }
+
     Map<String, Object> update(Path bundle) throws IOException {
         AgentUpdater.requireIdle(gameDir);
         Path installed = installed();
@@ -139,6 +152,30 @@ final class AgentDistribution {
         config.requireClientAgent = required;
         try { config.save(gameDir); }
         catch (RuntimeException error) { config.requireClientAgent = previous; throw error; }
+    }
+
+    /**
+     * The address players reach this server's files at. It used to be baked into every client
+     * JAR, which is why changing it meant reissuing them; now the server simply tells joining
+     * clients where to look, and this is what it tells them.
+     *
+     * <p>A server cannot know its own public address, so a person has to say. The panel sends
+     * the address it just used to reach the server, which is the one that demonstrably works.
+     */
+    void setServerUrl(String address) throws IOException {
+        String normalized = address == null ? "" : address.trim().replaceAll("/+$", "");
+        java.net.URI uri;
+        try { uri = new java.net.URI(normalized); } catch (Exception error) { uri = null; }
+        if (uri == null || uri.getHost() == null || uri.getUserInfo() != null
+            || uri.getQuery() != null || uri.getFragment() != null
+            || !("https".equals(uri.getScheme()) || "http".equals(uri.getScheme()))
+            || normalized.length() > 2000) {
+            throw new ApiException(400, "SERVER_URL_INVALID", "Enter the address players reach this server at, as http:// or https:// without credentials.");
+        }
+        String previous = config.serverUrl;
+        config.serverUrl = normalized;
+        try { config.save(gameDir); }
+        catch (RuntimeException error) { config.serverUrl = previous; throw error; }
     }
 
     void setGameAddress(String address) throws IOException {

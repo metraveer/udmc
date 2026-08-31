@@ -15,7 +15,6 @@ final class NeoForgeClient {
         event.enqueueWork(() -> {
             var directory = FMLPaths.GAMEDIR.get();
             UdmcConfig config = UdmcConfig.load(directory);
-            if ("server".equals(config.role)) throw new IllegalStateException("Install the UDMC client JAR here, not the secret server JAR.");
             config.applyRuntimeEnvironment();
             AgentLoginProtocol.configureClient(config);
             if (config.clientSyncOnStart && config.serverUrl != null && !config.serverUrl.isBlank()) UdmcClientUi.start(directory, config);

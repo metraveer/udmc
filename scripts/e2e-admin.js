@@ -39,7 +39,7 @@ try { await api("/admin/workspace/release", { method: "POST", body: {} }); } cat
 {
   const agents = await api("/admin/agents");
   console.log(JSON.stringify({
-    проект: agents.clientBootstrap?.packId, версияАгента: agents.currentVersion,
+    проект: agents.packId, версияАгента: agents.currentVersion,
     раздаётсяКлиент: agents.client?.version || null, требоватьКлиент: agents.requireClient,
     ссылка: agents.downloadUrl,
   }, null, 1));

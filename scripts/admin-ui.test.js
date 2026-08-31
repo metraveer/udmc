@@ -8,7 +8,6 @@ test("the complete admin UI boots with native catalog and a connected server", a
   const ui = await createAdmin(t);
   assert.equal(ui.$("statusBadge").textContent, "Сервер доступен");
   assert.equal(ui.$("generatorMinecraft").options.length, 3);
-  assert.equal(ui.$("generatorPackId").value, "udmc-main");
   assert.ok([...ui.w.document.querySelectorAll("[data-protected-setting]")].every(e => e.disabled || e.readOnly));
   assert.equal(ui.errors.length, 0);
 });
@@ -50,7 +49,7 @@ test("a pending server command blocks duplicate commands and language changes", 
 
 test("agent update confirmations cannot survive a changed server release", async t => {
   let value = { protocol: 1, currentVersion: "0.3.0", signed: true, canUpdate: true, client: { version: "0.3.0", sequence: 1 },
-    clientBootstrap: { role: "client", packId: "test" }, downloadUrl: "https://agent.test/agents/download", update: { state: "idle" } };
+    packId: "test", minecraftVersion: "26.2", loaderType: "fabric", loaderVersion: "0.19.3", downloadUrl: "https://agent.test/agents/download", update: { state: "idle" } };
   const ui = await createAdmin(t, { fetch: ({ url }) => {
     if (url.pathname === "/admin/status") return response({ state: "online", agentProtocol: 1, capabilities: {} });
     if (url.pathname === "/admin/agents") return response(value);
@@ -67,7 +66,7 @@ test("agent update confirmations cannot survive a changed server release", async
 
 test("the game address renders from the agent, saves through settings and shows a typed rejection", async t => {
   let value = { protocol: 1, currentVersion: "0.3.0", signed: true, canUpdate: true, requireClient: false, gameAddress: "play.old.example",
-    clientBootstrap: { role: "client", packId: "test" }, downloadUrl: "https://agent.test/agents/download", update: { state: "idle" },
+    packId: "test", minecraftVersion: "26.2", loaderType: "fabric", loaderVersion: "0.19.3", downloadUrl: "https://agent.test/agents/download", update: { state: "idle" },
     client: { version: "0.3.0", sequence: 1 } };
   const settingsBodies = [];
   const ui = await createAdmin(t, { fetch: ({ url, options }) => {
@@ -104,7 +103,7 @@ test("the game address renders from the agent, saves through settings and shows 
 
 test("connecting automatically delivers only the public client agent and requires confirmation for updates", async t => {
   let value = { protocol: 1, currentVersion: "0.3.0", signed: true, canUpdate: true, requireClient: false,
-    clientBootstrap: { role: "client", packId: "test" }, downloadUrl: "https://agent.test/agents/download", update: { state: "idle" } };
+    packId: "test", minecraftVersion: "26.2", loaderType: "fabric", loaderVersion: "0.19.3", downloadUrl: "https://agent.test/agents/download", update: { state: "idle" } };
   const ui = await createAdmin(t, {
     native: (name) => name === "prepare_agent_package" ? { bytes: Buffer.from("fixture-agent").toString("base64"), size: 13 } : undefined,
     fetch: ({ url, options }) => {
@@ -127,35 +126,6 @@ test("connecting automatically delivers only the public client agent and require
   await until(() => ui.$("agentUpdateState").textContent.includes("0.4.0"));
   assert.equal(ui.$("agentUpdateButton").disabled, true);
   assert.equal(ui.invocations.filter(r => r.name === "prepare_agent_package")[1].args.update, true);
-});
-
-test("project edits require confirmation and cancel preserves the saved ID", async t => {
-  const ui = await createAdmin(t);
-  ui.edit("project"); ui.input("edit-generatorPackId", "another-project");
-  assert.equal(ui.$("generatorPackId").value, "udmc-main");
-  assert.equal(ui.$("protectedSettingsApply").disabled, true);
-  ui.click("protectedSettingsCancel");
-  await until(() => !ui.$("edit-generatorPackId"));
-  assert.equal(ui.$("generatorPackId").value, "udmc-main");
-  ui.edit("project"); ui.input("edit-generatorPackId", "another-project");
-  ui.click("protectedProjectConfirmed"); ui.submit("protectedSettingsForm");
-  await until(() => !ui.$("protectedSettingsDialog").open);
-  assert.equal(ui.$("generatorPackId").value, "another-project");
-  assert.equal(ui.$("generatorPackId").readOnly, true);
-  const reopened = await createAdmin(t, { storage: ui.saved() });
-  assert.equal(reopened.$("generatorPackId").value, "another-project");
-  assert.equal(reopened.$("generatorPackId").readOnly, true);
-});
-
-test("project confirmation resets on further edits and invalid IDs never apply", async t => {
-  const ui = await createAdmin(t);
-  ui.edit("project"); ui.input("edit-generatorPackId", "another"); ui.click("protectedProjectConfirmed");
-  ui.input("edit-generatorPackId", "../bad");
-  assert.equal(ui.$("protectedProjectConfirmed").checked, false);
-  ui.click("protectedProjectConfirmed"); ui.submit("protectedSettingsForm");
-  await until(() => ui.$("protectedSettingsError").textContent);
-  assert.equal(ui.$("generatorPackId").value, "udmc-main");
-  assert.equal(ui.$("protectedSettingsDialog").open, true);
 });
 
 test("credential write errors preserve current connection and allow retry", async t => {
@@ -232,14 +202,17 @@ test("NeoForge selection survives restart and generates the correct template for
   ui.submit("protectedSettingsForm"); await until(() => !ui.$("protectedSettingsDialog").open);
   assert.equal(ui.$("generatorLoader").value, "neoforge");
   assert.equal(ui.$("generatorLoaderVersion").value, "21.1.248");
-  const reopened = await createAdmin(t, { storage: ui.saved(), native: name => name === "generate_agents" ? null : undefined });
+  const reopened = await createAdmin(t, { storage: ui.saved(), native: name => name === "save_agent" ? null : undefined });
   assert.equal(reopened.$("generatorLoader").value, "neoforge");
   assert.equal(reopened.$("generatorMinecraft").value, "1.21.1");
-  reopened.submit("generatorForm"); await until(() => reopened.invocations.some(c => c.name === "generate_agents"));
-  const request = reopened.invocations.find(c => c.name === "generate_agents").args.request;
+  reopened.submit("generatorForm"); await until(() => reopened.invocations.some(c => c.name === "save_agent"));
+  const request = reopened.invocations.find(c => c.name === "save_agent").args.request;
   assert.equal(request.templateId, "neoforge-1.21.1");
   assert.equal(request.loaderVersion, "21.1.248");
-  await until(() => !reopened.$("prepareIdentityButton").disabled);
+  // Nothing about a project travels with it: the file is the same for every server.
+  assert.deepEqual(Object.keys(request).sort(), ["loaderVersion", "templateId"]);
+  // The dialog only opens once saving has finished releasing the form.
+  await until(() => !reopened.$("generateAgentsButton").disabled);
   reopened.edit("platform"); reopened.input("edit-generatorLoader", "fabric");
   assert.equal(reopened.$("edit-generatorMinecraft").value, "1.21.1");
   assert.equal(reopened.$("edit-generatorLoaderVersion").value, "0.19.3");
@@ -248,7 +221,7 @@ test("NeoForge selection survives restart and generates the correct template for
 });
 
 test("old Fabric settings without a loader remain Fabric", async t => {
-  const ui = await createAdmin(t, { storage: { "udmc-generator-settings": JSON.stringify({ generatorMinecraft: "1.21.1", generatorPackId: "udmc-main" }) } });
+  const ui = await createAdmin(t, { storage: { "udmc-generator-settings": JSON.stringify({ generatorMinecraft: "1.21.1" }) } });
   assert.equal(ui.$("generatorLoader").value, "fabric");
   assert.equal(ui.$("generatorMinecraft").value, "1.21.1");
 });
@@ -555,7 +528,7 @@ test("a different server profile never restores the legacy server's credentials 
   const ui = await createAdmin(t, { storage: {
     "udmc-server-profiles-v1": JSON.stringify({ active: id, profiles: [{ id: "legacy", name: "Old" }, { id, name: "New" }] }),
     "udmc-control-server-url": "https://old.test/",
-    "udmc-generator-settings": JSON.stringify({ generatorPackId: "old-project" }),
+    "udmc-generator-settings": JSON.stringify({ generatorMinecraft: "1.21.1" }),
     [`udmc-profile:${id}:udmc-control-server-url`]: "https://new.test/"
   }, secrets: {
     "admin-connection": JSON.stringify({ url: "https://old.test/", token: "old-secret" }),
@@ -563,7 +536,6 @@ test("a different server profile never restores the legacy server's credentials 
   } });
   assert.equal(ui.$("serverUrlInput").value, "https://new.test/");
   assert.equal(ui.$("tokenInput").value, "new-secret");
-  assert.notEqual(ui.$("generatorPackId").value, "old-project");
   assert.equal(ui.$("serverProfileSelect").value, id);
   assert.ok(ui.invocations.filter(i => i.name === "credential_read").every(i => i.args.name.startsWith(`profile:${id}:`)));
   assert.ok(ui.requests.every(r => r.url.hostname !== "old.test"));
@@ -747,7 +719,7 @@ test("an available agent update surfaces on the server page and opens the agents
 });
 
 test("update-and-restart stages the update then opens the restart dialog, and greys out without power rights", async t => {
-  const agents = { currentVersion: "0.5.0", canUpdate: true, signed: true, clientBootstrap: { role: "client" },
+  const agents = { currentVersion: "0.5.0", canUpdate: true, signed: true, packId: "test", minecraftVersion: "26.2", loaderType: "fabric", loaderVersion: "0.19.3",
     client: { version: "0.5.0" }, downloadUrl: "http://agent.test/agents/download", requireClient: true, gameAddress: "" };
   // A modern agent swaps the jar in place and reports "applied" instead of "waiting":
   // both outcomes are a successful delivery that still needs a restart.

@@ -21,11 +21,12 @@ public final class FabricAgentPackageTest {
         var config = new UdmcConfig();
         var root = Files.createTempDirectory("udmc-fabric-package-");
         try {
+            // The very same file on both sides: that is the whole point of one mod for everybody.
             AgentPackages.validate(template, config, false);
-            var bootstrap = new LinkedHashMap<>(new AgentDistribution(root, config).clientBootstrap());
-            bootstrap.put("bootstrapId", "a".repeat(64));
-            Path client = copy(template, root.resolve("client.jar"), Map.of("udmc-bootstrap.json", new Gson().toJson(bootstrap).getBytes(StandardCharsets.UTF_8)));
-            AgentPackages.validate(client, config, true);
+            AgentPackages.validate(template, config, true);
+            // A file with settings baked in is one from before that, and those carried secrets.
+            var baked = new LinkedHashMap<String, Object>(Map.of("packId", "udmc-main", "bootstrapId", "a".repeat(64)));
+            rejects(copy(template, root.resolve("personalised.jar"), Map.of("udmc-bootstrap.json", new Gson().toJson(baked).getBytes(StandardCharsets.UTF_8))), config);
             JsonObject metadata;
             Properties platform = new Properties();
             try (var zip = new ZipFile(template.toFile())) {
@@ -58,8 +59,10 @@ public final class FabricAgentPackageTest {
 
     private static byte[] json(JsonObject value) { return value.toString().getBytes(StandardCharsets.UTF_8); }
     private static void rejects(Path path, UdmcConfig config) throws Exception {
+        // Both shapes of refusal count: malformed metadata reads as an IOException, while a
+        // rule with something to tell the administrator carries a code and an explanation.
         try { AgentPackages.validate(path, config, false); }
-        catch (IOException expected) { return; }
+        catch (IOException | ApiException expected) { return; }
         throw new AssertionError("Invalid agent accepted: " + path.getFileName());
     }
     private static Path copy(Path source, Path target, Map<String, byte[]> changes) throws IOException {

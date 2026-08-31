@@ -21,31 +21,27 @@ public final class AgentUpdateTest {
 
     public static void main(String[] args) throws Exception {
         if (args.length == 2 && args[0].equals("child")) { child(Path.of(args[1])); return; }
-        if (args.length == 2 && args[0].equals("generation")) {
-            Path installed = Path.of(args[1]);
-            UdmcConfig loaded = UdmcConfig.load(installed);
-            check(loaded.bootstrapId.equals("a".repeat(64)), "A newer JAR must replace the stored generation");
-            check(loaded.fromBootstrap, "A generated JAR must mark its settings as coming from Control");
-            check(UdmcConfig.load(installed).bootstrapId.equals("a".repeat(64)), "The rewritten config must survive on disk");
-            Files.writeString(installed.resolve("loaded-project.txt"), loaded.packId);
-            return;
-        }
         Path root = Files.createTempDirectory("udmc-agent-update-test-");
         try {
             UdmcConfig config = config();
             Path client = jar(root.resolve("client.jar"), config, true, "one", Map.of());
             Path server = jar(root.resolve("server.jar"), config, false, "one", Map.of());
-            check(AgentPackages.validate(client, config, true).equals(PlatformDefaults.get("agentVersion")), "Client must validate");
+            // The same file passes for both sides, which is what one mod for everybody means.
+            // It used to be two files told apart by the settings baked into the client one.
+            check(AgentPackages.validate(client, config, true).equals(PlatformDefaults.get("agentVersion")), "The mod must validate for players");
+            AgentPackages.validate(client, config, false);
+            AgentPackages.validate(server, config, true);
             AgentPackages.validate(server, config, false);
-            fails(() -> AgentPackages.validate(client, config, false));
-            fails(() -> AgentPackages.validate(server, config, true));
+            // One mod serves everybody, so a file with settings baked into it can only be an
+            // older personalised one - and those carried the project's admin token and signing
+            // key. Refused on sight, whatever the settings happen to say.
             Path secret = jar(root.resolve("secret.jar"), config, true, "one", Map.of("adminToken", "private"));
             fails(() -> AgentPackages.validate(secret, config, true));
-            Path foreign = jar(root.resolve("foreign.jar"), config, true, "one", Map.of("packId", "another"));
-            fails(() -> AgentPackages.validate(foreign, config, true));
-            Path wrongKey = jar(root.resolve("key.jar"), config, true, "one", Map.of("manifestPublicKey", config().manifestPublicKey));
-            fails(() -> AgentPackages.validate(wrongKey, config, true));
-            Path wrongPlatform = jar(root.resolve("platform.jar"), config, true, "one", Map.of("minecraftVersion", "wrong"));
+            Path harmlessLeftover = jar(root.resolve("leftover.jar"), config, true, "one", Map.of("packId", "another"));
+            fails(() -> AgentPackages.validate(harmlessLeftover, config, true));
+            UdmcConfig otherPlatform = config();
+            otherPlatform.minecraftVersion = "0.0.0-not-a-version";
+            Path wrongPlatform = jar(root.resolve("platform.jar"), otherPlatform, true, "one", Map.of());
             fails(() -> AgentPackages.validate(wrongPlatform, config, true));
             var release = AgentRelease.sign(client, "client", PlatformDefaults.get("agentVersion"), 1, config);
             release.verify(config, "client");
@@ -124,7 +120,6 @@ public final class AgentUpdateTest {
             replacement(root.resolve("tampered"), true, false);
             replacement(root.resolve("changed-original"), false, true);
             childProcess(root.resolve("process"));
-            bootstrapRewrite(root.resolve("generation"));
             System.out.println("Agent update checks passed: signed releases, secret/platform/role rejection, idempotent delivery, login policy, post-exit replacement, backup, tampering and stale original protection.");
         } finally {
             TestMods.deleteTree(root);
@@ -204,54 +199,15 @@ public final class AgentUpdateTest {
                 .header("x-udmc-token", config.adminToken).header("x-udmc-session", "agent-test-session-1")
                 .header("x-udmc-revision", goodAddress.headers().firstValue("x-udmc-revision").orElseThrow())
                 .POST(java.net.http.HttpRequest.BodyPublishers.ofFile(secret)).build(), java.net.http.HttpResponse.BodyHandlers.ofString());
-            check(invalid.statusCode() == 400 && GSON.fromJson(invalid.body(), com.google.gson.JsonObject.class).get("code").getAsString().equals("AGENT_BOOTSTRAP_MISMATCH"),
-                "Secret-bearing archive must be rejected with an actionable HTTP error: " + invalid.body());
+            check(invalid.statusCode() == 400 && GSON.fromJson(invalid.body(), com.google.gson.JsonObject.class).get("code").getAsString().equals("AGENT_BOOTSTRAP_FORBIDDEN"),
+                "A personalised archive must be rejected with an actionable HTTP error: " + invalid.body());
             check(new AgentDistribution(root, config).release().verify(config, "client").getProperty("sha256").equals(Hashes.sha256(client)), "Failed delivery preserves the public client");
         } finally { api.stop(); }
     }
 
-    /**
-     * The first launch after a player installs a freshly generated client JAR: the stored
-     * config belongs to an earlier generation and has to be rewritten. Windows refuses to
-     * replace a file that still has an open handle, so reading and rewriting it in one
-     * breath crashed the game on startup - and only on the machines players actually use.
-     */
-    private static void bootstrapRewrite(Path root) throws Exception {
-        Files.createDirectories(root.resolve("config"));
-        Path installed = jar(root.resolve("installed-client.jar"), config(), true, "one", Map.of());
-        UdmcConfig stored;
-        try (var zip = new ZipFile(installed.toFile());
-             var reader = new java.io.InputStreamReader(zip.getInputStream(zip.getEntry("udmc-bootstrap.json")), StandardCharsets.UTF_8)) {
-            stored = GSON.fromJson(reader, UdmcConfig.class);
-        }
-        stored.bootstrapId = "b".repeat(64);
-        stored.save(root);
-        Process child = new ProcessBuilder(java(), "-Xmx96m", "-cp",
-                installed + java.io.File.pathSeparator + System.getProperty("java.class.path"),
-                AgentUpdateTest.class.getName(), "generation", root.toString())
-            .redirectErrorStream(true).redirectOutput(root.resolve("generation.log").toFile()).start();
-        check(child.waitFor(60, TimeUnit.SECONDS) && child.exitValue() == 0,
-            "A newer client JAR must rewrite the installed config: " + Files.readString(root.resolve("generation.log")));
-
-        // The case an administrator actually hits: a client that was pointed at a test
-        // project keeps its old config, the player drops in the real JAR, and nothing tells
-        // either of them that the client still answers for a project nobody serves.
-        UdmcConfig leftover = config();
-        leftover.role = "client";
-        leftover.packId = "an-abandoned-test";
-        leftover.bootstrapId = "c".repeat(64);
-        leftover.save(root);
-        Files.deleteIfExists(root.resolve("loaded-project.txt"));
-        Process again = new ProcessBuilder(java(), "-Xmx96m", "-cp",
-                installed + java.io.File.pathSeparator + System.getProperty("java.class.path"),
-                AgentUpdateTest.class.getName(), "generation", root.toString())
-            .redirectErrorStream(true).redirectOutput(root.resolve("foreign.log").toFile()).start();
-        check(again.waitFor(60, TimeUnit.SECONDS) && again.exitValue() == 0,
-            "The installed JAR must take over from another project instead of failing: " + Files.readString(root.resolve("foreign.log")));
-        check(Files.readString(root.resolve("loaded-project.txt")).equals(stored.packId),
-            "The client must adopt the project of the JAR that was installed");
-        check(Files.exists(root.resolve("config/udmc-sync-previous.json")),
-            "The replaced settings must be kept beside the new ones");
+    private static String childLog(Path root) {
+        try { return Files.readString(root.resolve("child.log")).replace("\n", " / "); }
+        catch (Exception error) { return "no log"; }
     }
 
     private static void childProcess(Path root) throws Exception {
@@ -285,9 +241,12 @@ public final class AgentUpdateTest {
         }
         ProcessHandle helper = null;
         try {
-            await(() -> Files.exists(result) && AgentUpdateHelper.read(result).getProperty("state").equals("waiting"), 15000);
-            var task = AgentUpdateHelper.read(root.resolve("udmc-sync/agent-update/task.properties"));
-            helper = ProcessHandle.of(Long.parseLong(task.getProperty("helperPid"))).orElseThrow();
+            // Whatever goes wrong here, it went wrong in the child. Its log is the only place
+            // that says why, and it is deleted with the fixture, so it travels with the failure.
+            try { await(() -> Files.exists(result) && AgentUpdateHelper.read(result).getProperty("state").equals("waiting"), 15000); }
+            catch (AssertionError error) { throw new AssertionError(error.getMessage() + " | child: " + childLog(root), error); }
+            var record = AgentUpdateHelper.read(root.resolve("udmc-sync/agent-update/helper.properties"));
+            helper = ProcessHandle.of(Long.parseLong(record.getProperty("helperPid"))).orElseThrow();
             check(Hashes.sha256(root.resolve("mods/agent.jar")).equals(old), "Running JVM must keep its original JAR");
             fails(() -> AgentUpdater.requireIdle(root));
             Files.writeString(root.resolve("exit"), "exit");
@@ -313,15 +272,18 @@ public final class AgentUpdateTest {
 
     static Path jar(Path path, UdmcConfig config, boolean client, String content, Map<String, Object> extra) throws Exception {
         try (var zip = new ZipOutputStream(Files.newOutputStream(path))) {
-            if (LoaderPlatform.TYPE.equals("fabric")) entry(zip, "fabric.mod.json", GSON.toJson(Map.of("schemaVersion", 1, "id", "udmc_sync", "version", PlatformDefaults.get("agentVersion"), "environment", client ? "client" : "server")).getBytes(StandardCharsets.UTF_8));
+            // "*" like the real template: one file, loaded on whichever side it lands on.
+            if (LoaderPlatform.TYPE.equals("fabric")) entry(zip, "fabric.mod.json", GSON.toJson(Map.of("schemaVersion", 1, "id", "udmc_sync", "version", PlatformDefaults.get("agentVersion"), "environment", "*")).getBytes(StandardCharsets.UTF_8));
             else entry(zip, "META-INF/neoforge.mods.toml", ("modLoader=\"javafml\"\nloaderVersion=\"[4,)\"\nlicense=\"test\"\n[[mods]]\nmodId=\"udmc_sync\"\nversion=\"" + PlatformDefaults.get("agentVersion") + "\"\n").getBytes(StandardCharsets.UTF_8));
             entry(zip, "udmc-platform.properties", ("minecraft=" + config.minecraftVersion + "\nloader=" + config.loaderType + "\nagentVersion=" + PlatformDefaults.get("agentVersion") + "\n").getBytes(StandardCharsets.UTF_8));
             String helper = "dev/udmc/sync/update/AgentUpdateHelper.class";
             try (var input = AgentUpdateHelper.class.getResourceAsStream("/" + helper)) { entry(zip, helper, input.readAllBytes()); }
             entry(zip, "test-content.txt", content.getBytes(StandardCharsets.UTF_8));
-            if (client) {
-                var bootstrap = new java.util.LinkedHashMap<>(new AgentDistribution(path.getParent(), config).clientBootstrap());
-                bootstrap.put("bootstrapId", "a".repeat(64)); bootstrap.putAll(extra);
+            // Settings baked into the file are what the current mod never has; a case that
+            // passes some is asking for a file from before that, to prove it is turned down.
+            if (!extra.isEmpty()) {
+                var bootstrap = new java.util.LinkedHashMap<String, Object>(extra);
+                bootstrap.put("bootstrapId", "a".repeat(64));
                 entry(zip, "udmc-bootstrap.json", GSON.toJson(bootstrap).getBytes(StandardCharsets.UTF_8));
             }
         }
@@ -330,7 +292,7 @@ public final class AgentUpdateTest {
 
     private static UdmcConfig config() throws Exception {
         var key = KeyPairGenerator.getInstance("Ed25519").generateKeyPair();
-        UdmcConfig result = new UdmcConfig(); result.role = "server"; result.adminToken = "agent-test-only-not-a-real-token";
+        UdmcConfig result = new UdmcConfig(); result.adminToken = "agent-test-only-not-a-real-token";
         result.manifestPrivateKey = Base64.getEncoder().encodeToString(key.getPrivate().getEncoded());
         result.manifestPublicKey = Base64.getEncoder().encodeToString(key.getPublic().getEncoded()); result.requireSignedManifest = true;
         result.serverUrl = "https://example.test/udmc";

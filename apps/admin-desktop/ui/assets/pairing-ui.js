@@ -12,7 +12,7 @@ const API_PORT = /API port (\d{1,5})\b/;
  * panel read the code itself. Nothing here is generated locally: the project already exists on
  * the server, and pairing only decides which panel gets to manage it.
  */
-export function initPairing({ getConnection, onPaired, showToast, getBusy, setBusy }) {
+export function initPairing({ getConnection, onPaired, showToast, getBusy, setBusy, addressChosen = () => true }) {
   const form = $("pairForm");
   const inputs = () => form.querySelectorAll("input,button");
   let busy = false;
@@ -128,6 +128,9 @@ export function initPairing({ getConnection, onPaired, showToast, getBusy, setBu
         const host = new URL(address()).hostname;
         if (!$("pairRconHost").value.trim()) $("pairRconHost").value = host;
       } catch { /* The address is validated where it is entered. */ }
+      // A panel that has never been pointed at a server has only a placeholder address, and
+      // reaching out to whatever that happens to be is not this program's business.
+      if (!addressChosen()) { badge(t("Адрес не задан"), "neutral"); return; }
       await check();
     }
   };

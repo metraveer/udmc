@@ -114,7 +114,6 @@ restoreConnection();
 restoreRconSettings();
 if (packNameDirty) {
   document.getElementById("packNameInput").value = rememberedUi.packName;
-  document.getElementById("generatorPackNameLabel").textContent = rememberedUi.packName;
 }
 if (powerSettingsDirty) elements.powerActionsInput.checked = rememberedUi.powerDraft;
 elements.fileSearchInput.value = rememberedUi.fileSearch;
@@ -150,28 +149,36 @@ agentUpdates = initAgentUpdates({ getContext: () => serverStatus, getBinding: ()
   getRevision: () => workspaceAccess.revision(),
   getBusy: () => buildBusy || protectedSettings?.isEditing(), setBusy: setBuildBusy,
   adminGet, adminJson, adminRaw, invoke: profileInvoke, showToast,
+  getTemplates: () => generatorUi.templates(),
   onState: state => { agentUpdateSnapshot = state; renderDashboard(); },
   requestRestart: () => {
     // Players online get the announced delay preselected, an empty server restarts at once.
     document.getElementById("powerDelaySelect").value = (serverStatus?.players?.online || 0) > 0 ? "60" : "0";
     openPowerDialog("restart");
   } });
-const generatorUi = initGenerator({ navigateTo, showToast, getConnection, onConnection: adoptConnection,
+const generatorUi = initGenerator({ navigateTo, showToast,
   getBusy: () => buildBusy || protectedSettings?.isEditing(), setBusy: setBuildBusy,
   onFieldsChanged: () => protectedSettings?.syncLocks() });
 pairingUi = initPairing({ getConnection, showToast,
+  addressChosen: () => Boolean(localStorage.getItem(STORAGE_KEYS.serverUrl) || localStorage.getItem("udm-admin-server-url")),
   getBusy: () => buildBusy || protectedSettings?.isEditing(), setBusy: setBuildBusy,
   // The server made the project and now hands over the key to it: adopt it like any connection.
-  onPaired: project => adoptConnection(normalizedServerUrl(), project.adminToken,
-    document.getElementById("allowHttpConnection").checked) });
+  onPaired: async project => {
+    const url = normalizedServerUrl();
+    await adoptConnection(url, project.adminToken, document.getElementById("allowHttpConnection").checked);
+    await refresh();
+    // A server cannot work out its own public address, and players are told it by the server
+    // when they join. This is the address that demonstrably reached it a moment ago.
+    try { await adminJson("/admin/agents/settings", { serverUrl: url }); }
+    catch (error) { showToast(formatAppError(error), "error"); }
+  } });
 accessUi = initAccess({ getConnection, setConnection: adoptConnection,
   replaceToken: async token => { elements.tokenInput.value = token; await saveConnection(); },
   getBusy: () => buildBusy || protectedSettings?.isEditing(), setBusy: setBuildBusy, navigateTo, showToast, refresh,
   onRole: identity => {
     accessRole = identity?.role || null;
     accessIdentityId = identity?.id || null;
-    document.getElementById("agentCreateTab").disabled = buildBusy || accessRole === "admin";
-    if (accessRole === "admin" && !document.querySelector('[data-agent-panel="create"]').hidden) setAgentMode("connect");
+    document.getElementById("agentCreateTab").disabled = buildBusy;
     protectedSettings?.syncLocks();
   }
 });
@@ -215,10 +222,11 @@ protectedSettings = initProtectedSettings({
   getBusy: () => buildBusy || rconState.status === "checking",
   getBinding: () => JSON.stringify([connectionRevision, elements.tokenInput.value]),
   getContext: () => ({ serverUrl: elements.serverUrlInput.value, templates: generatorUi.templates() }),
-  canEdit: group => (!["project", "platform", "network"].includes(group) || accessRole !== "admin") && (group !== "platform" || generatorUi.templates().length > 0),
+  canEdit: group => (group !== "platform" || (accessRole !== "admin" && generatorUi.templates().length > 0)),
   onApply: applyProtectedSettings, showToast
 });
-setAgentMode(elements.tokenInput.value ? "connect" : "create");
+// A panel with no key has a server to claim, not a file to build: pairing is the way in.
+setAgentMode(elements.tokenInput.value ? "connect" : "pair");
 await accessUi.ready;
 refresh();
 window.setInterval(() => {
@@ -366,7 +374,6 @@ function navigateTo(viewName) {
 }
 
 function setAgentMode(mode) {
-  if (mode === "create" && accessRole === "admin") { showToast(t("Клиентские и серверные JAR формирует владелец проекта."), "error"); return; }
   document.querySelectorAll("[data-agent-panel]").forEach(panel => { panel.hidden = panel.dataset.agentPanel !== mode; });
   if (mode === "pair") pairingUi?.show().catch(handleError);
   document.querySelectorAll("[data-agent-mode]").forEach(button => {
@@ -533,7 +540,6 @@ async function savePackName(event) {
     if (manifest) await adminJson("/admin/settings", { packName: name });
     packNameDirty = false;
     localStorage.setItem("udmc-pack-name", name);
-    document.getElementById("generatorPackNameLabel").textContent = name;
     if (manifest) await refresh({ silent: true });
     showToast(manifest ? t("Название сборки сохранено") : t("Название сохранено для создания JAR"));
   } catch (error) { handleError(error); } finally { setBuildBusy(false); }
@@ -585,14 +591,12 @@ async function applyProtectedSettings(group, values) {
     generatorUi.persistSettings();
     updateServerLabel();
   } else if (group === "token") elements.tokenInput.dispatchEvent(new Event("input"));
-  else if (group === "project") document.getElementById("generatorPackId").dispatchEvent(new Event("input"));
   else if (group === "platform") generatorUi.setPlatform(values);
-  else if (group === "network") document.getElementById("generatorPortOverride").dispatchEvent(new Event("change"));
   else if (group === "rcon") {
     rconState = { status: "idle", checkedAt: null, message: t("Параметры изменены") };
     updateRconFields(); addActivity(t("Настройки RCON сохранены."), "success");
   }
-  if (["project", "platform", "network", "connection"].includes(group)) document.getElementById("generatorResult").hidden = true;
+  if (["platform", "connection"].includes(group)) document.getElementById("generatorResult").hidden = true;
 }
 
 async function testRcon() {
@@ -978,7 +982,6 @@ async function resetDraft(event) {
 
 function fillManifest(nextManifest) {
   if (!packNameDirty) document.querySelector("#packNameInput").value = nextManifest.pack.name || "";
-  document.getElementById("generatorPackNameLabel").textContent = nextManifest.pack.name || "";
   elements.detectedMinecraft.textContent = nextManifest.minecraft.version || "-";
   elements.detectedLoader.textContent = [capitalize(nextManifest.minecraft.loader.type), nextManifest.minecraft.loader.version].filter(Boolean).join(" ");
   document.querySelector("#currentVersion").textContent = nextManifest.pack.version || "-";
@@ -1668,7 +1671,8 @@ function saveUiSession() {
       profileName: document.getElementById("serverProfileName").value, profileNameDirty,
       powerDraft: elements.powerActionsInput.checked, powerDirty: powerSettingsDirty,
       activity: activityEntries, console: consoleEntries },
-    [elements.tokenInput.value, elements.rconPasswordInput.value, document.getElementById("generatorToken").value, document.getElementById("inviteCode").value]);
+    [elements.tokenInput.value, elements.rconPasswordInput.value, document.getElementById("pairCodeInput").value,
+      document.getElementById("pairRconPassword").value, document.getElementById("inviteCode").value]);
   } catch { /* Session history is optional; a full store must not block server management. */ }
 }
 
@@ -1754,7 +1758,6 @@ function restoreConnection() {
   let oldGenerator = null;
   try { oldGenerator = JSON.parse(localStorage.getItem("udmc-generator-settings") || "null"); } catch { /* Old UI state may be absent. */ }
   document.getElementById("packNameInput").value = localStorage.getItem("udmc-pack-name") || oldGenerator?.generatorPackName || t("Основная сборка");
-  document.getElementById("generatorPackNameLabel").textContent = document.getElementById("packNameInput").value;
   document.getElementById("allowHttpConnection").checked = Boolean(localStorage.getItem("udmc-allow-http-url")) && localStorage.getItem("udmc-allow-http-url") === localStorage.getItem(STORAGE_KEYS.serverUrl);
   elements.serverUrlInput.value = localStorage.getItem(STORAGE_KEYS.serverUrl) || localStorage.getItem("udm-admin-server-url") || DEFAULT_SERVER_URL;
   elements.tokenInput.value = localStorage.getItem(STORAGE_KEYS.token) || localStorage.getItem("udm-admin-token") || "";
@@ -1878,7 +1881,7 @@ function setBuildBusy(busy) {
   document.querySelector("#connectButton").disabled = busy;
   document.querySelector("#localConnectionButton").disabled = busy;
   document.querySelectorAll("#generatorForm input, #generatorForm select, #generatorForm button, #recoverIdentityButton, #deviceNameInput, #allowHttpConnection, [data-agent-mode], #joinForm input, #joinForm textarea, #joinForm button, #deviceList button, #packSettingsForm input, #packSettingsForm button").forEach(input => { input.disabled = busy; });
-  document.getElementById("agentCreateTab").disabled = busy || accessRole === "admin";
+  document.getElementById("agentCreateTab").disabled = busy;
   document.getElementById("inviteDeviceButton").disabled = busy || accessRole !== "owner";
   elements.settingsForm.querySelectorAll("input,button").forEach(input => { input.disabled = busy || !serverStatus; });
   elements.restartServerButton.disabled = busy || !serverStatus?.capabilities?.powerActions;

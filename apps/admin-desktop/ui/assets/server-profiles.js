@@ -64,11 +64,9 @@ export const profileStorage = serverProfiles?.storageFor(loadedProfile);
 
 export function profileCommand(command, args = {}, profileId = loadedProfile) {
   if (!validProfileId(profileId)) throw new Error(t("Профиль сервера недействителен."));
-  if (serverProfiles?.error() && ["credential_read", "credential_write", "generator_identity", "recover_identity", "generate_agents"].includes(command)) throw new Error(serverProfiles.error());
+  if (serverProfiles?.error() && ["credential_read", "credential_write"].includes(command)) throw new Error(serverProfiles.error());
   if (profileId === "legacy") return args;
   if (["credential_read", "credential_write"].includes(command)) return { ...args, name: `profile:${profileId}:${args.name}` };
-  if (["generator_identity", "recover_identity"].includes(command)) return { ...args, profileId };
-  if (command === "generate_agents") return { ...args, request: { ...args.request, profileId } };
   return args;
 }
 

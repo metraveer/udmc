@@ -23,9 +23,6 @@ public final class UdmcServerEntrypoint implements DedicatedServerModInitializer
         if (api != null) throw new IllegalStateException("UDMC API is already running");
         gameDir = directory;
         config = settings;
-        if ("client".equals(config.role)) {
-            throw new IllegalStateException("Install the UDMC server JAR on the server.");
-        }
         ServerIdentity.ensure(gameDir, config);
         UdmcCommand.bind(gameDir, config);
         config.save(gameDir);

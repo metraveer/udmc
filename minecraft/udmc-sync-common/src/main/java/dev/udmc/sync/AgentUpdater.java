@@ -41,6 +41,11 @@ final class AgentUpdater {
         Path task = directory.resolve("task.properties"), result = directory.resolve("result.properties");
         if (!Files.exists(task)) return Map.of("state", "idle");
         Properties settings = AgentUpdateHelper.read(task);
+        // Which process is doing the work is recorded beside the task, not inside it: the
+        // helper opens the task file the moment it starts, and Windows will not let a file be
+        // replaced while it is open. Rewriting it to add the helper's own id lost that race.
+        Path helperFile = directory.resolve("helper.properties");
+        Properties helper = Files.exists(helperFile) ? AgentUpdateHelper.read(helperFile) : settings;
         Properties state = Files.exists(result) ? AgentUpdateHelper.read(result) : new Properties();
         String value = state.getProperty("state", "scheduled");
         // Self-heal: the agent answering this request IS the installed agent. If its own
@@ -53,7 +58,7 @@ final class AgentUpdater {
         }
         String code = null, message = null;
         if (value.equals("scheduled") || value.equals("waiting")) {
-            String helperPid = settings.getProperty("helperPid"), helperStart = settings.getProperty("helperStart");
+            String helperPid = helper.getProperty("helperPid"), helperStart = helper.getProperty("helperStart");
             if (helperPid != null && helperStart != null && !AgentUpdateHelper.isSameProcess(Long.parseLong(helperPid), helperStart)) {
                 value = "interrupted";
             }
@@ -138,6 +143,7 @@ final class AgentUpdater {
             task.setProperty("pid", Long.toString(process.pid()));
             task.setProperty("processStart", process.info().startInstant().orElseThrow(() -> new IOException("Cannot identify the running JVM")).toString());
             Files.deleteIfExists(directory.resolve("result.properties"));
+            Files.deleteIfExists(directory.resolve("helper.properties"));
             Path taskFile = directory.resolve("task.properties");
             AgentUpdateHelper.write(taskFile, task);
             String executable = System.getProperty("os.name").toLowerCase(java.util.Locale.ROOT).contains("win") ? "javaw.exe" : "java";
@@ -146,9 +152,10 @@ final class AgentUpdater {
                 var helper = new ProcessBuilder(java.toString(), "-Xmx48m", "-cp", directory.resolve("helper.jar").toString(),
                     AgentUpdateHelper.class.getName(), taskFile.toString()).directory(root.toFile())
                     .redirectErrorStream(true).redirectOutput(directory.resolve("helper.log").toFile()).start();
-                task.setProperty("helperPid", Long.toString(helper.pid()));
-                task.setProperty("helperStart", helper.info().startInstant().orElseThrow(() -> new IOException("Cannot identify update helper")).toString());
-                AgentUpdateHelper.write(taskFile, task);
+                Properties record = new Properties();
+                record.setProperty("helperPid", Long.toString(helper.pid()));
+                record.setProperty("helperStart", helper.info().startInstant().orElseThrow(() -> new IOException("Cannot identify update helper")).toString());
+                AgentUpdateHelper.write(directory.resolve("helper.properties"), record);
             } catch (IOException error) {
                 Files.deleteIfExists(taskFile);
                 throw new IOException("Cannot start agent updater. No installed files were changed", error);

@@ -150,8 +150,8 @@ test("English admin boot translates static, dynamic and command-reference text",
   assert.equal(app.$("draftStatusTitle").textContent, "Draft matches the published pack");
   app.w.document.querySelector('[data-view="console"]').click();
   await until(() => app.$("commandCatalog").textContent.includes("List players currently online."));
-  app.edit("project");
-  assert.equal(app.$("protectedSettingsDialog").querySelector("h2").textContent, "Change project ID");
+  app.edit("platform");
+  assert.equal(app.$("protectedSettingsDialog").querySelector("h2").textContent, "Change agent compatibility");
   for (const el of app.w.document.querySelectorAll("[data-i18n]")) assert.doesNotMatch(el.textContent, /[А-Яа-яЁё]/, el.outerHTML);
   assert.equal(app.errors.length, 0);
 });
@@ -171,7 +171,7 @@ test("manual language survives another server profile and preserves user names",
 
 test("language cannot change while protected settings are being edited", async t => {
   const app = await createAdmin(t, { language: "en" });
-  app.edit("project");
+  app.edit("platform");
   app.input("languageSelect", "ru");
   assert.equal(app.$("languageSelect").value, "en");
   assert.equal(app.saved()["udmc-language"], undefined);
@@ -224,7 +224,6 @@ test("offline language reload keeps unsaved pack fields and does not reopen serv
   assert.equal(reopened.$("serverProfileDialog").open, false);
   assert.equal(reopened.$("viewTitle").textContent, "Pack");
   assert.equal(reopened.$("packNameInput").value, "Мой несохранённый мир");
-  assert.equal(reopened.$("generatorPackNameLabel").textContent, "Мой несохранённый мир");
   assert.equal(reopened.$("draftStatusTitle").textContent, "Draft unavailable");
   assert.equal(reopened.$("publishOpenButton").disabled, true);
   assert.equal(reopened.$("powerActionsInput").disabled, true);

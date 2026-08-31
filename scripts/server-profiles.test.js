@@ -34,8 +34,10 @@ test("credentials, agent keys and delayed storage writes cannot cross profiles",
   assert.equal(profiles.storage.getItem("rcon"), null);
   assert.equal(profileCommand("credential_read", { name: "admin-connection" }, "legacy").name, "admin-connection");
   assert.notEqual(profileCommand("credential_read", { name: "admin-connection" }, first).name, profileCommand("credential_read", { name: "admin-connection" }, second).name);
-  assert.equal(profileCommand("generator_identity", { packId: "udmc-main" }, first).profileId, first);
-  assert.equal(profileCommand("generate_agents", { request: { packId: "udmc-main" } }, second).request.profileId, second);
+  // Saving the mod is the same file whatever the profile, so nothing about it is scoped:
+  // only stored secrets are, and those still are.
+  assert.deepEqual(profileCommand("save_agent", { request: { templateId: "fabric-26.2" } }, first),
+    { request: { templateId: "fabric-26.2" } });
   assert.throws(() => profileCommand("credential_read", {}, "../other"));
 });
 

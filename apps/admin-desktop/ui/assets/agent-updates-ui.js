@@ -1,7 +1,7 @@
 import { t } from "./i18n.js";
 import { formatAgentError } from "./http.js";
 import { agentStatusMessage } from "./agent-messages.js";
-export function initAgentUpdates({ getContext, getBinding, getRevision, getBusy, setBusy, adminGet, adminJson, adminRaw, invoke, showToast, onState, requestRestart }) {
+export function initAgentUpdates({ getContext, getBinding, getRevision, getBusy, setBusy, adminGet, adminJson, adminRaw, invoke, showToast, onState, requestRestart, getTemplates = () => [] }) {
   const $ = id => document.getElementById(id);
   let current = null, binding = null, checking = false, attempted = false, policySaving = false, addressDirty = false;
   let confirmed = null;
@@ -17,6 +17,10 @@ export function initAgentUpdates({ getContext, getBinding, getRevision, getBusy,
     }
     return false;
   };
+  // The mod for the game this server runs. One file per version, chosen by the server's
+  // own answer rather than by anything the administrator has to keep in step by hand.
+  const getTemplate = () => getTemplates().find(entry =>
+    entry.minecraft === current?.minecraftVersion && entry.loader === current?.loaderType) || null;
   const fingerprint = () => JSON.stringify([getBinding(), getRevision(), current?.client, current?.update]);
   const pending = () => ["scheduled", "waiting"].includes(current?.update?.state);
   function render() {
@@ -92,12 +96,17 @@ export function initAgentUpdates({ getContext, getBinding, getRevision, getBusy,
   // a follow-up restart from this, not from a guessed state transition.
   async function upload(update) {
     if (getBusy() || !current) return false;
-    const started = getBinding(), bootstrap = current.clientBootstrap;
+    const started = getBinding();
     setBusy(true); render();
     $("agentDeliveryProgress").hidden = false;
     $("agentDeliveryStatus").textContent = update ? t("Подготовка обновления агентов...") : t("Подготовка клиентского JAR...");
     try {
-      const result = await invoke("prepare_agent_package", { bootstrap, update });
+      // One file for both roles now, chosen by the game version this server runs.
+      const template = getTemplate();
+      if (!template) throw new Error(t("В этой сборке Control нет мода для версии, на которой работает сервер."));
+      const result = await invoke("prepare_agent_package", {
+        request: { templateId: template.id, loaderVersion: template.loaderVersion }, update
+      });
       if (started !== getBinding()) return;
       const bytes = Uint8Array.from(atob(result.bytes), char => char.charCodeAt(0));
       if (bytes.length !== result.size || bytes.length > 16 * 1024 * 1024) throw new Error(t("Некорректный пакет агента"));

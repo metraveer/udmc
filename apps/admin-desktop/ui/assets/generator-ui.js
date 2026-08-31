@@ -1,5 +1,4 @@
 import { t } from "./i18n.js";
-import { normalizeAddress, connectionDefaults } from "./connection.js";
 import { loaderLabel, updatePlatformControls } from "./platform.js";
 import { profileStorage as localStorage, profileCommand } from "./server-profiles.js";
 import { formatAppError } from "./http.js";
@@ -11,44 +10,22 @@ const nativeInvoke = (name, args) => {
   return invoke(name, profileCommand(name, args));
 };
 
-export function initGenerator({ navigateTo, showToast, onConnection, getConnection, getBusy, setBusy: setAppBusy, onFieldsChanged = () => {} }) {
+/**
+ * Handing out the mod. There is nothing to build any more: the panel carries the file it was
+ * released with, one per game version, and saving it is a copy. The same file goes on the
+ * server and to every player, so there is no wrong copy to give to the wrong person.
+ */
+export function initGenerator({ navigateTo, showToast, getBusy, setBusy: setAppBusy, onFieldsChanged = () => {} }) {
   let catalog = [];
-  let identityPackId = null;
   let busy = false;
   const form = $("generatorForm");
-  const fields = ["generatorPackId", "generatorApiHost", "generatorApiPort", "generatorPortOverride", "generatorLoader", "generatorMinecraft"];
-  const persistSettings = (overrides = {}) => localStorage.setItem("udmc-generator-settings", JSON.stringify(Object.fromEntries(fields.map(id => [id, Object.hasOwn(overrides, id) ? overrides[id] : $(id).type === "checkbox" ? $(id).checked : $(id).value]))));
+  const fields = ["generatorLoader", "generatorMinecraft"];
+  const persistSettings = (overrides = {}) => localStorage.setItem("udmc-generator-settings",
+    JSON.stringify(Object.fromEntries(fields.map(id => [id, Object.hasOwn(overrides, id) ? overrides[id] : $(id).value]))));
   let saved = null;
   try { saved = JSON.parse(localStorage.getItem("udmc-generator-settings") || "null"); } catch { localStorage.removeItem("udmc-generator-settings"); }
-  if (saved) for (const id of fields) {
-    if (typeof saved[id] === "string" && $(id).type !== "checkbox") $(id).value = saved[id];
-    if (typeof saved[id] === "boolean" && $(id).type === "checkbox") $(id).checked = saved[id];
-  }
-  const updateAddress = (reset = false) => {
-    try {
-      const defaults = connectionDefaults(getConnection().url);
-      if (reset) {
-        $("generatorApiHost").value = defaults.apiHost;
-        $("generatorApiPort").value = defaults.apiPort;
-        $("generatorPortOverride").checked = false;
-      }
-      if (!$("generatorPortOverride").checked) $("generatorApiPort").value = defaults.apiPort;
-      $("generatorApiPortField").hidden = !$("generatorPortOverride").checked;
-      $("generatorApiPort").required = $("generatorPortOverride").checked;
-      $("generatorConnectionSummary").textContent = defaults.local
-        ? t("Этот адрес работает только на одном компьютере. Для других игроков нужен внешний адрес или адрес VPN.")
-        : defaults.encrypted ? t("Адрес выше → HTTPS-прокси → агент на порту {0}.", $("generatorApiPort").value)
-          : t("Адрес выше → агент на порту {0}. HTTP не шифрует данные.", $("generatorApiPort").value);
-    } catch { $("generatorConnectionSummary").textContent = t("Введите адрес, чтобы определить сетевые настройки."); }
-  };
-  if (saved?.generatorApiPort && !Object.hasOwn(saved, "generatorPortOverride")) {
-    try { $("generatorPortOverride").checked = Number(saved.generatorApiPort) !== connectionDefaults(getConnection().url).apiPort; } catch { /* Address is validated on submission. */ }
-  }
-  updateAddress(!saved);
-  $("serverUrlInput").addEventListener("input", () => updateAddress(true));
-  $("serverUrlInput").addEventListener("change", () => updateAddress());
-  $("generatorApiPort").addEventListener("input", () => updateAddress());
-  $("generatorPortOverride").addEventListener("change", () => updateAddress());
+  if (saved) for (const id of fields) if (typeof saved[id] === "string") $(id).value = saved[id];
+
   const report = (error) => showToast(formatAppError(error), "error");
   const setBusy = (value) => {
     busy = value;
@@ -56,72 +33,20 @@ export function initGenerator({ navigateTo, showToast, onConnection, getConnecti
     form.querySelectorAll("input,select,button").forEach((input) => { input.disabled = value; });
     onFieldsChanged();
   };
-  const showIdentity = (identity, packId) => {
-    identityPackId = packId;
-    $("generatorToken").value = identity.token;
-    $("generatorFingerprint").textContent = identity.fingerprint;
-    $("generatorIdentity").hidden = false;
-  };
-  const prepare = async () => {
-    const packId = $("generatorPackId").value.trim();
-    const identity = await nativeInvoke("generator_identity", { packId });
-    showIdentity(identity, packId);
-    return identity;
-  };
+
   const setPlatform = (preferred = {}) => {
     const template = updatePlatformControls({ loader: $("generatorLoader"), minecraft: $("generatorMinecraft"), version: $("generatorLoaderVersion") }, catalog,
       { loader: preferred.generatorLoader, minecraft: preferred.generatorMinecraft });
-    if (template) {
-      $("generatorJava").textContent = t("Java {0}+ на сервере и у игроков", template.java);
-    }
+    if (template) $("generatorJava").textContent = t("Java {0}+ на сервере и у игроков", template.java);
   };
   $("generatorMinecraft").addEventListener("change", setPlatform);
   $("generatorLoader").addEventListener("change", setPlatform);
-  $("generatorPackId").addEventListener("input", () => {
-    identityPackId = null;
-    $("generatorToken").value = "";
-    $("generatorIdentity").hidden = true;
-    $("generatorResult").hidden = true;
-  });
-  $("prepareIdentityButton").addEventListener("click", async () => {
-    if (busy || getBusy()) return;
-    setBusy(true);
-    try { await prepare(); } catch (error) { report(error); } finally { setBusy(false); }
-  });
-  $("copyGeneratorToken").addEventListener("click", async () => {
-    try { await navigator.clipboard.writeText($("generatorToken").value); showToast(t("Токен скопирован")); } catch (error) { report(error); }
-  });
-  $("recoverIdentityButton").addEventListener("click", async () => {
-    if (busy || getBusy()) return;
-    setBusy(true);
-    try {
-      const result = await nativeInvoke("recover_identity", {
-        dialogTitle: t("Выберите серверный JAR UDMC"),
-        dialogFilter: t("Серверный JAR UDMC")
-      });
-      if (result) {
-        $("generatorPackId").value = result.packId;
-        $("packNameInput").value = result.packName;
-        $("generatorPackNameLabel").textContent = result.packName;
-        await onConnection(result.serverUrl, result.token, result.allowInsecureHttp);
-        if (["127.0.0.1", "0.0.0.0"].includes(result.apiHost)) $("generatorApiHost").value = result.apiHost;
-        if (Number.isInteger(result.apiPort)) $("generatorApiPort").value = result.apiPort;
-        $("generatorPortOverride").checked = Number(result.apiPort) !== connectionDefaults(result.serverUrl).apiPort;
-        const recoveredTemplate = catalog.find((template) => template.id === result.templateId);
-        if (recoveredTemplate) setPlatform({ generatorLoader: recoveredTemplate.loader, generatorMinecraft: recoveredTemplate.minecraft });
-        showIdentity(result, result.packId);
-        updateAddress();
-        persistSettings();
-        showToast(t("Ключи проекта восстановлены"));
-      }
-    } catch (error) { report(error); } finally { setBusy(false); }
-  });
   document.querySelectorAll("[data-go-dependencies]").forEach((button) => button.addEventListener("click", () => navigateTo("dependencies")));
   document.querySelectorAll("[data-go-pack]").forEach((button) => button.addEventListener("click", () => navigateTo("overview")));
-  $("packNameInput").addEventListener("input", () => { $("generatorPackNameLabel").textContent = $("packNameInput").value; });
   document.querySelectorAll("[data-dependency]").forEach((button) => button.addEventListener("click", async () => {
     try { await nativeInvoke("open_dependency", { name: button.dataset.dependency }); } catch (error) { report(error); }
   }));
+
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (busy || getBusy()) return;
@@ -131,31 +56,22 @@ export function initGenerator({ navigateTo, showToast, onConnection, getConnecti
     try {
       const template = catalog.find((entry) => entry.minecraft === $("generatorMinecraft").value && entry.loader === $("generatorLoader").value);
       if (!template) throw new Error(t("Для этого сочетания нет встроенного агента."));
-      const serverUrl = normalizeAddress(getConnection().url);
-      updateAddress();
-      const request = {
-        packId: $("generatorPackId").value.trim(), packName: $("packNameInput").value.trim() || t("Основная сборка"), serverUrl,
-        apiHost: $("generatorApiHost").value, apiPort: Number($("generatorApiPort").value),
-        templateId: template.id, loaderVersion: $("generatorLoaderVersion").value,
-        allowInsecureHttp: getConnection().allowHttp
-      };
-      const result = await nativeInvoke("generate_agents", {
-        request,
-        dialogTitle: t("Выберите папку для серверного JAR UDMC")
+      const result = await nativeInvoke("save_agent", {
+        request: { templateId: template.id, loaderVersion: $("generatorLoaderVersion").value },
+        dialogTitle: t("Выберите папку для мода UDMC")
       });
       if (!result) return;
-      if (identityPackId !== request.packId) await prepare();
       persistSettings();
       $("generatorResult").replaceChildren();
-      const title = document.createElement("strong"); title.textContent = t("Серверный JAR готов");
+      const title = document.createElement("strong"); title.textContent = t("Мод сохранён");
       const path = document.createElement("code"); path.textContent = result.directory;
-      const files = document.createElement("p"); files.textContent = result.serverFile;
-      const connection = document.createElement("p"); connection.textContent = t("Ключ сохранён. Установите этот JAR на сервер и подключитесь. Клиентский JAR передастся автоматически; ссылка для игроков появится здесь.");
-      await onConnection(request.serverUrl, $("generatorToken").value, request.allowInsecureHttp);
-      $("generatorResult").append(title, path, files, connection);
+      const file = document.createElement("p"); file.textContent = result.file;
+      const next = document.createElement("p");
+      next.textContent = t("Положите этот файл в папку mods сервера и запустите его. Тот же файл раздайте игрокам — он один на всех.");
+      $("generatorResult").append(title, path, file, next);
       $("generatorResult").hidden = false;
       $("generatorResult").scrollIntoView({ block: "nearest", behavior: "smooth" });
-      showToast(t("Серверный JAR сформирован"));
+      showToast(t("Мод сохранён"));
     } catch (error) { report(error); } finally { setBusy(false); }
   });
 
@@ -178,10 +94,10 @@ export function initGenerator({ navigateTo, showToast, onConnection, getConnecti
       ["app-window", "Microsoft Edge WebView2", t("Установщик загрузит среду, если её нет в Windows."), status.webview ? t("Работает") : t("Предпросмотр")],
       ["package", t("Шаблоны агентов"), catalog.length ? catalog.map((t) => `${loaderLabel(t.loader)} ${t.minecraft}`).join(" · ") : t("Нужна полная сборка Windows-приложения."), catalog.length ? t("Встроены") : t("Недоступны")],
       ["languages", "Fabric Resource Loader", t("Загрузка переводов игры. Небольшие модули Fabric включены в JAR; отдельно устанавливать их не нужно. Apache-2.0."), catalog.length ? t("Встроен") : t("Недоступно")],
-      ["shield-check", t("Ed25519, SHA-256 и ZIP"), t("Подпись обновлений, проверка файлов и генерация JAR."), native ? t("Встроены") : t("В Windows-сборке")],
+      ["shield-check", t("Ed25519, SHA-256 и ZIP"), t("Проверка подписей и файлов сборки."), native ? t("Встроены") : t("В Windows-сборке")],
       ["terminal", "RCON", t("Без отдельной программы или Java на компьютере администратора."), native ? t("Встроен") : t("В Windows-сборке")],
       ["cloud-download", t("Modrinth и HTTPS"), t("Каталог модов, проверка SHA-512. Использует защищённые соединения Windows; нужен интернет."), native ? t("Встроен") : t("В Windows-сборке")],
-      ["key-round", t("Хранилище Windows"), t("Ключи проектов, токены и сохранённый пароль RCON."), status.credentialStore ? t("Подключено") : t("Недоступно")]
+      ["key-round", t("Хранилище Windows"), t("Ключи доступа к серверам и сохранённый пароль RCON."), status.credentialStore ? t("Подключено") : t("Недоступно")]
     ];
     $("bundledDependencies").replaceChildren();
     for (const [icon, name, text, state] of rows) {

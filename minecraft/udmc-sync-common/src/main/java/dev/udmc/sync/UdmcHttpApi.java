@@ -58,6 +58,9 @@ public final class UdmcHttpApi {
             UdmcSync.LOGGER.warn("Could not read the published release sequence at startup", error);
         }
         this.loadedReleaseSequence = loaded;
+        // Before the login check reads the published client: it compares what a player has
+        // against what this server offers, and what it offers is now this very file.
+        agents.publishSelf();
         AgentLoginProtocol.configureServer(config, agents);
     }
 
@@ -329,11 +332,12 @@ public final class UdmcHttpApi {
         switch (path) {
             case "/admin/agents/settings" -> {
                 var settings = parseBody(body, AgentSettings.class);
-                if (settings == null || (settings.requireClient == null && settings.gameAddress == null)) {
+                if (settings == null || (settings.requireClient == null && settings.gameAddress == null && settings.serverUrl == null)) {
                     throw new ApiException(400, "CLIENT_AGENT_POLICY_REQUIRED", "Client agent policy is required.");
                 }
                 if (settings.requireClient != null) agents.setRequired(settings.requireClient);
                 if (settings.gameAddress != null) agents.setGameAddress(settings.gameAddress);
+                if (settings.serverUrl != null) agents.setServerUrl(settings.serverUrl);
                 respondJson(exchange, 200, agents.describe());
             }
             case "/admin/server/files/import" -> {
@@ -696,7 +700,7 @@ public final class UdmcHttpApi {
         }
     }
 
-    private static final class AgentSettings { Boolean requireClient; String gameAddress; }
+    private static final class AgentSettings { Boolean requireClient; String gameAddress; String serverUrl; }
 
     private void handleUpload(HttpExchange exchange) throws IOException {
         String managedPath = firstHeader(exchange, "x-udmc-path");

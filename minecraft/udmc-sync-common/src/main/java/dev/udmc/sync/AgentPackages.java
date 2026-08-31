@@ -41,20 +41,11 @@ final class AgentPackages {
             String installed = PlatformDefaults.get("agentVersion");
             if (installed != null && compareVersions(version, installed) < 0) throw new ApiException(409, "AGENT_DOWNGRADE_FORBIDDEN", "An older Control cannot downgrade the running agent.");
             if (!version.equals(LoaderPlatform.validateAgent(zip, config, client))) throw new ApiException(400, "AGENT_VERSION_INVALID", "Agent version metadata is inconsistent.");
-            var bootstrap = zip.getEntry("udmc-bootstrap.json");
-            if (!client) {
-                if (bootstrap != null) throw new ApiException(400, "AGENT_SERVER_CONFIG_FORBIDDEN", "A remote server update must preserve the existing configuration and contain no embedded secrets.");
-            } else {
-                if (bootstrap == null || bootstrap.getSize() > 8192) throw new ApiException(400, "AGENT_BOOTSTRAP_INVALID", "Client bootstrap is missing or invalid.");
-                JsonObject value;
-                try (var input = zip.getInputStream(bootstrap)) { value = JsonParser.parseString(new String(input.readNBytes(8193), StandardCharsets.UTF_8)).getAsJsonObject(); }
-                if (!CLIENT_KEYS.containsAll(value.keySet()) || !"client".equals(string(value, "role"))
-                    || !config.packId.equals(string(value, "packId")) || !config.manifestPublicKey.equals(string(value, "manifestPublicKey"))
-                    || !config.serverUrl.replaceAll("/+$", "").equals(string(value, "serverUrl").replaceAll("/+$", ""))
-                    || !config.minecraftVersion.equals(string(value, "minecraftVersion")) || !config.loaderType.equals(string(value, "loaderType"))
-                    || !value.has("requireSignedManifest") || !value.get("requireSignedManifest").getAsBoolean()
-                    || !value.has("allowInsecureHttp") || value.get("allowInsecureHttp").getAsBoolean() != config.allowInsecureHttp
-                    || !string(value, "bootstrapId").matches("[a-f0-9]{64}")) throw new ApiException(400, "AGENT_BOOTSTRAP_MISMATCH", "Client bootstrap does not match this project or contains secrets.");
+            // One mod serves every server and every player, so a file with settings baked in
+            // can only be a leftover from before that - and those carried project secrets.
+            if (zip.getEntry("udmc-bootstrap.json") != null) {
+                throw new ApiException(400, "AGENT_BOOTSTRAP_FORBIDDEN",
+                    "This is an older personalised UDMC file with settings baked in. Use the current mod, which is the same file for the server and for players.");
             }
             return version;
         } catch (IllegalStateException | com.google.gson.JsonParseException | java.util.zip.ZipException error) {

@@ -4,11 +4,6 @@ import { updatePlatformControls } from "./platform.js";
 import { formatAppError } from "./http.js";
 
 export const protectedGroups = {
-  project: {
-    title: t("Изменить ID проекта"),
-    warning: t("Другой ID использует другой набор ключей. Уже выданные JAR не переключатся на него. Для переименования используйте название сборки, а ID меняйте только для отдельного проекта."),
-    fields: [["generatorPackId", t("ID проекта")]]
-  },
   connection: {
     title: t("Изменить адрес UDMC"),
     warning: t("При смене адреса подключение будет сброшено. Проверьте, что новый адрес доступен панели и игрокам. Уже выданные JAR сохранят старый адрес до их замены."),
@@ -23,11 +18,6 @@ export const protectedGroups = {
     title: t("Изменить совместимость агентов"),
     warning: t("Другой Minecraft может потребовать другой Java, загрузчика и модов. Это настройка новых JAR, а не обновление существующей игры или сервера."),
     fields: [["generatorLoader", t("Загрузчик")], ["generatorMinecraft", "Minecraft"], ["generatorLoaderVersion", t("Версия загрузчика")]]
-  },
-  network: {
-    title: t("Изменить сеть агента"),
-    warning: t("Неправильный порт или прослушивание могут сделать агент недоступным. Настройки попадут в новые серверные JAR; работающий сервер сам не перенастраивается."),
-    fields: [["generatorApiHost", t("Прослушивать на сервере")], ["generatorPortOverride", t("Прокси или проброс на другой порт")], ["generatorApiPort", t("Порт агента за прокси / роутером")]]
   },
   rcon: {
     title: t("Изменить подключение RCON"),
@@ -45,10 +35,7 @@ const validPort = value => {
 export function validateProtectedValues(group, input, { serverUrl, templates = [] } = {}) {
   if (!Object.hasOwn(protectedGroups, group)) throw new Error(t("Неизвестная настройка."));
   const values = Object.fromEntries(protectedGroups[group].fields.map(([id]) => [id, input[id]]));
-  if (group === "project") {
-    values.generatorPackId = String(values.generatorPackId || "").trim();
-    if (!/^[A-Za-z0-9_-]{1,64}$/.test(values.generatorPackId)) throw new Error(t("ID: от 1 до 64 латинских букв, цифр, дефисов или подчёркиваний."));
-  } else if (group === "connection") {
+  if (group === "connection") {
     values.serverUrlInput = normalizeAddress(values.serverUrlInput);
     const defaults = connectionDefaults(values.serverUrlInput);
     values.allowHttpConnection = !defaults.encrypted && values.allowHttpConnection === true;
@@ -62,11 +49,6 @@ export function validateProtectedValues(group, input, { serverUrl, templates = [
     if (!template) throw new Error(t("Выберите версию из встроенного каталога агентов."));
     values.generatorLoader = template.loader;
     values.generatorLoaderVersion = template.loaderVersion;
-  } else if (group === "network") {
-    if (!["127.0.0.1", "0.0.0.0"].includes(values.generatorApiHost)) throw new Error(t("Выберите допустимый адрес прослушивания."));
-    values.generatorPortOverride = values.generatorPortOverride === true;
-    values.generatorApiPort = validPort(values.generatorPortOverride ? values.generatorApiPort : connectionDefaults(serverUrl).apiPort);
-    if (["25565", "25575"].includes(values.generatorApiPort)) throw new Error(t("Для API нужен отдельный порт, не стандартный порт Minecraft или RCON."));
   } else if (group === "rcon") {
     values.rconEnabledInput = values.rconEnabledInput === true;
     values.rememberRconPasswordInput = values.rememberRconPasswordInput === true;
@@ -110,12 +92,6 @@ export function initProtectedSettings({ getBusy, getBinding, getContext, onApply
   function updateDraft() {
     if (!editing) return;
     const field = id => controls[id];
-    if (editing.group === "network") {
-      const override = field("generatorPortOverride").checked;
-      field("generatorApiPort").disabled = !override;
-      field("generatorApiPort").closest("label").hidden = !override;
-      if (!override) field("generatorApiPort").value = connectionDefaults(getContext().serverUrl).apiPort;
-    }
     if (editing.group === "platform") {
       updatePlatformControls({ loader: field("generatorLoader"), minecraft: field("generatorMinecraft"), version: field("generatorLoaderVersion") }, getContext().templates);
       field("generatorLoaderVersion").disabled = true;
@@ -124,8 +100,7 @@ export function initProtectedSettings({ getBusy, getBinding, getContext, onApply
       if (id !== "rconEnabledInput") control.disabled = !field("rconEnabledInput").checked;
     }
     const changed = fingerprint(read(controls)) !== editing.original;
-    $("protectedProjectConfirmation").hidden = editing.group !== "project" || !changed;
-    $("protectedSettingsApply").disabled = saving || !changed || (editing.group === "project" && !$("protectedProjectConfirmed").checked);
+    $("protectedSettingsApply").disabled = saving || !changed;
   }
   function open(group, preset = {}) {
     if (getBusy() || saving || dialog.open || !canEdit(group)) return;
@@ -134,7 +109,6 @@ export function initProtectedSettings({ getBusy, getBinding, getContext, onApply
     $("protectedSettingsTitle").textContent = definition.title;
     $("protectedSettingsWarning").textContent = definition.warning;
     $("protectedSettingsError").textContent = "";
-    $("protectedProjectConfirmed").checked = false;
     controls = {};
     container.replaceChildren(...definition.fields.map(([id, title]) => {
       const original = $(id);
@@ -159,11 +133,9 @@ export function initProtectedSettings({ getBusy, getBinding, getContext, onApply
   form.addEventListener("input", event => {
     $("protectedSettingsError").textContent = "";
     if (editing?.group === "connection" && event.target === controls.serverUrlInput) controls.allowHttpConnection.checked = false;
-    if (editing?.group === "project") $("protectedProjectConfirmed").checked = false;
     updateDraft();
   });
   form.addEventListener("change", updateDraft);
-  $("protectedProjectConfirmed").addEventListener("input", event => event.stopPropagation());
   $("protectedSettingsCancel").addEventListener("click", () => { if (!saving) dialog.close(); });
   dialog.addEventListener("cancel", event => { if (saving) event.preventDefault(); });
   dialog.addEventListener("close", () => {
@@ -180,7 +152,6 @@ export function initProtectedSettings({ getBusy, getBinding, getContext, onApply
       if (!canEdit(group) || binding !== getBinding() || fingerprint(current(group)) !== original) throw new Error(t("Настройки изменились, пока окно было открыто. Закройте его и проверьте актуальные значения."));
       const values = validateProtectedValues(group, read(controls), getContext());
       if (fingerprint(values) === original) { dialog.close(); return; }
-      if (group === "project" && !$("protectedProjectConfirmed").checked) throw new Error(t("Подтвердите смену проекта или отмените редактирование."));
       saving = true; syncLocks();
       form.querySelectorAll("input,select,button").forEach(control => { control.disabled = true; });
       await onApply(group, values);

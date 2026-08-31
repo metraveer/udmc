@@ -1178,5 +1178,20 @@
   "Уже привязан": "Already paired",
   "Укажите порт RCON от 1 до 65535.": "Enter an RCON port between 1 and 65535.",
   "Этот сервер уже привязан к панели. Чтобы привязать заново, включите resetPairing в config/udmc-sync.json и перезапустите сервер.": "This server is already paired with a panel. To pair it again, set resetPairing in config/udmc-sync.json and restart the server.",
-  "пусто": "empty"
+  "пусто": "empty",
+  "В этой сборке Control нет мода для версии, на которой работает сервер.": "This Control release has no mod for the version this server runs.",
+  "Версия игры": "Game version",
+  "Владелец выдаёт приглашение в разделе «Устройства» и подтверждает заявку. Код привязки для этого не нужен: он тратится один раз, когда сервер впервые берут под управление.": "The owner issues an invitation under “Devices” and approves the request. The pairing code is not for this: it is spent once, when the server is first taken over.",
+  "Выберите папку для мода UDMC": "Choose a folder for the UDMC mod",
+  "Как подключить второго администратора?": "How do I add a second administrator?",
+  "Ключи доступа к серверам и сохранённый пароль RCON.": "Server access keys and the saved RCON password.",
+  "Мод UDMC": "The UDMC mod",
+  "Мод создаёт проект на самом сервере при первом запуске и выдаёт код привязки. Ключей внутри файла нет.": "The mod creates the project on the server itself at first start and issues a pairing code. There are no keys inside the file.",
+  "Мод сохранён": "The mod is saved",
+  "Один и тот же файл идёт в папку mods сервера и в папку mods каждого игрока. Секретов в нём нет, поэтому передавать его можно как угодно: выложить ссылку, отправить в чат, положить рядом с описанием сервера.": "The same file goes into the server's mods folder and into every player's mods folder. There are no secrets in it, so you can share it any way you like: post a link, send it in chat, put it beside your server description.",
+  "Один файл на всех": "One file for everybody",
+  "Положите этот файл в папку mods сервера и запустите его. Тот же файл раздайте игрокам — он один на всех.": "Put this file in the server's mods folder and start it. Give players the same file: there is only one.",
+  "Проверка подписей и файлов сборки.": "Checking signatures and modpack files.",
+  "Скачать мод": "Download the mod",
+  "Сохранить файл": "Save the file"
 }

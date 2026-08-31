@@ -11,10 +11,6 @@ public final class UdmcClientEntrypoint implements ClientModInitializer {
         Path gameDir = FabricLoader.getInstance().getGameDir();
         UdmcConfig config = UdmcConfig.load(gameDir);
         config.applyRuntimeEnvironment();
-        if ("server".equals(config.role)) {
-            throw new IllegalStateException("Install the UDMC client JAR on clients, not the secret server JAR.");
-        }
-
         AgentLoginProtocol.configureClient(config);
         if (!config.clientSyncOnStart) {
             UdmcSync.LOGGER.info("Client sync on start is disabled.");

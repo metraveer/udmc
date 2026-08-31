@@ -3,20 +3,13 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { protectedGroups, validateProtectedValues as validate } from "../apps/admin-desktop/ui/assets/protected-settings.js";
 
-test("project IDs retain the default format and reject unsafe or oversized values", () => {
-  assert.deepEqual(validate("project", { generatorPackId: " udmc-main " }), { generatorPackId: "udmc-main" });
-  assert.equal(validate("project", { generatorPackId: "A_1-second" }).generatorPackId, "A_1-second");
-  assert.equal(validate("project", { generatorPackId: "a".repeat(64) }).generatorPackId.length, 64);
-  for (const id of ["", " ", "../project", "two projects", "a".repeat(65), "\u043f\u0440\u043e\u0435\u043a\u0442"]) {
-    assert.throws(() => validate("project", { generatorPackId: id }));
-  }
-});
-
 test("editing creates a whitelisted copy without changing the original values", () => {
-  const input = Object.freeze({ generatorPackId: " udmc-main ", tokenInput: "must-not-be-copied" });
-  assert.deepEqual(validate("project", input), { generatorPackId: "udmc-main" });
-  assert.equal(input.generatorPackId, " udmc-main ");
-  for (const group of ["unknown", "__proto__", "constructor"]) assert.throws(() => validate(group, input));
+  const input = Object.freeze({ tokenInput: " a-key ", serverUrlInput: "must-not-be-copied" });
+  assert.deepEqual(validate("token", input), { tokenInput: "a-key" });
+  assert.equal(input.tokenInput, " a-key ");
+  for (const group of ["unknown", "__proto__", "constructor", "project", "network"]) {
+    assert.throws(() => validate(group, input));
+  }
 });
 
 test("connection edits normalize domains, proxy paths and local addresses", () => {
@@ -60,23 +53,10 @@ test("platform edits select a bundled template and derive the loader version", (
   assert.throws(() => validate("platform", { ...input, generatorLoader: "neoforge" }, { templates: [...templates, neo] }));
 });
 
-test("internal ports follow the shared address unless an override is explicitly enabled", () => {
-  const input = { generatorApiHost: "0.0.0.0", generatorApiPort: "invalid", generatorPortOverride: false };
-  assert.equal(validate("network", input, { serverUrl: "localhost:3080" }).generatorApiPort, "3080");
-  assert.equal(validate("network", input, { serverUrl: "https://sync.example.com:8443" }).generatorApiPort, "3077");
-  assert.equal(validate("network", { ...input, generatorPortOverride: true, generatorApiPort: "3081" }).generatorApiPort, "3081");
-  assert.throws(() => validate("network", { ...input, generatorApiHost: "192.0.2.1" }, { serverUrl: "localhost" }));
-});
-
-test("network and RCON ports must be within range; API does not reuse game or RCON ports", () => {
+test("RCON ports must be within range", () => {
   for (const port of ["", "0", "-1", "65536", "1.5", "NaN", "Infinity"]) {
-    assert.throws(() => validate("network", { generatorApiHost: "127.0.0.1", generatorPortOverride: true, generatorApiPort: port }));
     assert.throws(() => validate("rcon", { rconPortInput: port }));
   }
-  for (const port of ["1", "65535"]) {
-    assert.equal(validate("network", { generatorApiHost: "127.0.0.1", generatorPortOverride: true, generatorApiPort: port }).generatorApiPort, port);
-  }
-  for (const port of ["25565", "25575"]) assert.throws(() => validate("network", { generatorApiHost: "127.0.0.1", generatorPortOverride: true, generatorApiPort: port }));
 });
 
 test("RCON edits preserve the password and require a separate host and port", () => {
@@ -100,7 +80,11 @@ test("sensitive controls are locked before JavaScript starts and each has an exp
       assert.match(tag, /\b(readonly|disabled)\b/, `Initially editable: ${id}`);
     }
   }
-  assert.match(html, /id="generatorPackId"[^>]+value="udmc-main"/);
-  assert.match(html, /id="protectedProjectConfirmed" type="checkbox"/);
   assert.match(html, /id="protectedSettingsCancel"[^>]+type="button"/);
+  // Nothing may write a project or an agent's network settings into a file again: they are
+  // created on the server and reached by pairing.
+  for (const gone of ["project", "network"]) assert.ok(!Object.hasOwn(protectedGroups, gone), gone);
+  for (const gone of ["generatorPackId", "generatorApiHost", "generatorApiPort"]) {
+    assert.ok(!html.includes(`id="${gone}"`), gone);
+  }
 });

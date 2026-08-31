@@ -34,7 +34,6 @@ public final class NeoForgeEntrypoint {
     private void starting(ServerAboutToStartEvent event) {
         var gameDir = FMLPaths.GAMEDIR.get();
         UdmcConfig config = UdmcConfig.load(gameDir);
-        if ("client".equals(config.role)) throw new IllegalStateException("Install the UDMC server JAR on the dedicated server.");
         config.applyRuntimeEnvironment();
         ServerIdentity.ensure(gameDir, config);
         UdmcCommand.bind(gameDir, config);
