@@ -164,6 +164,24 @@ public final class UdmcHttpApi {
                 return;
             }
 
+            // Claiming a server needs no token: the code is the proof, and it is spent here.
+            // Unauthenticated on purpose, and only answerable while nobody has claimed this server.
+            if ("POST".equals(method) && "/pair".equals(path)) {
+                PairRequest body = parseBody(exchange, PairRequest.class);
+                respondJson(exchange, 200, ServerIdentity.claim(gameDir, config, body == null ? "" : body.code, ip));
+                return;
+            }
+            if ("GET".equals(method) && "/pair".equals(path)) {
+                // Lets a panel see whether this server is waiting before asking anyone for a code.
+                respondJson(exchange, 200, Map.of(
+                    "unpaired", ServerIdentity.unpaired(config),
+                    "packName", config.packName,
+                    "minecraftVersion", config.minecraftVersion,
+                    "loaderType", config.loaderType
+                ));
+                return;
+            }
+
             if (path.startsWith("/admin/")) {
                 actor = access.authenticate(token(exchange), ip);
                 synchronized (store) {
@@ -951,5 +969,9 @@ public final class UdmcHttpApi {
 
     private static final class AccessRequest {
         public String id, invite, token, name, action;
+    }
+
+    private static final class PairRequest {
+        public String code;
     }
 }

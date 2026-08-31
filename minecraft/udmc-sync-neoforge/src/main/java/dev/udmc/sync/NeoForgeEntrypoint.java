@@ -6,6 +6,7 @@ import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.fml.loading.FMLPaths;
 import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.neoforge.event.server.ServerAboutToStartEvent;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
@@ -23,6 +24,7 @@ public final class NeoForgeEntrypoint {
         if (FMLEnvironment.dist == Dist.CLIENT) {
             NeoForgeClient.register(modBus);
         } else {
+            NeoForge.EVENT_BUS.addListener(this::commands);
             NeoForge.EVENT_BUS.addListener(this::starting);
             NeoForge.EVENT_BUS.addListener(this::started);
             NeoForge.EVENT_BUS.addListener(this::stopped);
@@ -34,6 +36,8 @@ public final class NeoForgeEntrypoint {
         UdmcConfig config = UdmcConfig.load(gameDir);
         if ("client".equals(config.role)) throw new IllegalStateException("Install the UDMC server JAR on the dedicated server.");
         config.applyRuntimeEnvironment();
+        ServerIdentity.ensure(gameDir, config);
+        UdmcCommand.bind(gameDir, config);
         config.save(gameDir);
         try {
             ManifestStore store = new ManifestStore(gameDir, config);
@@ -46,6 +50,9 @@ public final class NeoForgeEntrypoint {
             throw new IllegalStateException("Cannot start UDMC server API", e);
         }
     }
+
+    // NeoForge raises this whenever the command tree is built, including after /reload.
+    private void commands(RegisterCommandsEvent event) { UdmcCommand.register(event.getDispatcher()); }
 
     private void started(ServerStartedEvent event) { if (api != null) api.attachServer(event.getServer()); }
     private void stopped(ServerStoppedEvent event) {

@@ -1,0 +1,243 @@
+package dev.udmc.sync;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.MessageDigest;
+import java.security.SecureRandom;
+import java.util.Base64;
+import java.util.LinkedHashMap;
+import java.util.Locale;
+import java.util.Map;
+
+/**
+ * A server that starts without a project makes one for itself: an admin token, an Ed25519 pair for
+ * signing manifests, and a pairing code that lets UDMC Control claim it. Nothing here is baked into
+ * the JAR, so the same file serves every server and every player.
+ *
+ * <p>The code has no expiry. It lives in the configuration, so restarts do not change it and there
+ * is no window to miss; it is spent the moment a panel pairs, and a reset issues a new one.
+ */
+public final class ServerIdentity {
+    /** The token a configuration carries before anyone has set one. */
+    public static final String UNSET_TOKEN = "change-me";
+    /** Digits and letters that survive being read off a console and typed back in. */
+    private static final String ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
+    private static final int GROUPS = 4, GROUP_SIZE = 4;
+    private static final SecureRandom RANDOM = new SecureRandom();
+    private static final String PAIRING_FILE = "udmc-pairing.txt";
+    private static final Map<String, Window> ATTEMPTS = new LinkedHashMap<>();
+
+    private ServerIdentity() {
+    }
+
+    /**
+     * Fills in whatever this server is missing and keeps the pairing note on disk in step with it.
+     * Safe to call on every start: a server that already has a project is left alone.
+     *
+     * @return true when the configuration changed and has been saved
+     */
+    public static boolean ensure(Path gameDir, UdmcConfig config) {
+        boolean changed = false;
+
+        if (config.resetPairing) {
+            // Deliberate, and the only way back when a project was paired to the wrong panel: the
+            // keys stay, so players keep trusting this server, but every device loses its access.
+            config.resetPairing = false;
+            config.adminToken = token();
+            config.pairingCode = code();
+            changed = true;
+            UdmcSync.LOGGER.warn("UDMC pairing was reset. Previously paired panels no longer have access.");
+        }
+
+        // The signing pair is what makes this a project, so creating it is what needs claiming.
+        if (config.manifestPublicKey.isBlank() || config.manifestPrivateKey.isBlank()) {
+            KeyPair pair = generateKeys();
+            config.manifestPublicKey = encode(pair.getPublic().getEncoded());
+            config.manifestPrivateKey = encode(pair.getPrivate().getEncoded());
+            config.requireSignedManifest = true;
+            config.pairingCode = code();
+            changed = true;
+        }
+        if (config.adminToken == null || config.adminToken.isBlank() || UNSET_TOKEN.equals(config.adminToken)) {
+            config.adminToken = token();
+            changed = true;
+        }
+
+        if (changed) config.save(gameDir);
+        writeNote(gameDir, config);
+        return changed;
+    }
+
+    /** True while nobody has paired with this server, which is when the code still works. */
+    public static boolean unpaired(UdmcConfig config) {
+        return config.pairingCode != null && !config.pairingCode.isBlank();
+    }
+
+    /**
+     * Spends the pairing code. Called once a panel has proved it knows the code; from here on the
+     * server is claimed and the note on disk is gone.
+     */
+    public static void paired(Path gameDir, UdmcConfig config) {
+        config.pairingCode = "";
+        config.save(gameDir);
+        writeNote(gameDir, config);
+        UdmcSync.LOGGER.info("UDMC is now paired with a panel. The pairing code has been used up.");
+    }
+
+    /** Where the pairing note lives: beside the configuration, which is never served over HTTP. */
+    public static Path notePath(Path gameDir) {
+        return gameDir.resolve("config").resolve(PAIRING_FILE);
+    }
+
+    /**
+     * Keeps the code where a server owner can actually reach it. Hosting panels differ wildly in
+     * what they expose, so it goes to the log and to a file: whoever has a console has one, whoever
+     * has only a file manager has the other.
+     */
+    private static void writeNote(Path gameDir, UdmcConfig config) {
+        Path note = notePath(gameDir);
+        try {
+            if (!unpaired(config)) {
+                Files.deleteIfExists(note);
+                return;
+            }
+            Files.createDirectories(note.getParent());
+            Files.writeString(note, note(config.pairingCode), StandardCharsets.UTF_8);
+        } catch (IOException error) {
+            // The console still carries the code, so this is worth a warning and nothing more.
+            UdmcSync.LOGGER.warn("UDMC could not write {}: {}", note, error.toString());
+        }
+        UdmcSync.LOGGER.info("UDMC is waiting to be paired. Pairing code: {}", config.pairingCode);
+        UdmcSync.LOGGER.info("Enter it in UDMC Control, or find it again in {}", note);
+    }
+
+    private static String note(String code) {
+        return """
+            UDMC pairing code / код привязки UDMC
+
+                %s
+
+            Enter this code in UDMC Control to claim this server.
+            Введите этот код в UDMC Control, чтобы привязать сервер.
+
+            The code does not expire and survives restarts. It stops working once the server is
+            paired, and this file disappears with it.
+            Код не истекает и переживает перезапуски. Он перестаёт работать сразу после привязки,
+            и этот файл исчезает вместе с ним.
+            """.formatted(code);
+    }
+
+    private static KeyPair generateKeys() {
+        try {
+            return KeyPairGenerator.getInstance("Ed25519").generateKeyPair();
+        } catch (Exception error) {
+            throw new IllegalStateException("This Java cannot create Ed25519 keys", error);
+        }
+    }
+
+    private static String encode(byte[] value) {
+        return Base64.getEncoder().encodeToString(value);
+    }
+
+    /** 32 random bytes as hex, matching what Control has always issued. */
+    private static String token() {
+        byte[] value = new byte[32];
+        RANDOM.nextBytes(value);
+        StringBuilder text = new StringBuilder(value.length * 2);
+        for (byte b : value) text.append("%02x".formatted(b));
+        return text.toString();
+    }
+
+    /** Four groups of four, from an alphabet without characters that read as one another. */
+    private static String code() {
+        StringBuilder text = new StringBuilder(GROUPS * GROUP_SIZE + GROUPS - 1);
+        for (int group = 0; group < GROUPS; group++) {
+            if (group > 0) text.append('-');
+            for (int index = 0; index < GROUP_SIZE; index++) {
+                text.append(ALPHABET.charAt(RANDOM.nextInt(ALPHABET.length())));
+            }
+        }
+        return text.toString();
+    }
+
+    /**
+     * Hands the project over to a panel that knows the code, and spends the code doing it.
+     *
+     * <p>The private signing key is not part of this: the server signs its own manifests and never
+     * needs to give that away. A backup copy is a separate, deliberate request over the admin
+     * channel, so the one secret that could impersonate this project does not travel by default.
+     */
+    public static synchronized Map<String, Object> claim(Path gameDir, UdmcConfig config, String submitted, String ip) {
+        if (!unpaired(config)) {
+            throw new ApiException(409, "PAIRING_ALREADY_DONE",
+                "This server is already paired. Reset pairing on the server to pair it again.");
+        }
+        rateLimit(ip);
+        if (!MessageDigest.isEqual(normalize(config.pairingCode).getBytes(StandardCharsets.UTF_8),
+                normalize(submitted).getBytes(StandardCharsets.UTF_8))) {
+            UdmcSync.LOGGER.warn("UDMC refused a pairing attempt from {}: wrong code.", ip);
+            throw new ApiException(403, "PAIRING_CODE_INVALID", "That pairing code does not match this server.");
+        }
+
+        Map<String, Object> project = new LinkedHashMap<>();
+        project.put("packId", config.packId);
+        project.put("packName", config.packName);
+        project.put("adminToken", config.adminToken);
+        project.put("manifestPublicKey", config.manifestPublicKey);
+        project.put("fingerprint", fingerprint(config.manifestPublicKey));
+        project.put("minecraftVersion", config.minecraftVersion);
+        project.put("loaderType", config.loaderType);
+        project.put("loaderVersion", config.loaderVersion);
+        project.put("apiPort", config.apiPort);
+        project.put("agentVersion", PlatformDefaults.get("agentVersion"));
+        paired(gameDir, config);
+        UdmcSync.LOGGER.info("UDMC was paired from {}.", ip);
+        return project;
+    }
+
+    /** What players see to tell one project from another: SHA-256 of the public key, in hex. */
+    public static String fingerprint(String publicKey) {
+        try {
+            byte[] hash = MessageDigest.getInstance("SHA-256").digest(Base64.getDecoder().decode(publicKey));
+            StringBuilder text = new StringBuilder(hash.length * 2);
+            for (byte b : hash) text.append("%02x".formatted(b));
+            return text.toString();
+        } catch (Exception error) {
+            return "";
+        }
+    }
+
+    /**
+     * Read off a console and typed back in, a code loses its dashes and its case. None of that
+     * changes which code it is, so neither should it change whether it works.
+     */
+    private static String normalize(String code) {
+        return code == null ? "" : code.trim().toUpperCase(Locale.ROOT).replace("-", "").replace(" ", "");
+    }
+
+    /** 80 bits of code is not guessable, but a server should not help anyone try. */
+    private static void rateLimit(String ip) {
+        long now = System.currentTimeMillis();
+        ATTEMPTS.entrySet().removeIf(entry -> entry.getValue().until <= now);
+        if (!ATTEMPTS.containsKey(ip) && ATTEMPTS.size() >= 2048) {
+            throw new ApiException(429, "PAIRING_RATE_LIMIT", "Too many pairing attempts. Wait one minute.");
+        }
+        Window window = ATTEMPTS.computeIfAbsent(ip, ignored -> new Window(now + 60_000));
+        if (++window.count > 10) {
+            throw new ApiException(429, "PAIRING_RATE_LIMIT", "Too many pairing attempts. Wait one minute.");
+        }
+    }
+
+    private static final class Window {
+        final long until;
+        int count;
+
+        Window(long until) {
+            this.until = until;
+        }
+    }
+}

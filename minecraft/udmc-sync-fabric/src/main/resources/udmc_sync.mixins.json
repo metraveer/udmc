@@ -3,6 +3,7 @@
   "package": "dev.udmc.sync.mixin",
   "compatibilityLevel": "JAVA_${java_version}",
   "mixins": [
+    "CommandsMixin",
     "DedicatedServerMixin",
     "MinecraftServerMixin",
     "ServerConfigVerifyMixin",

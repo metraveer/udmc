@@ -12,6 +12,7 @@ java.withSourcesJar()
 
 sourceSets.main.java.srcDirs('../udmc-sync-common/src/main/java', '../udmc-sync-fabric/src/platform/classic')
 sourceSets.main.java.srcDir('../udmc-sync-fabric/src/network/classic')
+sourceSets.main.java.srcDir('../udmc-sync-fabric/src/commands/classic')
 sourceSets.main.resources.srcDir('../udmc-sync-common/src/main/resources')
 sourceSets.test.java.srcDir('../udmc-sync-fabric/src/test/java')
 sourceSets.test.compileClasspath += sourceSets.main.compileClasspath

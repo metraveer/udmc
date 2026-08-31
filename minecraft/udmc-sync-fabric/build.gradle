@@ -16,6 +16,8 @@ if (resourceModules == null) throw new GradleException("No verified resource-loa
 layout.buildDirectory = layout.projectDirectory.dir("build/${project.minecraft_version}")
 sourceSets.main.java.srcDir("src/platform/" + (project.minecraft_version == "26.2" ? "modern" : "classic"))
 sourceSets.main.java.srcDir("src/network/" + (legacyMinecraft ? "classic" : "modern"))
+// Numeric permission levels became named permissions in 26.x, so the operator check splits too.
+sourceSets.main.java.srcDir("src/commands/" + (legacyMinecraft ? "classic" : "modern"))
 sourceSets.main.java.srcDir("../udmc-sync-common/src/main/java")
 sourceSets.main.resources.srcDir("../udmc-sync-common/src/main/resources")
 sourceSets.test.java.srcDir("src/fabricTest/java")
@@ -164,6 +166,12 @@ tasks.register("workspaceTest", JavaExec) {
     mainClass = "dev.udmc.sync.WorkspaceTest"
 }
 check.dependsOn workspaceTest
+tasks.register("identityTest", JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = "dev.udmc.sync.ServerIdentityTest"
+}
+check.dependsOn identityTest
 tasks.register("agentUpdateTest", JavaExec) {
     dependsOn testClasses
     classpath = sourceSets.test.runtimeClasspath

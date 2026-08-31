@@ -17,7 +17,7 @@ public final class UdmcConfig {
     public String serverUrl = "http://127.0.0.1:3077";
     public String apiHost = "0.0.0.0";
     public int apiPort = 3077;
-    public String adminToken = "change-me";
+    public String adminToken = ServerIdentity.UNSET_TOKEN;
     public boolean clientSyncOnStart = true;
     public String packId = "udmc-main";
     public String packName = "UDMC Main Modpack";
@@ -36,6 +36,13 @@ public final class UdmcConfig {
     public boolean requireSignedManifest = false;
     public boolean allowInsecureHttp = false;
     public volatile boolean requireClientAgent = false;
+    /**
+     * Code that lets a panel claim this server, empty once one has. It does not expire and is not
+     * regenerated on restart: there is no window to miss, only a code to find.
+     */
+    public volatile String pairingCode = "";
+    /** Set by hand to issue a new code and cut off panels that already paired. Clears itself. */
+    public boolean resetPairing = false;
     /**
      * Which verification the agent speaks. 1 asked during login and is gone; 2 asks during the
      * configuration phase. A server that moves to 2 cannot be answered by clients still on 1,
