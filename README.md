@@ -1,117 +1,121 @@
 <div align="center">
 
+**English** · [Русский](README.ru.md)
+
 # UDMC
 
-**Раздача модов Minecraft-сервера на компьютеры игроков — без отдельного лаунчера.**
+**Ship your Minecraft server's mods to your players — without a custom launcher.**
 
-Администратор собирает модпак в Windows-приложении, игроки получают его автоматически при запуске обычной игры.
+You build the modpack in a Windows app; players receive it automatically when they start the game they already play.
 
-[![Скачать](https://img.shields.io/github/v/release/metraveer/udmc?label=%D1%81%D0%BA%D0%B0%D1%87%D0%B0%D1%82%D1%8C&style=for-the-badge)](../../releases/latest)
-[![Лицензия MIT](https://img.shields.io/badge/%D0%BB%D0%B8%D1%86%D0%B5%D0%BD%D0%B7%D0%B8%D1%8F-MIT-blue?style=for-the-badge)](LICENSE)
+[![Download](https://img.shields.io/github/v/release/metraveer/udmc?label=download&style=for-the-badge)](../../releases/latest)
+[![MIT licence](https://img.shields.io/badge/licence-MIT-blue?style=for-the-badge)](LICENSE)
 [![Windows](https://img.shields.io/badge/Windows-10%2F11-0078D4?style=for-the-badge&logo=windows)](../../releases/latest)
 
-**Fabric и NeoForge · Minecraft 1.21.1, 26.1.2, 26.2 · русский и английский интерфейс**
+**Fabric and NeoForge · Minecraft 1.21.1, 26.1.2, 26.2 · English and Russian interface**
 
-<img src="docs/images/01-server.png" alt="Панель UDMC Control: состояние сервера, сводка «Требует внимания», игроки онлайн" width="880">
+<img src="docs/images/01-server.png" alt="The UDMC Control panel: server state, the Needs attention summary, players online" width="880">
 
 </div>
 
 ---
 
-## Что это решает
+## What it solves
 
-Вы добавили мод на сервер — и дальше начинается знакомое: разослать архив в чат, объяснить, куда его положить, ловить тех, у кого «не запускается», и повторять это при каждом обновлении.
+You add a mod to the server, and the familiar part begins: post the archive in chat, explain where to put it, chase the people for whom it "doesn't start", and do it all again on the next update.
 
-UDMC убирает этот шаг. Вы публикуете сборку в панели — игроки получают её сами при следующем запуске игры, с проверкой целостности файлов и без ручного копирования.
+UDMC removes that step. You publish the pack in the panel, and players get it themselves the next time they launch the game, with file integrity checked and nothing copied by hand.
 
-- **Никакого своего лаунчера.** Игроки играют через тот клиент, к которому привыкли, включая сторонние лаунчеры.
-- **Каталоги модов внутри панели.** Modrinth, CurseForge и GitHub Releases — поиск, описания, скриншоты и установка в сборку в пару кликов.
-- **Проверка совместимости до публикации.** Недостающие зависимости, дубликаты и неверные стороны находятся до того, как сервер упадёт.
-- **Ничего лишнего у игроков.** Личные моды не удаляются, серверные файлы им не раздаются.
+- **No launcher of your own.** Players keep the client they are used to, third-party launchers included.
+- **Mod catalogues inside the panel.** Modrinth, CurseForge and GitHub Releases — search, descriptions, screenshots, and installing into the pack in a couple of clicks.
+- **Compatibility checked before you publish.** Missing dependencies, duplicates and wrong sides are found before the server falls over.
+- **Nothing extra on the player's machine.** Their own mods stay, server-side files never reach them.
 
-## Быстрый старт за 5 шагов
+## Five steps to a working setup
 
-1. **Скачайте** [последний установщик](../../releases/latest) и запустите его.
-2. В приложении откройте **«Настройка сервера» → «Создать JAR»**, укажите адрес вашего сервера и нажмите **«Сформировать серверный JAR»**.
-3. Положите полученный `udmc-sync-server.jar` в папку `mods` вашего Minecraft-сервера и запустите сервер.
-4. Вернитесь в приложение и нажмите **«Подключиться»**. Клиентский JAR загрузится на сервер автоматически.
-5. Скопируйте ссылку из раздела **«Агенты и игроки»** и отправьте её игрокам — по ней они скачают клиентский мод.
+1. **Download** [the latest installer](../../releases/latest) and run it.
+2. In the app open **Server settings → Create JAR**, enter your server's address, and press **Build the server JAR**.
+3. Put the resulting `udmc-sync-server.jar` into your Minecraft server's `mods` folder and start the server.
+4. Return to the app and press **Connect**. The client JAR uploads to the server on its own.
+5. Copy the link from **Agents and players** and send it to your players — that is where they download the client mod.
 
-Готово: теперь всё, что вы публикуете в разделе «Сборка», приезжает к игрокам само.
+That is it: from now on, whatever you publish under "Pack" travels to your players by itself.
 
-Подробности — [полная инструкция по установке](docs/installation.md).
+The step-by-step guide is [docs/installation.md](docs/installation.md) (in Russian).
 
-## Как выглядит
+## What it looks like
 
-| Сборка и публикация | Каталог модов |
+| Building and publishing a pack | Mod catalogue |
 | --- | --- |
-| <img src="docs/images/02-pack.png" alt="Вкладки черновика, опубликованного состава и проверки" width="420"> | <img src="docs/images/03-catalog.png" alt="Поиск модов Modrinth с фильтрами по загрузчику и версии" width="420"> |
-| **Консоль сервера** | **Администраторы** |
-| <img src="docs/images/04-console.png" alt="Консоль сервера со справочником команд" width="420"> | <img src="docs/images/05-devices.png" alt="Список администраторов с приглашениями и подтверждением" width="420"> |
+| <img src="docs/images/02-pack.png" alt="Draft, published contents and validation tabs" width="420"> | <img src="docs/images/03-catalog.png" alt="Modrinth search with loader and version filters" width="420"> |
+| **Server console** | **Administrators** |
+| <img src="docs/images/04-console.png" alt="Server console with a command reference" width="420"> | <img src="docs/images/05-devices.png" alt="Administrator list with invitations and approval" width="420"> |
 
-## Возможности
+## Features
 
-**Сборка модпака**
-- Черновик и публикация: изменения не видны игрокам, пока вы не опубликуете их.
-- Проверка совместимости запускается сама при каждом изменении и после публикации.
-- Файлы, попавшие на сервер мимо панели, можно взять под управление или оставить как есть.
-- Назначение файлов: только сервер, только клиент или обе стороны.
+**Building the pack**
+- Draft and publish: nothing reaches players until you publish it.
+- Compatibility validation runs by itself on every change and after publishing.
+- Files that arrived on the server outside the panel can be taken under management or left alone.
+- Per-file sides: server only, client only, or both.
 
-**Каталоги модов**
-- Modrinth и GitHub Releases — без ключей и регистрации.
-- CurseForge — по личному бесплатному ключу API.
-- Описания, скриншоты, зависимости и лицензии видны до установки.
-- Кнопка перевода описаний на русский (по ключу Яндекс Переводчика).
+**Mod catalogues**
+- Modrinth and GitHub Releases — no keys, no registration.
+- CurseForge — with your own free API key.
+- Descriptions, screenshots, dependencies and licences are visible before you install.
+- A button to translate descriptions into Russian (with a Yandex Translate key).
 
-**Управление сервером**
-- Состояние процесса, TPS, память, игроки онлайн.
-- Консоль с командами сервера и справочником; поддержка RCON.
-- Остановка и перезапуск с отсчётом в чате для игроков.
+**Running the server**
+- Process state, TPS, memory, players online.
+- A console with the server's commands and a reference; RCON supported.
+- Stop and restart with a countdown announced in chat.
 
-**Совместная работа и безопасность**
-- Приглашения для других администраторов с подтверждением по коду.
-- Все изменения защищены от конфликтов при одновременной работе.
-- Подпись обновлений Ed25519, ключи в защищённом хранилище Windows.
+**Working together, safely**
+- Invitations for other administrators, confirmed by a code.
+- Every change is protected against conflicts when several people work at once.
+- Updates signed with Ed25519; keys kept in the Windows credential store.
 
-## Документация
+## Documentation
 
-| Для кого | Документ |
+The detailed documentation is written in Russian; the source and its comments are in English.
+
+| If you are | Read |
 | --- | --- |
-| Только начинаю | [Установка и первый запуск](docs/installation.md) |
-| Настраиваю сервер | [Конфигурация агента](docs/configuration.md), [Администраторы и доступ](docs/administrators.md) |
-| Возникли вопросы | [Частые вопросы](docs/faq.md) |
-| Разработчик | [Архитектура](docs/architecture.md), [API агента](docs/api.md), [Разработка и тесты](docs/development.md) |
-| Планирую обновление | [Совместимость и версии](docs/compatibility-roadmap.md), [История изменений](CHANGELOG.md) |
+| Just starting | [Installation and first run](docs/installation.md) |
+| Setting up a server | [Agent configuration](docs/configuration.md), [Administrators and access](docs/administrators.md) |
+| Stuck on something | [FAQ](docs/faq.md) |
+| A developer | [Architecture](docs/architecture.md), [Agent API](docs/api.md), [Development and tests](docs/development.md) |
+| Planning an upgrade | [Compatibility and versions](docs/compatibility-roadmap.md), [Changelog](CHANGELOG.md) |
 
-## Требования
+## Requirements
 
-| Загрузчик | Minecraft | Java |
+| Loader | Minecraft | Java |
 | --- | --- | --- |
 | Fabric | 1.21.1 | 21+ |
 | Fabric | 26.1.2, 26.2 | 25+ |
 | NeoForge | 1.21.1 | 21+ |
 
-Minecraft ниже 1.20.2 поддержан быть не может: проверка клиента при входе опирается на фазу
-подключения, которой в тех версиях нет ([почему](docs/supported-minecraft-versions.md)).
+Minecraft below 1.20.2 cannot be supported: the client check at join relies on the configuration
+phase, which those versions do not have ([why](docs/supported-minecraft-versions.md)).
 
-Панель: Windows 10 или 11. Отдельно устанавливать Java, Node.js или Rust не нужно — всё необходимое встроено в приложение.
+The panel runs on Windows 10 or 11. You do not install Java, Node.js or Rust separately — everything it needs is built in.
 
-## Обновления
+## Updates
 
-Приложение проверяет обновления при запуске и предлагает установить их одной кнопкой — загрузка и перезапуск происходят сами. Файлы раздаёт GitHub, поэтому обновления доступны всегда, независимо от компьютера автора. Каждый выпуск подписан: приложение не примет пакет без действительной подписи.
+The app checks for updates at startup and offers to install them with one button; downloading and restarting happen on their own. GitHub serves the files, so updates are always available regardless of the author's machine. Every release is signed: the app refuses a package without a valid signature.
 
-Агенты на сервере обновляются из панели: кнопка **«Обновить и перезапустить»** в разделе «Агенты и игроки». Клиенты игроков подтягивают новую версию сами при следующем запуске игры.
+Server agents update from the panel — the **Update and restart** button under "Agents and players". Players' clients pick up the new version themselves the next time they start the game.
 
-## Разработка с участием искусственного интеллекта
+## Built with AI assistance
 
-Проект разработан и поддерживается с активным использованием ИИ-ассистентов: они пишут код, тесты и документацию под управлением и с проверкой человека. Каждый выпуск проходит автоматические тесты (125 проверок интерфейса и протокола, тесты Rust и Java) и ручную проверку на настоящем Minecraft-сервере.
+This project is developed and maintained with heavy use of AI assistants: they write the code, the tests and the documentation, under human direction and review. Every release goes through automated tests (127 interface and protocol checks, plus Rust and Java test suites) and a manual run against a real Minecraft server.
 
-Мы считаем важным говорить об этом прямо: код открыт, история изменений подробна, а решения задокументированы — вы можете проверить любую часть сами.
+We think it matters to say so plainly: the code is open, the history is detailed and the decisions are documented — you can check any part of it yourself.
 
-## Участие в проекте
+## Contributing
 
-Идеи, отчёты об ошибках и правки приветствуются — см. [CONTRIBUTING.md](CONTRIBUTING.md). Об уязвимостях сообщайте по правилам из [SECURITY.md](SECURITY.md).
+Ideas, bug reports and patches are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md). Report vulnerabilities as described in [SECURITY.md](SECURITY.md).
 
-## Лицензия
+## Licence
 
-[MIT](LICENSE). Minecraft, Fabric, NeoForge, Modrinth и CurseForge — товарные знаки соответствующих владельцев; проект с ними не аффилирован.
+[MIT](LICENSE). Minecraft, Fabric, NeoForge, Modrinth and CurseForge are trademarks of their respective owners; this project is not affiliated with them.
