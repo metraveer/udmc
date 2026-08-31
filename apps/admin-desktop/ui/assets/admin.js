@@ -164,7 +164,7 @@ async function adoptConnection(url, token, allowHttp) {
   setStatus(t("Ожидает подключения"), "warn");
   accessUi?.reset();
   await saveConnection();
-  elements.serverUrlInput.dispatchEvent(new Event("change"));
+  await refresh();
 }
 const getConnection = () => ({ url: normalizedServerUrl(), token: elements.tokenInput.value.trim(), allowHttp: document.getElementById("allowHttpConnection").checked });
 agentUpdates = initAgentUpdates({ getContext: () => serverStatus, getBinding: () => connectionRevision,
@@ -313,7 +313,6 @@ function bindEvents() {
   });
 
   document.querySelectorAll("[data-agent-mode]").forEach(button => button.addEventListener("click", () => setAgentMode(button.dataset.agentMode)));
-  elements.connectionForm.addEventListener("submit", connectToServer);
   elements.serverUrlInput.addEventListener("input", () => {
     connectionRevision++; powerWatch = null; lastKnownPower = null;
     workspaceAccess.reset();
@@ -353,7 +352,9 @@ function bindEvents() {
   document.getElementById("serverProfileForm").addEventListener("submit", () => { profileNameDirty = false; });
   [elements.rconHostInput, elements.rconPortInput, elements.rconPasswordInput].forEach((input) => input.addEventListener("input", () => {
     rconState = { status: "idle", checkedAt: null, message: t("Параметры изменены") };
-    renderRconStatus();
+    // The fuller call: whether the console can be used at all follows from these three fields,
+    // and so does whether its chip can be pressed.
+    updateRconFields();
   }));
   document.getElementById("rconConnectionStatus").addEventListener("click", testRcon);
   document.getElementById("commandGuardForm").addEventListener("submit", event => {
@@ -442,18 +443,6 @@ function setAgentMode(mode) {
     const selected = button.dataset.agentMode === mode;
     button.classList.toggle("active", selected); button.setAttribute("aria-selected", String(selected));
   });
-}
-
-async function connectToServer(event) {
-  event.preventDefault();
-  if (buildBusy) return;
-  try {
-    await saveConnection();
-    await refresh();
-    if (manifest) navigateTo("dashboard");
-  } catch (error) {
-    handleError(error);
-  }
 }
 
 async function refresh(options = {}) {
@@ -602,12 +591,15 @@ async function applyProtectedSettings(group, values) {
   let oldUrl = null;
   try { oldUrl = normalizedServerUrl(); } catch { /* Allow repairing a previously saved invalid address. */ }
   const oldHttp = document.getElementById("allowHttpConnection").checked;
+  let reconnect = false;
   if (group === "connection") {
     const url = values.serverUrlInput;
     const token = oldUrl === url ? elements.tokenInput.value.trim() : knownConnection?.url === url ? knownConnection.token : "";
     await persistConnection({ url, token }, values.allowHttpConnection);
+    reconnect = true;
   } else if (group === "token") {
     await persistConnection({ url: normalizedServerUrl(), token: values.tokenInput }, oldHttp);
+    reconnect = true;
   } else if (group === "rcon") {
     // The password lives where Windows keeps passwords, for as long as one is set. Asking
     // whether to remember it was a question with one sensible answer.
@@ -651,6 +643,9 @@ async function applyProtectedSettings(group, values) {
     updateRconFields(); addActivity(t("Настройки RCON сохранены."), "success");
   }
   if (["platform", "connection"].includes(group)) document.getElementById("generatorResult").hidden = true;
+  // A settled address or key is an instruction to use it; there is nothing else the panel would
+  // be waiting for, and no button left to press.
+  if (reconnect) await refresh().catch(handleError);
 }
 
 /** Everyone else this panel can see working on the same server right now. */
@@ -767,11 +762,11 @@ async function invokeRcon(command) {
     password: elements.rconPasswordInput.value,
     command
   });
-  if (unchanged()) rconState = { status: "online", checkedAt: Date.now(), message: t("Авторизация подтверждена") };
+  if (unchanged()) rconState = { status: "online", checkedAt: Date.now(), message: t("Авторизация подтверждена"), code: "" };
   return output;
   } catch (error) {
     const message = formatAgentError(error);
-    if (unchanged()) rconState = { status: "error", checkedAt: Date.now(), message };
+    if (unchanged()) rconState = { status: "error", checkedAt: Date.now(), message, code: error?.code || "" };
     throw new Error(message);
   } finally { renderRconStatus(); }
 }
@@ -796,14 +791,20 @@ function rconChipState() {
     return { label: t("Не настроен"), state: "neutral",
       hint: t("Задайте адрес и пароль RCON, чтобы панель выполняла команды в консоли сама.") };
   }
-  if (serverRcon && serverRcon.enabled === false) {
-    return { label: t("Выключен на сервере"), state: "warning",
-      hint: t("В server.properties этого сервера enable-rcon=false. Пока он выключен, пароль не поможет.") };
-  }
+  const off = serverRcon && serverRcon.enabled === false;
+  const offHint = t("В server.properties этого сервера enable-rcon=false. Пока он выключен, пароль не поможет.");
   if (rconState.status === "checking") return { label: t("Проверка RCON..."), state: "neutral", hint: "" };
-  if (rconState.status === "error") return { label: t("Нет доступа"), state: "error", hint: rconState.message };
+  // What the console actually answered outranks what the server says about it in general: a
+  // rejected password is a fact, and hearing «выключен на сервере» instead sends you to the
+  // wrong file.
+  if (rconState.status === "error") {
+    const label = rconState.code === "RCON_AUTH_FAILED" ? t("Неверный пароль")
+      : ["RCON_CONNECT_FAILED", "RCON_TIMEOUT"].includes(rconState.code) ? t("Не отвечает") : t("Нет доступа");
+    return { label, state: "error", hint: [rconState.message, off ? offHint : ""].filter(Boolean).join(" ") };
+  }
   const stale = rconState.checkedAt && Date.now() - rconState.checkedAt > 60000;
   if (rconState.status === "online" && !stale) return { label: t("Доступен"), state: "online", hint: checked };
+  if (off) return { label: t("Выключен на сервере"), state: "warning", hint: offHint };
   return { label: stale ? t("Проверка устарела") : t("Доступ не проверен"), state: "neutral",
     hint: [checked, t("Нажмите, чтобы проверить.")].filter(Boolean).join(" ") };
 }
@@ -2080,7 +2081,6 @@ function setBuildBusy(busy) {
   elements.refreshButton.disabled = busy;
   elements.serverUrlInput.disabled = busy;
   elements.tokenInput.disabled = busy;
-  document.querySelector("#connectButton").disabled = busy;
   document.querySelectorAll("#generatorForm input, #generatorForm select, #generatorForm button, #recoverIdentityButton, #deviceNameInput, #allowHttpConnection, [data-agent-mode], #joinForm input, #joinForm textarea, #joinForm button, #deviceList button, #packSettingsForm input, #packSettingsForm button").forEach(input => { input.disabled = busy; });
   document.getElementById("agentCreateTab").disabled = busy;
   document.getElementById("inviteDeviceButton").disabled = busy || accessRole !== "owner";

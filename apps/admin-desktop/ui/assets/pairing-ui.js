@@ -15,6 +15,8 @@ const API_PORT = /API port (\d{1,5})\b/;
 export function initPairing({ getConnection, onPaired, showToast, getBusy, setBusy, addressChosen = () => true,
   adminGet = null, isOwner = () => false, consoleUsable = () => true }) {
   const section = $("pairSection");
+  // The explanation the question mark carries while a code is still wanted.
+  const codeHint = section.querySelector(".hint").dataset.hint;
   const inputs = () => section.querySelectorAll("input,button");
   let busy = false;
   // A project saved from a server that is gone. Held until the code is entered: restoring is
@@ -23,6 +25,7 @@ export function initPairing({ getConnection, onPaired, showToast, getBusy, setBu
   // Set when the owner asks for the field back, or when reading the code over the console has
   // just failed: the way in must not disappear with the thing that did not work.
   let manualEntry = false;
+  let paired = false;
   const invoke = (name, args) => {
     const call = window.__TAURI__?.core?.invoke;
     if (!call) throw new Error(t("Эта операция доступна в Windows-приложении UDMC Control."));
@@ -46,18 +49,24 @@ export function initPairing({ getConnection, onPaired, showToast, getBusy, setBu
    */
   const syncButton = () => {
     // Either the panel can fetch the code itself, or someone types it in. Showing both at once
-    // was the question this used to ask instead of answering.
-    const viaRcon = rconReady() && !manualEntry;
+    // was the question this used to ask instead of answering. Once the server is claimed there
+    // is nothing to ask at all, and the field gives way to what it was asking for.
+    const viaRcon = rconReady() && !manualEntry && !paired;
     const code = $("pairCodeInput").value.trim();
+    $("pairedSummary").hidden = !paired;
     $("pairRconButton").hidden = !viaRcon;
     $("pairManualButton").hidden = !viaRcon;
-    $("pairEntry").hidden = viaRcon;
-    $("pairButton").hidden = viaRcon || !code;
+    $("pairEntry").hidden = viaRcon || paired;
+    $("pairButton").hidden = viaRcon || paired || !code;
     $("pairButton").disabled = busy || getBusy();
     $("pairRconButton").disabled = busy || getBusy();
     // A project is put back onto a server that has not been claimed yet; there is nowhere to
     // put it once one is.
-    $("pairRestoreButton").disabled = busy || getBusy() || section.hidden;
+    $("pairRestoreButton").disabled = busy || getBusy() || section.hidden || paired;
+    $("pairFieldLabel").textContent = paired ? t("Состояние привязки") : t("Код привязки");
+    section.querySelector(".hint").dataset.hint = paired
+      ? t("Сервер уже под управлением этой панели. Код привязки тратится один раз: второй раз он не понадобится и не сработает.")
+      : codeHint;
   };
   const report = (error) => showToast(formatAppError(error), "error");
   /**
@@ -84,12 +93,20 @@ export function initPairing({ getConnection, onPaired, showToast, getBusy, setBu
     badge(t("Проверка"), "neutral");
     try {
       const state = await agentJson(`${base}/pair`);
-      section.hidden = !state.unpaired;
-      if (state.unpaired) {
+      // A claimed server still has something to say here: which project this panel is holding.
+      section.hidden = false;
+      paired = !state.unpaired;
+      if (paired) {
+        badge(t("Привязан"), "online", t("Панель управляет этим проектом."));
+        $("pairedSummary").value = [state.packName || "UDMC",
+          state.minecraftVersion ? `Minecraft ${state.minecraftVersion}` : "", state.loaderType]
+          .filter(Boolean).join(" · ");
+      } else {
         badge(t("Ждёт привязки"), "warning attention",
           t("Сервер «{0}» (Minecraft {1}, {2}) ещё никем не занят. Введите его код, чтобы взять под управление.",
             state.packName || "UDMC", state.minecraftVersion || "?", state.loaderType || "?"));
       }
+      syncButton();
     } catch (error) {
       // A server that cannot be reached might be anything; do not put a form in the way.
       section.hidden = true;

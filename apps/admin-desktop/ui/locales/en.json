@@ -649,7 +649,6 @@
   "Название этого компьютера": "This computer's name",
   "Какой адрес нужен?": "Which address should I use?",
   "Один адрес для панели и клиентских JAR, не порт входа в Minecraft. Домен без порта означает HTTPS через уже настроенный прокси. Прямое подключение: IP:3077. «На этом ПК» подходит для проверки локального сервера, но игрокам с других компьютеров нужен доступный им адрес.": "One address for Control and client JARs, not the Minecraft game port. A domain without a port means HTTPS through an already configured proxy. Direct connection: IP:3077. 'On this PC' is for testing a local server; players on other computers need an address they can reach.",
-  "Подключиться": "Connect",
   "Создать JAR": "Create JAR",
   "По приглашению": "By invitation",
   "Доступ с этого компьютера": "Access from this computer",
@@ -1236,5 +1235,10 @@
   "Ввести ключ": "Enter the key",
   "Ключ, которым эта панель входит на сервер. Заполняется сам при привязке или по приглашению. Вручную он нужен в одном случае: панель на новом компьютере, пригласить вас некому — тогда сюда вставляют ключ восстановления из этой самой копии проекта.": "The key this panel signs in with. It fills itself in on pairing or from an invitation. It is typed by hand in one case: the panel is on a new computer and there is nobody to invite you — then the recovery key from this very project backup goes here.",
   "Ключ, которым сервер подписывает сборку, есть только у него. Если сервер потеряется, без копии проект придётся заводить заново, и всем игрокам — заново доверять новому ключу. Копию можно приложить при привязке нового сервера.": "The key the server signs the modpack with exists only there. If the server is lost, without a backup the project has to be started over, and every player has to trust a new key. A backup can be attached when pairing a new server.",
-  "Ключ, которым сервер подписывает сборку, есть только у него. Если сервер потеряется, без копии проект придётся заводить заново, и всем игрокам — заново доверять новому ключу. В файле лежит ключ подписи: храните его как пароль. Восстановить копию можно на сервер, который ещё не привязан: проект встанет на него, когда вы введёте код привязки.": "The key the server signs the modpack with exists only there. If the server is lost, without a backup the project has to be started over and every player has to trust a new key. The file holds that signing key: keep it like a password. A copy can be restored onto a server that has not been claimed yet: the project moves onto it when you enter its pairing code."
+  "Ключ, которым сервер подписывает сборку, есть только у него. Если сервер потеряется, без копии проект придётся заводить заново, и всем игрокам — заново доверять новому ключу. В файле лежит ключ подписи: храните его как пароль. Восстановить копию можно на сервер, который ещё не привязан: проект встанет на него, когда вы введёте код привязки.": "The key the server signs the modpack with exists only there. If the server is lost, without a backup the project has to be started over and every player has to trust a new key. The file holds that signing key: keep it like a password. A copy can be restored onto a server that has not been claimed yet: the project moves onto it when you enter its pairing code.",
+  "Неверный пароль": "Wrong password",
+  "Не отвечает": "Not responding",
+  "Состояние привязки": "Pairing state",
+  "Панель управляет этим проектом.": "This panel manages this project.",
+  "Сервер уже под управлением этой панели. Код привязки тратится один раз: второй раз он не понадобится и не сработает.": "The server is already managed by this panel. A pairing code is spent once: it is neither needed nor accepted a second time."
 }

@@ -47,6 +47,23 @@ test("a pending server command blocks duplicate commands and language changes", 
   assert.equal(ui.$("commandSubmitButton").disabled, false);
 });
 
+test("a claimed server shows what this panel holds instead of a field for a code", async t => {
+  const ui = await createAdmin(t, { storage: { "udmc-control-server-url": "https://agent.test/" },
+    fetch: ({ url }) => url.pathname === "/pair"
+      ? response({ unpaired: false, packName: "UDMC Main", minecraftVersion: "26.2", loaderType: "fabric" })
+      : undefined });
+  // Asking the server whether it is claimed happens when the tab that would claim it is opened.
+  ui.w.document.querySelector('[data-agent-mode="connect"]').click();
+  await until(() => ui.$("pairAvailability").textContent === "Привязан");
+  assert.equal(ui.$("pairFieldLabel").textContent, "Состояние привязки");
+  assert.equal(ui.$("pairedSummary").hidden, false);
+  assert.equal(ui.$("pairedSummary").value, "UDMC Main · Minecraft 26.2 · fabric");
+  // Nothing left to type or press: the code is spent.
+  assert.equal(ui.$("pairEntry").hidden, true);
+  assert.equal(ui.$("pairRconButton").hidden, true);
+  assert.equal(ui.$("pairRestoreButton").disabled, true);
+});
+
 test("a command that changes the server names who else is in the panel", async t => {
   const ui = await createAdmin(t, { fetch: ({ url }) => {
     if (url.pathname === "/admin/status") {
@@ -361,7 +378,8 @@ test("RCON shows checking, confirmed access and failure in the console and sideb
   assert.equal(ui.invocations.find(c => c.name === "rcon_execute").args.password, " secret ");
   assert.ok(ui.$("consoleOutput").textContent.includes("Players: Alex"));
   fail = true; ui.click("rconConnectionStatus");
-  await until(() => ui.$("rconConsoleStatus").textContent === "Нет доступа");
+  // The chip names what the console answered, not the general shape of the failure.
+  await until(() => ui.$("rconConsoleStatus").textContent === "Неверный пароль");
   assert.equal(ui.$("rconConnectionStatus").dataset.hint, "Сервер отклонил пароль RCON.");
   assert.ok(!ui.$("consoleOutput").textContent.includes(" secret "));
 });
