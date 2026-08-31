@@ -243,7 +243,10 @@ dialog { overscroll-behavior: contain; }
   .generator-platform { grid-template-columns: minmax(0, 1.3fr) repeat(2, minmax(0, 1fr)); }
   .console-heading { flex-wrap: wrap; }
 }
-.workspace-header { display: flex; align-items: center; justify-content: space-between; min-height: 62px; gap: 16px; padding-top: 6px; }
+/* The page's name is already the highlighted item in the sidebar; repeating it here cost a
+   row of every screen. What is left is the row of actions, which collapses when empty. */
+.workspace-header { display: flex; align-items: center; justify-content: flex-end; min-height: 0; gap: 16px; padding-top: 6px; }
+.workspace-header:not(:empty) { padding-bottom: 10px; }
 .eyebrow, .section-kicker { margin: 0 0 3px; color: var(--accent); font-size: 10px; font-weight: 780; text-transform: uppercase; letter-spacing: 0.11em; }
 h1, h2, p { margin-top: 0; }
 h1 { margin-bottom: 0; font-family: "Segoe UI Variable Display", "Segoe UI", ui-sans-serif, system-ui, sans-serif; font-size: 20px; font-weight: 750; letter-spacing: -0.01em; line-height: 1.15; }
@@ -769,7 +772,9 @@ button.attention-row:hover { border-color: var(--line-strong); color: var(--ink)
    The count is in the summary strip, so the names belong under it rather than in a card
    competing for the same screen. A full server is a thousand names: the list scrolls, only
    a screenful is ever built, and past twenty players a filter appears. */
-.summary-popover-host { padding: 0; }
+/* The button carries the hover highlight, so it has to be the whole cell: laid out as a
+   plain block it stopped at its own text and lit up only part of the column. */
+.summary-popover-host { display: grid; padding: 0; }
 .summary-trigger {
   position: relative;
   display: flex; flex-direction: column; align-items: flex-start; gap: 3px;
@@ -793,9 +798,9 @@ button.attention-row:hover { border-color: var(--line-strong); color: var(--ink)
   border: 1px solid var(--line-strong); border-radius: 9px;
   background: var(--surface); box-shadow: var(--shadow);
 }
-.players-popover-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
-.players-popover-head strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.players-popover-head .text-button { display: inline-flex; align-items: center; gap: 5px; flex: 0 0 auto; margin: 0; white-space: nowrap; }
+.summary-popover-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.summary-popover-head strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.summary-popover-head .text-button { display: inline-flex; align-items: center; gap: 5px; flex: 0 0 auto; margin: 0; white-space: nowrap; }
 .players-filter { margin-bottom: 10px; }
 .summary-popover .player-list { max-height: 300px; overflow-y: auto; }
 .summary-popover .connection-summary { margin-top: 8px; }

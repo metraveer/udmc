@@ -55,7 +55,7 @@
 
       <main class="workspace">
         <header class="workspace-header">
-          <div><h1 id="viewTitle" data-i18n='Сервер'>Сервер</h1></div>
+          <h1 id="viewTitle" class="sr-only" data-i18n='Сервер'>Сервер</h1>
           <div class="header-actions">
             <button id="refreshButton" class="icon-button" type="button" title="Обновить данные" aria-label="Обновить данные" data-i18n-title='Обновить данные' data-i18n-aria-label='Обновить данные'>
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8.1 8.1 0 0 0-15.5-2M4 4v5h5M4 13a8.1 8.1 0 0 0 15.5 2M20 20v-5h-5"/></svg>
@@ -72,10 +72,10 @@
         <section id="dashboardView" class="view active" data-view-panel="dashboard">
           <div class="summary-strip server-summary" aria-label="Состояние сервера" data-i18n-aria-label='Состояние сервера'>
             <div class="summary-item"><span data-i18n='Состояние'>Состояние</span><strong id="serverState">-</strong></div>
-            <div class="summary-item summary-players">
+            <div class="summary-item summary-popover-host">
               <button id="playersSummary" class="summary-trigger" type="button" aria-expanded="false" aria-controls="playersPopover" disabled><span data-i18n='Игроки'>Игроки</span><strong id="serverPlayers">-</strong><i data-lucide="chevron-down"></i></button>
-              <div id="playersPopover" class="players-popover" hidden>
-                <div class="players-popover-head"><strong data-i18n='Кто на сервере'>Кто на сервере</strong><span id="playerCountBadge" class="file-count">0 / 0</span></div>
+              <div id="playersPopover" class="summary-popover" hidden>
+                <div class="summary-popover-head"><strong data-i18n='Кто на сервере'>Кто на сервере</strong><span id="playerCountBadge" class="file-count">0 / 0</span></div>
                 <label class="field players-filter" hidden><span data-i18n='Поиск по нику'>Поиск по нику</span><input id="playerFilter" type="search" autocomplete="off" placeholder="Ник" spellcheck="false" data-i18n-placeholder='Ник'></label>
                 <div id="playerList" class="player-list"><div class="empty-players" data-i18n='Никого нет на сервере'>Никого нет на сервере</div></div>
                 <p id="playerListMore" class="connection-summary" hidden></p>
@@ -84,7 +84,7 @@
             <div class="summary-item summary-popover-host">
               <button id="packSummary" class="summary-trigger" type="button" aria-expanded="false" aria-controls="packPopover" disabled><span data-i18n='Сборка'>Сборка</span><strong id="serverPackName">-</strong><i data-lucide="chevron-down"></i></button>
               <div id="packPopover" class="summary-popover" hidden>
-                <div class="players-popover-head"><strong id="dashPackName">-</strong><button id="dashOpenBuild" class="text-button" type="button"><span data-i18n='Открыть сборку'>Открыть сборку</span><i data-lucide="arrow-right"></i></button></div>
+                <div class="summary-popover-head"><strong id="dashPackName">-</strong><button id="dashOpenBuild" class="text-button" type="button"><span data-i18n='Открыть сборку'>Открыть сборку</span><i data-lucide="arrow-right"></i></button></div>
                 <dl class="facts-list">
                   <div><dt data-i18n='Опубликована'>Опубликована</dt><dd id="dashPublishedVersion">-</dd></div>
                   <div><dt data-i18n='Файлов в сборке'>Файлов в сборке</dt><dd id="dashFileCount">-</dd></div>
