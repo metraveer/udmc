@@ -4,7 +4,6 @@
 
 ## Проверка
 
-- [ ] `npm run smoke`
 - [ ] `npm run minecraft:build`
 - [ ] `npm run admin:build` или изменение не затрагивает Windows-приложение
 - [ ] Документация обновлена

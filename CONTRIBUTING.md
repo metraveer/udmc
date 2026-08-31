@@ -12,7 +12,6 @@
 
 ```powershell
 npm ci
-npm run smoke
 npm run minecraft:build
 npm run admin:build
 ```
