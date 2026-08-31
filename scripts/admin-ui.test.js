@@ -175,6 +175,55 @@ test("a name is shown until the pencil is pressed, and the same button saves it"
   assert.equal(ui.errors.length, 0);
 });
 
+test("the login rule is switched by its switch, and the question mark only explains it", async t => {
+  const bodies = [];
+  const ui = await createAdmin(t, { fetch: ({ url, options }) => {
+    if (url.pathname === "/admin/status") return response({ state: "online", agentProtocol: 1, capabilities: { powerActions: true } });
+    if (url.pathname === "/admin/agents") {
+      return response({ currentVersion: "0.5.0", canUpdate: false, signed: true, client: { version: "0.5.0" },
+        downloadUrl: "http://agent.test/agents/download", requireClient: false, gameAddress: "" });
+    }
+    if (url.pathname === "/admin/agents/settings") {
+      bodies.push(JSON.parse(options.body));
+      return response({ currentVersion: "0.5.0", canUpdate: false, signed: true, client: { version: "0.5.0" },
+        downloadUrl: "http://agent.test/agents/download", ...bodies[bodies.length - 1] });
+    }
+    return undefined;
+  } });
+  ui.click("serverProfileSettingsButton");
+  ui.w.document.querySelector('[data-agent-mode="agents"]').click();
+  await until(() => ui.$("requireClientAgent").disabled === false);
+
+  // The checkbox itself is a pixel wide and invisible; what a person presses is the switch
+  // drawn beside it, and only the label decides where that press lands. The question mark in
+  // the same label is a button, and a button is labelable: it took the press for itself, so
+  // the rule never moved and its own explanation popped up instead.
+  const row = ui.$("requireClientAgent").closest("label");
+  assert.equal(row.control, ui.$("requireClientAgent"), "The row belongs to the rule, not to the hint beside it");
+  row.querySelector("i[aria-hidden]").click();
+  await until(() => bodies.length === 1);
+  assert.equal(bodies[0].requireClient, true);
+  // The switch is disabled for the length of the request; waiting for it to come back
+  // keeps the whole save inside the test instead of after it, where the window is gone.
+  await until(() => ui.$("requireClientAgent").disabled === false);
+  assert.equal(ui.$("requireClientAgent").checked, true);
+
+  row.querySelector(".hint").click();
+  assert.equal(ui.$("requireClientAgent").checked, true, "Asking what the rule means must not change it");
+  assert.equal(bodies.length, 1);
+  assert.equal(ui.errors.length, 0);
+});
+
+test("every label belongs to the field it draws", async t => {
+  const ui = await createAdmin(t);
+  for (const label of ui.w.document.querySelectorAll("label")) {
+    const fields = label.querySelectorAll("input, select, textarea");
+    if (!fields.length) continue;
+    assert.equal(label.control, fields[0], `Label points elsewhere: ${label.textContent.trim().slice(0, 48)}`);
+  }
+  assert.equal(ui.errors.length, 0);
+});
+
 test("the game address is opened and saved by the one button inside its field", async t => {
   const bodies = [];
   const ui = await createAdmin(t, { fetch: ({ url, options }) => {
