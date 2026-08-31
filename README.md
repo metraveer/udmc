@@ -30,16 +30,19 @@ UDMC removes that step. You publish the pack in the panel, and players get it th
 - **Mod catalogues inside the panel.** Modrinth, CurseForge and GitHub Releases — search, descriptions, screenshots, and installing into the pack in a couple of clicks.
 - **Compatibility checked before you publish.** Missing dependencies, duplicates and wrong sides are found before the server falls over.
 - **Nothing extra on the player's machine.** Their own mods stay, server-side files never reach them.
+- **One file for everybody.** The mod is the same for the server and for players, with no secrets inside — you can simply post a link to it.
 
 ## Five steps to a working setup
 
 1. **Download** [the latest installer](../../releases/latest) and run it.
-2. In the app open **Server settings → Create JAR**, enter your server's address, and press **Build the server JAR**.
-3. Put the resulting `udmc-sync-server.jar` into your Minecraft server's `mods` folder and start the server.
-4. Return to the app and press **Connect**. The client JAR uploads to the server on its own.
-5. Copy the link from **Agents and players** and send it to your players — that is where they download the client mod.
+2. In the app open **Server settings → Download the mod**, pick your game version, and save the file.
+3. Put the file into your server's `mods` folder and start it. The server creates a project and writes a **pairing code** — to the console and to `config/udmc-pairing.txt`.
+4. Return to the app, open **Pairing**, enter your server's address and the code. If the server has RCON enabled, one button fetches the code for you.
+5. Give players the very same file. There is only one: the server tells the client which modpack it is and where to get it.
 
 That is it: from now on, whatever you publish under "Pack" travels to your players by itself.
+
+The pairing code does not expire and survives restarts, so there is nothing to rush. It stops working the moment the server is paired.
 
 The step-by-step guide is [docs/installation.md](docs/installation.md) (in Russian).
 
@@ -73,7 +76,8 @@ The step-by-step guide is [docs/installation.md](docs/installation.md) (in Russi
 **Working together, safely**
 - Invitations for other administrators, confirmed by a code.
 - Every change is protected against conflicts when several people work at once.
-- Updates signed with Ed25519; keys kept in the Windows credential store.
+- Ed25519-signed updates; the signing key is created on the server and never sits inside the mod file.
+- Project backups: losing the server does not mean losing your players' trust.
 
 ## Documentation
 
@@ -108,7 +112,7 @@ Server agents update from the panel — the **Update and restart** button under 
 
 ## Built with AI assistance
 
-This project is developed and maintained with heavy use of AI assistants: they write the code, the tests and the documentation, under human direction and review. Every release goes through automated tests (127 interface and protocol checks, plus Rust and Java test suites) and a manual run against a real Minecraft server.
+This project is developed and maintained with heavy use of AI assistants: they write the code, the tests and the documentation, under human direction and review. Every release goes through automated tests (123 interface and protocol checks, plus Rust and Java test suites) and a manual run against a real Minecraft server.
 
 We think it matters to say so plainly: the code is open, the history is detailed and the decisions are documented — you can check any part of it yourself.
 

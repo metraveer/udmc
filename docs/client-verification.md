@@ -99,8 +99,28 @@ While you are in there, confirm the two known-stale facts: `scripts/runtime-agen
 ```
 udmc_sync:verify_query   S2C config:  varint protocol, utf(64) packId, utf(64) clientHash, utf(2048) downloadUrl, bool required
 udmc_sync:verify_answer  C2S config:  varint protocol, utf(64) packId, utf(32) version,    utf(64) jarHash
+udmc_sync:verify_project S2C config:  varint protocol, utf(64) packId, utf(128) packName, utf(2048) apiUrl, utf(256) publicKey
 ```
 Keeping the field layout byte-identical lets the E2E reuse its protodef containers verbatim. `TRANSACTION_ID` is deleted. Serverbound configuration cap is 32 767 bytes; our answer is ~200.
+
+**Why a third channel rather than more fields on the question (0.20).** With one mod for
+everybody, a client arrives knowing nothing and has to be told which project it just joined.
+That could have been extra fields on `verify_query` — but clients from 0.19.0 decode that
+payload by position, and Minecraft refuses a payload whose buffer is not read to the end. A
+longer question would break them mid-handshake and cost them the very screen that explains
+what to install. They do not know `verify_project` at all, so it decodes to `DiscardedPayload`
+and is dropped, and they still reach the disconnect screen.
+
+On NeoForge the same reasoning has teeth in the other direction: an unregistered payload is a
+hard kick, so the server checks `hasChannel(UdmcProjectPayload.TYPE)` before sending it. A
+client from before this channel simply never receives it.
+
+**The two protocol numbers.** `QUERY_PROTOCOL` is frozen at 2 — it is what the server writes
+into the question, and changing it would make 0.19.0 clients fall silent, which the server can
+only report as "not installed". `PROTOCOL` is 3: what a client says about *itself*. A server on
+3 therefore recognises a 2 and answers it with `udmc_sync.login.incompatible` instead of
+silence. A client that belongs to no project yet answers with an empty `packId`, which is a
+third case again: installed, current, and not yet set up.
 
 ### Step order
 
