@@ -70,6 +70,11 @@ public final class WorkspaceTest {
                 call(first, base, "POST", path, OWNER, A, null, "{}", 428);
                 call(first, base, "POST", path, OWNER, A, "stale", "{}", 409);
             }
+            // Stopping the server is no longer gated by a switch in the config: a request with a
+            // fresh revision reaches the runtime itself, and only a runtime that is not attached
+            // refuses it. Before, it never got that far. Accepting it spends the revision.
+            call(first, base, "POST", "/admin/server/stop", OWNER, A, original, "{\"delaySeconds\":0}", 503);
+            original = revision(first, base, OWNER);
             call(first, base, "DELETE", "/admin/files?path=config/test.txt", OWNER, A, "stale", "", 409);
             check(store.loadDraft().files.isEmpty(), "Stale request changed the draft");
             call(first, base, "POST", "/admin/files?path=config/test.txt", OWNER, A, original, "first", 201);

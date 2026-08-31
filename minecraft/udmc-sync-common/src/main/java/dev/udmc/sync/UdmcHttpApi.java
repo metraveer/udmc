@@ -519,8 +519,6 @@ public final class UdmcHttpApi {
 
     private void handlePowerAction(HttpExchange exchange, boolean restart, byte[] body) throws IOException {
         MinecraftServer current = minecraftServer;
-
-
         PowerRequest request = parseBody(body, PowerRequest.class);
         if (request != null && Boolean.TRUE.equals(request.cancel)) {
             cancelPendingPower(current, true);
