@@ -688,8 +688,10 @@ button.state-badge:disabled { cursor: default; }
 .policy-row { margin: 14px 0 0; padding: 11px 13px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface-soft); }
 .copy-field > input { cursor: pointer; }
 .agent-update-bar { display: flex; align-items: center; gap: 14px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
-.agent-update-copy { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; font-size: 12px; color: var(--muted-strong); }
-.agent-update-copy > .connection-summary { flex-basis: 100%; margin: 0; }
+/* Plain text flow, not a row of boxes: a long version line then wraps as a sentence and
+   keeps its question mark next to the last word instead of dropping it to a line of its own. */
+.agent-update-copy { flex: 1 1 auto; min-width: 0; font-size: 12px; line-height: 1.5; color: var(--muted-strong); }
+.agent-update-copy > .connection-summary { display: block; margin: 2px 0 0; }
 .agent-update-copy > .connection-summary:empty { display: none; }
 .agent-update-bar > .button { flex: 0 0 auto; }
 .dialog-block { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }

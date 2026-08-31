@@ -82,7 +82,7 @@ export function initAgentUpdates({ getContext, getBinding, getRevision, getBusy,
     const state = current?.update?.state;
     $("agentUpdateState").textContent = pending() ? t("Обновление {0} подготовлено. Остановите Minecraft-сервер; JAR заменится после выхода процесса. Затем запустите сервер.", current.update.version)
       : state === "applied" ? t("Обновление {0} применено: файл заменён, сервер начнёт использовать его после перезапуска процесса. Резервная копия: {1}.", current.update.version, current.update.backup)
-        : ["failed", "interrupted"].includes(state) ? t("Обновление не завершено: {0}. Проверьте udmc-sync/agent-update/helper.log и повторите. Если сбой повторяется (хостинг жёстко завершает процессы), замените серверный JAR вручную через «Создать JAR» - ключи и настройки сохранятся.", agentStatusMessage(current.update, t("процесс обновления прерван")))
+        : ["failed", "interrupted"].includes(state) ? t("Обновление не завершено: {0}. Проверьте udmc-sync/agent-update/helper.log и повторите. Если сбой повторяется (хостинг жёстко завершает процессы), замените файл мода вручную через «Скачать мод» - ключи и настройки сервера сохранятся.", agentStatusMessage(current.update, t("процесс обновления прерван")))
           : agentStatusMessage(current?.updateReason);
     // A pre-0.10.0 agent still updates through the killable external helper: after a
     // failure the panel route cannot succeed there, so offer the one-time manual path.
@@ -217,7 +217,7 @@ export function initAgentUpdates({ getContext, getBinding, getRevision, getBusy,
   $("agentManualUpdateButton").addEventListener("click", () => {
     document.querySelector('[data-agent-mode="create"]')?.click();
     document.querySelector('[data-agent-panel="create"]')?.scrollIntoView({ block: "start" });
-    showToast(t("Сформируйте JAR в этом же профиле: ключи и настройки сервера сохранятся. Затем остановите сервер, замените udmc-sync-server.jar в mods и запустите."));
+    showToast(t("Скачайте мод на этой вкладке, остановите сервер и замените им прежний файл UDMC в mods. Ключи и настройки сервера останутся на месте."));
   });
   $("copyAgentDownloadButton").addEventListener("click", async () => {
     if (!current?.client) return;

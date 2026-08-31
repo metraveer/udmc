@@ -181,7 +181,7 @@ try {
     if (action === "restart") await login("current", false);
     console.log(`PASS updated packaged server restart: version ${before.version}, exact JAR, API and saved credentials${action === "restart" ? ", login mixins" : "; game login must be tested separately"}`);
   } else if (action === "stop") {
-    await request("/admin/settings", { method: "POST", body: { allowRemotePowerActions: true } });
+    // No switch to flip first: a request with a fresh revision reaches the runtime itself.
     await request("/admin/server/stop", { method: "POST", expected: 202 });
   } else throw new Error(`Unknown runtime action: ${action}`);
 } finally {

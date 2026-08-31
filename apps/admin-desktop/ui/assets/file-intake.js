@@ -30,7 +30,7 @@ export async function inspectFile(file, loader = null) {
     });
 
     if (entries.includes("udmc-bootstrap.json")) {
-      return { ...settings, inspectionError: t("JAR агента нельзя включать в сборку: серверный вариант содержит секреты. Игрокам выдавайте клиентский JAR отдельно.") };
+      return { ...settings, inspectionError: t("Это старый персональный файл UDMC со встроенными настройками. Мод давно один на всех, и в сборку он не добавляется - возьмите текущий на вкладке «Скачать мод».") };
     }
 
     if (name.endsWith(".jar")) {

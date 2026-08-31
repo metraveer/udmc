@@ -37,7 +37,7 @@ UDMC removes that step. You publish the pack in the panel, and players get it th
 1. **Download** [the latest installer](../../releases/latest) and run it.
 2. In the app open **Server settings → Download the mod**, pick your game version, and save the file.
 3. Put the file into your server's `mods` folder and start it. The server creates a project and writes a **pairing code** — to the console and to `config/udmc-pairing.txt`.
-4. Return to the app, open **Pairing**, enter your server's address and the code. If the server has RCON enabled, one button fetches the code for you.
+4. Return to the app, open **Server settings → Connection**, enter your server's address and the code. If the RCON password is already there, the field gives way to one button that fetches the code itself.
 5. Give players the very same file. There is only one: the server tells the client which modpack it is and where to get it.
 
 That is it: from now on, whatever you publish under "Pack" travels to your players by itself.
