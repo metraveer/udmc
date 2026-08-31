@@ -95,7 +95,7 @@ test("the game address renders from the agent, saves through settings and shows 
   // which the version, the player link and the join rules were told apart only by reading.
   const groups = [...ui.w.document.querySelectorAll('[data-agent-panel="agents"] fieldset.generator-group')];
   assert.deepEqual(groups.map(group => group.querySelector("legend").textContent.trim()),
-    ["Версия агента на сервере", "Клиентский JAR для игроков", "Правила входа игроков"]);
+    ["Версия агента на сервере", "Ссылка для игроков", "Правила входа игроков"]);
   for (const control of ui.w.document.querySelectorAll('[data-agent-panel="agents"] input, [data-agent-panel="agents"] button')) {
     assert.ok(control.closest("fieldset.generator-group"), `Вне группы: ${control.id || control.textContent.trim()}`);
   }

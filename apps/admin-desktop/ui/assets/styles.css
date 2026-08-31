@@ -194,6 +194,10 @@ dialog { overscroll-behavior: contain; }
 .muted-copy { color: var(--muted); font-size: 12px; line-height: 1.55; }
 .security-note { margin: 0; color: var(--amber); font-size: 12px; line-height: 1.55; }
 .rcon-status-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 10px; }
+/* Проверка, «запомнить пароль» и состояние — одной строкой под полями, а не тремя блоками. */
+.rcon-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-top: 12px; }
+.rcon-actions .check-row { margin: 0; }
+.rcon-actions small { color: var(--muted); }
 .rcon-status-row small { color: var(--muted); }
 .generator-form { max-width: 1080px; }
 .generator-group { border: 0; border-top: 1px solid var(--line); margin: 16px 0 0; padding: 14px 0 0; min-width: 0; }
@@ -625,6 +629,8 @@ button.attention-row:hover { border-color: var(--line-strong); color: var(--ink)
 .readonly-grid strong { font-size: 12px; }
 .toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; min-height: 42px; cursor: pointer; }
 .toggle-row > span { display: grid; min-width: 0; gap: 2px; }
+/* Подпись без второй строки: подсказка встаёт рядом, а не под ней. */
+.toggle-row > span.inline-label { display: flex; align-items: center; gap: 0; }
 .toggle-row strong { font-size: 12px; }
 .toggle-row small { color: var(--muted); font-size: 11px; }
 .toggle-row input { position: absolute; width: 1px; height: 1px; opacity: 0; }
@@ -730,6 +736,51 @@ button.attention-row:hover { border-color: var(--line-strong); color: var(--ink)
 .advanced-settings > summary { cursor: pointer; font-size: 12px; color: var(--muted-strong); }
 .advanced-settings .form-grid { margin-top: 11px; }
 .address-toolbar { display: flex; justify-content: space-between; gap: 12px; align-items: start; flex-wrap: wrap; }
+/* ---- explanations that stay out of the way ---------------------------------
+   A page of settings should be readable in one pass. Long explanations used to sit in
+   expandables that pushed everything else off the screen once opened; now they live behind
+   a question mark and appear only while it is hovered or focused. */
+.hint {
+  display: inline-flex; align-items: center; justify-content: center;
+  position: relative; margin: 0 0 0 6px; padding: 0;
+  border: 0; background: transparent; color: var(--muted);
+  cursor: help; line-height: 0; vertical-align: middle;
+}
+.hint svg { width: 14px; height: 14px; }
+.hint:hover, .hint:focus-visible { color: var(--muted-strong); }
+.hint::after {
+  content: attr(data-hint);
+  position: absolute; top: calc(100% + 8px); left: 0;
+  width: 320px; max-width: min(60vw, 320px);
+  padding: 10px 12px; z-index: 60;
+  border: 1px solid var(--line-strong); border-radius: 8px;
+  background: var(--surface-soft); color: var(--muted-strong);
+  box-shadow: var(--shadow);
+  font-size: 12px; line-height: 1.55; font-weight: 400;
+  text-align: left; text-transform: none; letter-spacing: normal; white-space: normal;
+  opacity: 0; visibility: hidden; transition: opacity 120ms ease;
+  pointer-events: none;
+}
+/* Near the right edge the bubble would run off the dialog, so it hangs the other way. */
+.minor-action:last-of-type .hint::after, .rcon-fields .hint::after { left: auto; right: 0; }
+.hint:hover::after, .hint:focus-visible::after { opacity: 1; visibility: visible; }
+@media (prefers-reduced-motion: reduce) { .hint::after { transition: none; } }
+
+/* ---- the setup screen ------------------------------------------------------ */
+
+.setup-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 14px; align-items: end; }
+.setup-row .profile-name-form { margin: 0; }
+@media (max-width: 720px) { .setup-row { grid-template-columns: 1fr; } }
+
+/* Rarely needed, so they read as a footnote rather than as three more settings. */
+.minor-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+.minor-action { display: inline-flex; align-items: center; }
+.minor-action .text-button { margin: 0; }
+
+.compact-dialog { width: min(520px, calc(100vw - 64px)); padding: 18px 22px 22px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+.compact-dialog::backdrop { background: rgba(8, 9, 11, .62); }
+.compact-dialog .section-heading { margin-bottom: 14px; }
+
 /* The server summary and the button that re-reads it, without the two colliding. */
 .pair-status-row { display: flex; justify-content: space-between; align-items: start; gap: 12px; flex-wrap: wrap; margin: 12px 0 4px; }
 .pair-status-row > .connection-summary { flex: 1 1 320px; min-width: 0; }
@@ -809,7 +860,11 @@ button.attention-row:hover { border-color: var(--line-strong); color: var(--ink)
 .modal-actions { margin-top: 3px; padding-top: 13px; border-top: 1px solid var(--line); }
 .modal-path { overflow-wrap: anywhere; font-family: "Cascadia Mono", ui-monospace, Consolas, monospace; font-size: 12px; }
 
-.protected-label { display: flex; min-height: 30px; align-items: center; justify-content: space-between; gap: 12px; }
+.protected-label { display: flex; min-height: 30px; align-items: center; gap: 12px; }
+/* Подсказка держится подписи; всё, что идёт после, уходит к правому краю. Без подсказки
+   ту же работу делает первый элемент после подписи. */
+.protected-label > .hint { margin-left: 0; margin-right: auto; }
+.protected-label > label:first-child + :not(.hint) { margin-left: auto; }
 .protected-label label { min-width: 0; overflow-wrap: anywhere; }
 .protected-label .icon-button, .protected-heading-actions .icon-button { flex: 0 0 30px; width: 30px; height: 30px; }
 .agent-address .form-grid { align-items: end; }

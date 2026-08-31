@@ -240,13 +240,13 @@ export function initAccess({ getConnection, setConnection, replaceToken, getBusy
   const ready = (async () => {
     if (!window.__TAURI__?.core?.invoke) return;
     try {
-      const deviceName = await invoke("device_name", { fallback: t("Мой компьютер") });
-      $("deviceNameInput").value = localStorage.getItem("udmc-device-name") || deviceName;
+      // Taken from Windows, not asked for: this only labels a row in the owner's device
+      // list, and a field for it sat in the way of everything that actually needs deciding.
+      $("deviceNameInput").value = await invoke("device_name", { fallback: t("Мой компьютер") });
       pending = await readSecret("pending-access"); renderPending();
-      if (pending) { navigateTo("generator"); $("agentJoinTab").click(); }
+      if (pending) { navigateTo("generator"); $("joinDialog").showModal(); }
     } catch (error) { report(error); }
   })();
-  $("deviceNameInput").addEventListener("change", () => localStorage.setItem("udmc-device-name", $("deviceNameInput").value.trim()));
   return { ready, ensureDevice, receive, reset, onOpen: refreshDevices, poll: async () => {
     await checkPending();
     if ($("devicesView").classList.contains("active")) await refreshDevices();

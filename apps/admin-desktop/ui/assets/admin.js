@@ -228,7 +228,7 @@ protectedSettings = initProtectedSettings({
   onApply: applyProtectedSettings, showToast
 });
 // A panel with no key has a server to claim, not a file to build: pairing is the way in.
-setAgentMode(elements.tokenInput.value ? "connect" : "pair");
+setAgentMode("connect");
 await accessUi.ready;
 refresh();
 window.setInterval(() => {
@@ -257,6 +257,7 @@ function bindEvents() {
   document.querySelectorAll("[data-view]").forEach((button) => {
     button.addEventListener("click", () => navigateTo(button.dataset.view));
   });
+  document.getElementById("openJoinButton").addEventListener("click", () => document.getElementById("joinDialog").showModal());
   document.querySelectorAll("[data-close-dialog]").forEach((button) => {
     button.addEventListener("click", () => document.querySelector(`#${button.dataset.closeDialog}`).close());
   });
@@ -377,7 +378,9 @@ function navigateTo(viewName) {
 
 function setAgentMode(mode) {
   document.querySelectorAll("[data-agent-panel]").forEach(panel => { panel.hidden = panel.dataset.agentPanel !== mode; });
-  if (mode === "pair") pairingUi?.show().catch(handleError);
+  // Whether this server still needs claiming is a question for the server, asked when the
+  // panel that would claim it is on screen.
+  if (mode === "connect") pairingUi?.show().catch(handleError);
   document.querySelectorAll("[data-agent-mode]").forEach(button => {
     const selected = button.dataset.agentMode === mode;
     button.classList.toggle("active", selected); button.setAttribute("aria-selected", String(selected));
@@ -1673,8 +1676,8 @@ function saveUiSession() {
       profileName: document.getElementById("serverProfileName").value, profileNameDirty,
       powerDraft: elements.powerActionsInput.checked, powerDirty: powerSettingsDirty,
       activity: activityEntries, console: consoleEntries },
-    [elements.tokenInput.value, elements.rconPasswordInput.value, document.getElementById("pairCodeInput").value,
-      document.getElementById("pairRconPassword").value, document.getElementById("inviteCode").value]);
+    [elements.tokenInput.value, elements.rconPasswordInput.value,
+      document.getElementById("pairCodeInput").value, document.getElementById("inviteCode").value]);
   } catch { /* Session history is optional; a full store must not block server management. */ }
 }
 

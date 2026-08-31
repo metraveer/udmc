@@ -14,8 +14,8 @@ const API_PORT = /API port (\d{1,5})\b/;
  */
 export function initPairing({ getConnection, onPaired, showToast, getBusy, setBusy, addressChosen = () => true,
   adminGet = null, isOwner = () => false }) {
-  const form = $("pairForm");
-  const inputs = () => form.querySelectorAll("input,button");
+  const section = $("pairSection");
+  const inputs = () => section.querySelectorAll("input,button");
   let busy = false;
   // A project saved from a server that is gone. Held until the code is entered: restoring is
   // the same act as claiming, and the code is what says this server may be spoken for.
@@ -51,16 +51,15 @@ export function initPairing({ getConnection, onPaired, showToast, getBusy, setBu
     badge(t("Проверка"), "neutral");
     try {
       const state = await agentJson(`${base}/pair`);
+      section.hidden = !state.unpaired;
       if (state.unpaired) {
         badge(t("Ждёт привязки"), "warn");
-        $("pairServerSummary").textContent = t("{0}, Minecraft {1}, {2}", state.packName || "UDMC", state.minecraftVersion || "?", state.loaderType || "?");
-      } else {
-        badge(t("Уже привязан"), "ok");
-        $("pairServerSummary").textContent = t("Этот сервер уже привязан к панели. Чтобы привязать заново, включите resetPairing в config/udmc-sync.json и перезапустите сервер.");
+        $("pairServerSummary").textContent = t("Сервер «{0}» (Minecraft {1}, {2}) ещё никем не занят. Введите его код, чтобы взять под управление.",
+          state.packName || "UDMC", state.minecraftVersion || "?", state.loaderType || "?");
       }
     } catch (error) {
-      badge(t("Нет связи"), "error");
-      $("pairServerSummary").textContent = formatAppError(error);
+      // A server that cannot be reached might be anything; do not put a form in the way.
+      section.hidden = true;
     }
   };
 
@@ -68,14 +67,20 @@ export function initPairing({ getConnection, onPaired, showToast, getBusy, setBu
     if (busy || getBusy()) return;
     const invoke = window.__TAURI__?.core?.invoke;
     if (!invoke) { report(new Error(t("RCON доступен только в установленном приложении UDMC Control."))); return; }
-    const port = Number($("pairRconPort").value);
+    // The same RCON connection the console uses. One server, one password, entered once.
+    const port = Number($("rconPortInput").value);
+    const password = $("rconPasswordInput").value;
+    if (!$("rconHostInput").value.trim() || !password) {
+      report(new Error(t("Заполните подключение RCON выше: адрес и пароль из server.properties.")));
+      return;
+    }
     if (!Number.isInteger(port) || port < 1 || port > 65535) { report(new Error(t("Укажите порт RCON от 1 до 65535."))); return; }
     setLocalBusy(true);
     try {
       const output = await invoke("rcon_execute", {
-        host: $("pairRconHost").value.trim(),
+        host: $("rconHostInput").value.trim(),
         port,
-        password: $("pairRconPassword").value,
+        password,
         command: "udmc pair"
       });
       const code = CODE.exec(output);
@@ -88,8 +93,6 @@ export function initPairing({ getConnection, onPaired, showToast, getBusy, setBu
       $("pairCodeInput").value = code[1];
       const apiPort = API_PORT.exec(output);
       $("pairApiPort").textContent = apiPort ? t("Агент слушает порт {0}", apiPort[1]) : "";
-      // The password was needed for this one command and has no reason to stay in memory.
-      $("pairRconPassword").value = "";
       showToast(t("Код получен по RCON."), "success");
     } catch (error) {
       report(error);
@@ -98,8 +101,7 @@ export function initPairing({ getConnection, onPaired, showToast, getBusy, setBu
     }
   };
 
-  const submit = async (event) => {
-    event.preventDefault();
+  const submit = async () => {
     if (busy || getBusy()) return;
     const code = $("pairCodeInput").value.trim();
     if (!code) { report(new Error(t("Введите код привязки."))); return; }
@@ -112,6 +114,8 @@ export function initPairing({ getConnection, onPaired, showToast, getBusy, setBu
         body: JSON.stringify(restoring ? { code, project: restoring } : { code })
       });
       $("pairCodeInput").value = "";
+      badge(t("Привязан"), "ok");
+      $("pairServerSummary").textContent = "";
       restoring = null;
       $("pairRestoreState").textContent = "";
       $("pairFingerprint").textContent = project.fingerprint || "";
@@ -161,22 +165,17 @@ export function initPairing({ getConnection, onPaired, showToast, getBusy, setBu
     } catch (error) { report(error); } finally { setLocalBusy(false); }
   };
 
-  form.addEventListener("submit", submit);
+  $("pairButton").addEventListener("click", () => { submit().catch(report); });
   $("pairFetchCodeButton").addEventListener("click", fetchByRcon);
-  $("pairCheckButton").addEventListener("click", () => check().catch(report));
   $("pairRestoreButton").addEventListener("click", loadBackup);
   $("projectBackupButton").addEventListener("click", saveBackup);
 
   return {
     /** Called when the pairing tab is opened: the address may have changed since last time. */
     async show() {
-      try {
-        const host = new URL(address()).hostname;
-        if (!$("pairRconHost").value.trim()) $("pairRconHost").value = host;
-      } catch { /* The address is validated where it is entered. */ }
       // A panel that has never been pointed at a server has only a placeholder address, and
       // reaching out to whatever that happens to be is not this program's business.
-      if (!addressChosen()) { badge(t("Адрес не задан"), "neutral"); return; }
+      if (!addressChosen()) { section.hidden = true; return; }
       await check();
     },
     /** Only the owner holds the signing key, so only the owner can be handed a copy of it. */

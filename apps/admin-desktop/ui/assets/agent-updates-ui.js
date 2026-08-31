@@ -35,7 +35,9 @@ export function initAgentUpdates({ getContext, getBinding, getRevision, getBusy,
     $("agentDownloadUrl").textContent = current?.client ? current.downloadUrl : "";
     $("agentDownloadUrl").hidden = !current?.client;
     $("copyAgentDownloadButton").disabled = !current?.client;
-    $("agentClientUploadButton").hidden = Boolean(current?.client);
+    // A server publishes the file it runs, so this is the fallback for one that could not.
+    // Without a server to ask, there is nothing to fall back from and nothing to show.
+    $("agentClientUploadButton").hidden = !current || Boolean(current.client);
     $("agentClientUploadButton").disabled = !current?.signed || getBusy();
     $("agentUpdateButton").disabled = !current?.canUpdate || !current?.signed || getBusy() || pending();
     // Update-and-restart needs the same rights plus remote power actions: when the
