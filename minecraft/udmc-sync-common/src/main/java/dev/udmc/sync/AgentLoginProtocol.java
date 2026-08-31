@@ -77,8 +77,17 @@ public final class AgentLoginProtocol {
             current.config.serverUrl, current.config.manifestPublicKey);
     }
 
-    /** Kept until the client is out of the network thread and can act on it. */
-    public static void offered(ClientProject.Offer offer) { OFFER = offer; }
+    /**
+     * Kept until the client is out of the network thread and can act on it - which is the title
+     * screen, not the moment a server disconnects them.
+     *
+     * <p>Logged on arrival rather than on use: when a player reports that nothing was offered,
+     * this line is what separates "the server never said" from "the client did not act on it".
+     */
+    public static void offered(ClientProject.Offer offer) {
+        OFFER = offer;
+        if (offer != null) UdmcSync.LOGGER.info("UDMC was offered project {} at {}", offer.packId(), offer.apiUrl());
+    }
 
     public static ClientProject.Offer takeOffer() {
         ClientProject.Offer offer = OFFER;

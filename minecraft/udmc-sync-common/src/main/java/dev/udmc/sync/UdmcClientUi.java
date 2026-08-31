@@ -104,7 +104,9 @@ public final class UdmcClientUi {
     private static void consider(ClientProject.Offer offer) {
         if (offer == null) return;
         String name = offer.packName().isEmpty() ? offer.packId() : offer.packName();
-        switch (ClientProject.reconcile(gameDir, config, offer)) {
+        ClientProject.Verdict verdict = ClientProject.reconcile(gameDir, config, offer);
+        UdmcSync.LOGGER.info("UDMC decided about project {}: {}", offer.packId(), verdict);
+        switch (verdict) {
             case NEW_PROJECT -> show(new State(text("udmc_sync.title.setup"),
                 text("udmc_sync.message.setup", name, spaced(offer.fingerprint())), List.of(), false, false, false, "", offer));
             case OTHER_PROJECT -> show(new State(text("udmc_sync.title.other_project"),
