@@ -194,6 +194,16 @@ public final class ServerIdentity {
      * channel, so the one secret that could impersonate this project does not travel by default.
      */
     public static synchronized Map<String, Object> claim(Path gameDir, UdmcConfig config, String submitted, String ip) {
+        return claim(gameDir, config, submitted, ip, null);
+    }
+
+    /**
+     * Claims the server, optionally putting a saved project back in place of the one it made for
+     * itself. Restoring is part of claiming rather than a request of its own: it is only ever
+     * safe on a server nobody has claimed yet, and that is exactly what the code proves.
+     */
+    public static synchronized Map<String, Object> claim(Path gameDir, UdmcConfig config, String submitted, String ip,
+                                                         Map<String, Object> project) {
         if (!unpaired(config)) {
             throw new ApiException(409, "PAIRING_ALREADY_DONE",
                 "This server is already paired. Reset pairing on the server to pair it again.");
@@ -205,20 +215,76 @@ public final class ServerIdentity {
             throw new ApiException(403, "PAIRING_CODE_INVALID", "That pairing code does not match this server.");
         }
 
+        if (project != null) restore(config, project);
+
+        Map<String, Object> claimed = new LinkedHashMap<>();
+        claimed.put("packId", config.packId);
+        claimed.put("packName", config.packName);
+        claimed.put("adminToken", config.adminToken);
+        claimed.put("manifestPublicKey", config.manifestPublicKey);
+        claimed.put("fingerprint", fingerprint(config.manifestPublicKey));
+        claimed.put("minecraftVersion", config.minecraftVersion);
+        claimed.put("loaderType", config.loaderType);
+        claimed.put("loaderVersion", config.loaderVersion);
+        claimed.put("apiPort", config.apiPort);
+        claimed.put("agentVersion", PlatformDefaults.get("agentVersion"));
+        paired(gameDir, config);
+        UdmcSync.LOGGER.info("UDMC was paired from {}.", ip);
+        return claimed;
+    }
+
+    /**
+     * The whole project, including the key that signs for it. A server holds the only copy of
+     * that key, so losing the machine would mean losing the project and every player's trust in
+     * it: they would have to accept a new key from a server claiming the same name.
+     *
+     * <p>Deliberate and owner-only. This is the one request that puts the signing key on the
+     * network, which is why it is not part of pairing and not something a panel does by itself.
+     */
+    public static Map<String, Object> backup(UdmcConfig config) {
         Map<String, Object> project = new LinkedHashMap<>();
+        project.put("format", "udmc-project-backup-1");
         project.put("packId", config.packId);
         project.put("packName", config.packName);
         project.put("adminToken", config.adminToken);
         project.put("manifestPublicKey", config.manifestPublicKey);
+        project.put("manifestPrivateKey", config.manifestPrivateKey);
         project.put("fingerprint", fingerprint(config.manifestPublicKey));
-        project.put("minecraftVersion", config.minecraftVersion);
-        project.put("loaderType", config.loaderType);
-        project.put("loaderVersion", config.loaderVersion);
-        project.put("apiPort", config.apiPort);
-        project.put("agentVersion", PlatformDefaults.get("agentVersion"));
-        paired(gameDir, config);
-        UdmcSync.LOGGER.info("UDMC was paired from {}.", ip);
         return project;
+    }
+
+    /**
+     * Puts a saved project back onto a server that has just been set up. The pairing code is
+     * what authorises it: only whoever controls the new server can spend it, and the server has
+     * nothing to lose yet - it has just invented an identity nobody has ever trusted.
+     */
+    private static void restore(UdmcConfig config, Map<String, Object> project) {
+        String packId = text(project, "packId"), token = text(project, "adminToken");
+        String publicKey = text(project, "manifestPublicKey"), privateKey = text(project, "manifestPrivateKey");
+        if (!packId.matches("[A-Za-z0-9_-]{1,64}") || !token.matches("[0-9a-f]{64}")) {
+            throw new ApiException(400, "PROJECT_BACKUP_INVALID", "This is not a UDMC project backup.");
+        }
+        // The pair has to actually be a pair. A backup with mismatched keys would produce a
+        // server that signs with one key and tells players to trust another - every download
+        // failing a signature check, with nothing on screen to explain why.
+        try {
+            byte[] probe = "udmc-project-restore".getBytes(StandardCharsets.UTF_8);
+            ManifestSecurity.verify(probe, ManifestSecurity.sign(probe, privateKey), publicKey);
+        } catch (Exception error) {
+            throw new ApiException(400, "PROJECT_BACKUP_KEYS_MISMATCH", "The keys in this backup do not belong together.");
+        }
+        config.packId = packId;
+        config.packName = text(project, "packName").isEmpty() ? packId : text(project, "packName");
+        config.adminToken = token;
+        config.manifestPublicKey = publicKey;
+        config.manifestPrivateKey = privateKey;
+        config.requireSignedManifest = true;
+        UdmcSync.LOGGER.warn("UDMC restored project {} from a backup. Players who trusted this project keep trusting it.", packId);
+    }
+
+    private static String text(Map<String, Object> value, String key) {
+        Object result = value == null ? null : value.get(key);
+        return result instanceof String string ? string.trim() : "";
     }
 
     /** What players see to tell one project from another: SHA-256 of the public key, in hex. */

@@ -23,6 +23,8 @@ public final class ServerIdentityTest {
         guessingIsThrottled();
         theCommandSaysWhatToDoNext();
         aProtocolChangeDoesNotLockPlayersOut();
+        aLostServerCanBeRebuiltFromItsBackup();
+        aBrokenBackupIsRefusedBeforeItReachesPlayers();
         System.out.println("ServerIdentityTest OK");
     }
 
@@ -235,6 +237,76 @@ public final class ServerIdentityTest {
         UdmcConfig restarted = UdmcConfig.load(gameDir);
         ServerIdentity.ensure(gameDir, restarted);
         expect(restarted.requireClientAgent, "A later start must not switch the requirement off again");
+    }
+
+    private static void aLostServerCanBeRebuiltFromItsBackup() throws Exception {
+        // The machine is gone. A new one gets the mod, and the project it invents for itself is
+        // replaced by the saved one - so every player who trusted this project still does.
+        Path original = temp();
+        UdmcConfig lost = UdmcConfig.load(original);
+        ServerIdentity.ensure(original, lost);
+        ServerIdentity.claim(original, lost, lost.pairingCode, "10.1.0.1");
+        Map<String, Object> saved = ServerIdentity.backup(lost);
+        expect("udmc-project-backup-1".equals(saved.get("format")), "A backup must say what it is");
+        expect(lost.manifestPrivateKey.equals(saved.get("manifestPrivateKey")), "A backup must carry the signing key");
+
+        Path replacement = temp();
+        UdmcConfig fresh = UdmcConfig.load(replacement);
+        ServerIdentity.ensure(replacement, fresh);
+        String invented = fresh.manifestPublicKey;
+        expect(!invented.equals(lost.manifestPublicKey), "A new server starts with an identity of its own");
+
+        ServerIdentity.claim(replacement, fresh, fresh.pairingCode, "10.1.0.2", saved);
+        expect(fresh.manifestPublicKey.equals(lost.manifestPublicKey), "The restored server must sign as the old one");
+        expect(fresh.manifestPrivateKey.equals(lost.manifestPrivateKey), "The restored server must hold the old key");
+        expect(fresh.packId.equals(lost.packId), "The restored server must keep the project name");
+        expect(fresh.adminToken.equals(lost.adminToken), "The restored server must accept the old access key");
+        expect(UdmcConfig.load(replacement).manifestPublicKey.equals(lost.manifestPublicKey), "The restore must survive on disk");
+        expect(!ServerIdentity.unpaired(fresh), "Restoring is claiming: the code is spent");
+
+        // And what it signs now must be what those players already know how to check.
+        byte[] body = "manifest".getBytes(StandardCharsets.UTF_8);
+        ManifestSecurity.verify(body, ManifestSecurity.sign(body, fresh.manifestPrivateKey), lost.manifestPublicKey);
+    }
+
+    private static void aBrokenBackupIsRefusedBeforeItReachesPlayers() throws Exception {
+        Path source = temp();
+        UdmcConfig project = UdmcConfig.load(source);
+        ServerIdentity.ensure(source, project);
+        Map<String, Object> good = ServerIdentity.backup(project);
+
+        Path other = temp();
+        UdmcConfig unrelated = UdmcConfig.load(other);
+        ServerIdentity.ensure(other, unrelated);
+
+        // Keys from two different projects: a server built from this would sign with one key and
+        // tell players to trust another, and every download would fail its signature check.
+        Map<String, Object> mismatched = new java.util.LinkedHashMap<>(good);
+        mismatched.put("manifestPublicKey", unrelated.manifestPublicKey);
+        refusedBackup(mismatched, "PROJECT_BACKUP_KEYS_MISMATCH");
+
+        Map<String, Object> noKeys = new java.util.LinkedHashMap<>(good);
+        noKeys.put("manifestPrivateKey", "");
+        refusedBackup(noKeys, "PROJECT_BACKUP_KEYS_MISMATCH");
+
+        for (String bad : new String[] {"", "../escape", "два слова", "a".repeat(65)}) {
+            Map<String, Object> broken = new java.util.LinkedHashMap<>(good);
+            broken.put("packId", bad);
+            refusedBackup(broken, "PROJECT_BACKUP_INVALID");
+        }
+        Map<String, Object> noToken = new java.util.LinkedHashMap<>(good);
+        noToken.put("adminToken", "not-a-token");
+        refusedBackup(noToken, "PROJECT_BACKUP_INVALID");
+    }
+
+    private static void refusedBackup(Map<String, Object> project, String code) throws Exception {
+        Path gameDir = temp();
+        UdmcConfig config = UdmcConfig.load(gameDir);
+        ServerIdentity.ensure(gameDir, config);
+        String key = config.manifestPublicKey, sameCode = config.pairingCode;
+        refused(400, code, () -> ServerIdentity.claim(gameDir, config, sameCode, "10.1.1.1", project));
+        expect(config.manifestPublicKey.equals(key), "A refused backup must leave the server as it was");
+        expect(ServerIdentity.unpaired(config), "A refused backup must not spend the code");
     }
 
     private interface Attempt {

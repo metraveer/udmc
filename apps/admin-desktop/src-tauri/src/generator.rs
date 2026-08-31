@@ -135,6 +135,70 @@ pub async fn save_agent(
         .map_err(agent_error)
 }
 
+/// A project backup is at most a few hundred bytes of JSON; the cap only keeps a chosen file
+/// from being read into memory whole when it turns out to be something else entirely.
+const MAX_BACKUP: usize = 64 * 1024;
+
+/// Saves the project backup the server handed over. The panel never composes this: it is the
+/// server's own answer, written where the owner chooses to keep it.
+#[tauri::command]
+pub async fn save_project_backup(
+    app: tauri::AppHandle,
+    content: String,
+    file_name: Option<String>,
+    dialog_title: Option<String>,
+) -> NativeResult<Option<String>> {
+    if content.len() > MAX_BACKUP {
+        return Err(backup_error("The backup is larger than a project backup can be."));
+    }
+    let name = native_label(file_name, "udmc-project-backup.json");
+    let Some(path) = app
+        .dialog()
+        .file()
+        .set_title(native_label(dialog_title, "Save the UDMC project backup"))
+        .set_file_name(name)
+        .add_filter("JSON", &["json"])
+        .blocking_save_file()
+    else {
+        return Ok(None);
+    };
+    let path = path.into_path().map_err(backup_error)?;
+    fs::write(&path, content).map_err(backup_error)?;
+    Ok(Some(path.to_string_lossy().into_owned()))
+}
+
+/// Reads a saved project back. Returned as text: what it means is the server's business, and
+/// judging it here would only put a second opinion where one is enough.
+#[tauri::command]
+pub async fn read_project_backup(
+    app: tauri::AppHandle,
+    dialog_title: Option<String>,
+) -> NativeResult<Option<String>> {
+    let Some(path) = app
+        .dialog()
+        .file()
+        .set_title(native_label(dialog_title, "Choose the UDMC project backup"))
+        .add_filter("JSON", &["json"])
+        .blocking_pick_file()
+    else {
+        return Ok(None);
+    };
+    let path = path.into_path().map_err(backup_error)?;
+    let size = fs::metadata(&path).map_err(backup_error)?.len();
+    if size > MAX_BACKUP as u64 {
+        return Err(backup_error("This file is too large to be a project backup."));
+    }
+    Ok(Some(fs::read_to_string(&path).map_err(backup_error)?))
+}
+
+fn backup_error(detail: impl std::fmt::Display) -> NativeError {
+    NativeError::detail(
+        "PROJECT_BACKUP_FAILED",
+        "Could not read or save the project backup.",
+        detail,
+    )
+}
+
 fn agent_error(detail: impl std::fmt::Display) -> NativeError {
     NativeError::detail("AGENT_EXPORT_FAILED", "Could not save the UDMC mod.", detail)
 }

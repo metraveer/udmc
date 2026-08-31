@@ -171,7 +171,8 @@ public final class UdmcHttpApi {
             // Unauthenticated on purpose, and only answerable while nobody has claimed this server.
             if ("POST".equals(method) && "/pair".equals(path)) {
                 PairRequest body = parseBody(exchange, PairRequest.class);
-                respondJson(exchange, 200, ServerIdentity.claim(gameDir, config, body == null ? "" : body.code, ip));
+                respondJson(exchange, 200, ServerIdentity.claim(gameDir, config,
+                    body == null ? "" : body.code, ip, body == null ? null : body.project));
                 return;
             }
             if ("GET".equals(method) && "/pair".equals(path)) {
@@ -251,6 +252,13 @@ public final class UdmcHttpApi {
                     return;
                 }
 
+                if ("GET".equals(method) && "/admin/project/backup".equals(path)) {
+                    // The only request that hands out the signing key, so only the owner may ask.
+                    if (!actor.owner()) throw new ApiException(403, "ACCESS_OWNER_REQUIRED", "Only the project owner can save a backup.");
+                    exchange.getResponseHeaders().set("cache-control", "no-store");
+                    respondJson(exchange, 200, ServerIdentity.backup(config));
+                    return;
+                }
                 if ("GET".equals(method) && "/admin/agents".equals(path)) {
                     synchronized (store) { markRevision(exchange); respondJson(exchange, 200, agents.describe()); }
                     return;
@@ -977,5 +985,7 @@ public final class UdmcHttpApi {
 
     private static final class PairRequest {
         public String code;
+        /** A project saved from another server, put back in place of the one this one made. */
+        public Map<String, Object> project;
     }
 }

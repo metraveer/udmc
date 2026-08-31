@@ -1193,5 +1193,16 @@
   "Положите этот файл в папку mods сервера и запустите его. Тот же файл раздайте игрокам — он один на всех.": "Put this file in the server's mods folder and start it. Give players the same file: there is only one.",
   "Проверка подписей и файлов сборки.": "Checking signatures and modpack files.",
   "Скачать мод": "Download the mod",
-  "Сохранить файл": "Save the file"
+  "Сохранить файл": "Save the file",
+  "Будет восстановлен проект «{0}»": "Project “{0}” will be restored",
+  "В файле лежит ключ подписи. Храните его как пароль: тот, у кого он есть, может выдать себя за ваш проект.": "The file holds the signing key. Keep it like a password: whoever has it can pass for your project.",
+  "Восстановить проект из копии": "Restore a project from a backup",
+  "Выберите файл резервной копии проекта": "Choose the UDMC project backup",
+  "Ключ, которым сервер подписывает сборку, есть только у него. Если сервер потеряется, без копии проект придётся заводить заново, и всем игрокам — заново доверять новому ключу. Копию можно приложить при привязке нового сервера.": "The key the server signs the modpack with exists only there. If the server is lost, without a backup the project has to be started over, and every player has to trust a new key. A backup can be attached when pairing a new server.",
+  "Копия проекта загружена. Введите код привязки нового сервера.": "The project backup is loaded. Enter the new server's pairing code.",
+  "Копия проекта сохранена.": "The project backup is saved.",
+  "Куда сохранить копию проекта": "Where to save the project backup",
+  "Резервная копия проекта": "Project backup",
+  "Сохранить копию проекта": "Save a project backup",
+  "Это не файл резервной копии проекта UDMC.": "This is not a UDMC project backup file."
 }

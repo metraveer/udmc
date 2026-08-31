@@ -59,6 +59,8 @@ fn main() {
             translator::translate_texts,
             generator::generator_catalog,
             generator::save_agent,
+            generator::save_project_backup,
+            generator::read_project_backup,
             generator::prepare_agent_package,
             generator::credential_read,
             generator::credential_write,

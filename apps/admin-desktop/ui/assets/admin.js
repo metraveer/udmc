@@ -159,7 +159,8 @@ agentUpdates = initAgentUpdates({ getContext: () => serverStatus, getBinding: ()
 const generatorUi = initGenerator({ navigateTo, showToast,
   getBusy: () => buildBusy || protectedSettings?.isEditing(), setBusy: setBuildBusy,
   onFieldsChanged: () => protectedSettings?.syncLocks() });
-pairingUi = initPairing({ getConnection, showToast,
+pairingUi = initPairing({ getConnection, showToast, adminGet,
+  isOwner: () => accessRole === "owner",
   addressChosen: () => Boolean(localStorage.getItem(STORAGE_KEYS.serverUrl) || localStorage.getItem("udm-admin-server-url")),
   getBusy: () => buildBusy || protectedSettings?.isEditing(), setBusy: setBuildBusy,
   // The server made the project and now hands over the key to it: adopt it like any connection.
@@ -178,6 +179,7 @@ accessUi = initAccess({ getConnection, setConnection: adoptConnection,
   onRole: identity => {
     accessRole = identity?.role || null;
     accessIdentityId = identity?.id || null;
+    pairingUi?.syncOwner();
     document.getElementById("agentCreateTab").disabled = buildBusy;
     protectedSettings?.syncLocks();
   }

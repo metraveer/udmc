@@ -12,10 +12,19 @@ const API_PORT = /API port (\d{1,5})\b/;
  * panel read the code itself. Nothing here is generated locally: the project already exists on
  * the server, and pairing only decides which panel gets to manage it.
  */
-export function initPairing({ getConnection, onPaired, showToast, getBusy, setBusy, addressChosen = () => true }) {
+export function initPairing({ getConnection, onPaired, showToast, getBusy, setBusy, addressChosen = () => true,
+  adminGet = null, isOwner = () => false }) {
   const form = $("pairForm");
   const inputs = () => form.querySelectorAll("input,button");
   let busy = false;
+  // A project saved from a server that is gone. Held until the code is entered: restoring is
+  // the same act as claiming, and the code is what says this server may be spoken for.
+  let restoring = null;
+  const invoke = (name, args) => {
+    const call = window.__TAURI__?.core?.invoke;
+    if (!call) throw new Error(t("Эта операция доступна в Windows-приложении UDMC Control."));
+    return call(name, args);
+  };
 
   const setLocalBusy = (value) => {
     busy = value;
@@ -100,9 +109,11 @@ export function initPairing({ getConnection, onPaired, showToast, getBusy, setBu
       const project = await agentJson(`${base}/pair`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ code })
+        body: JSON.stringify(restoring ? { code, project: restoring } : { code })
       });
       $("pairCodeInput").value = "";
+      restoring = null;
+      $("pairRestoreState").textContent = "";
       $("pairFingerprint").textContent = project.fingerprint || "";
       $("pairResult").hidden = false;
       $("pairResultSummary").textContent = t("Привязан проект «{0}», Minecraft {1}, {2}.",
@@ -117,9 +128,44 @@ export function initPairing({ getConnection, onPaired, showToast, getBusy, setBu
     }
   };
 
+  /** Loads a saved project so the next pairing puts it back instead of keeping the new one. */
+  const loadBackup = async () => {
+    if (busy || getBusy()) return;
+    try {
+      const text = await invoke("read_project_backup", { dialogTitle: t("Выберите файл резервной копии проекта") });
+      if (!text) return;
+      const project = JSON.parse(text);
+      if (!project || typeof project !== "object" || project.format !== "udmc-project-backup-1") {
+        throw new Error(t("Это не файл резервной копии проекта UDMC."));
+      }
+      restoring = project;
+      $("pairRestoreState").textContent = t("Будет восстановлен проект «{0}»", project.packName || project.packId || "UDMC");
+      showToast(t("Копия проекта загружена. Введите код привязки нового сервера."));
+    } catch (error) { report(error); }
+  };
+
+  /** Asks the server for its project, keys included, and writes it where the owner chooses. */
+  const saveBackup = async () => {
+    if (busy || getBusy() || !adminGet) return;
+    setLocalBusy(true);
+    try {
+      const project = await adminGet("/admin/project/backup");
+      const saved = await invoke("save_project_backup", {
+        content: JSON.stringify(project, null, 2),
+        fileName: `udmc-${project.packId || "project"}-backup.json`,
+        dialogTitle: t("Куда сохранить копию проекта")
+      });
+      if (!saved) return;
+      $("projectBackupState").textContent = saved;
+      showToast(t("Копия проекта сохранена."));
+    } catch (error) { report(error); } finally { setLocalBusy(false); }
+  };
+
   form.addEventListener("submit", submit);
   $("pairFetchCodeButton").addEventListener("click", fetchByRcon);
   $("pairCheckButton").addEventListener("click", () => check().catch(report));
+  $("pairRestoreButton").addEventListener("click", loadBackup);
+  $("projectBackupButton").addEventListener("click", saveBackup);
 
   return {
     /** Called when the pairing tab is opened: the address may have changed since last time. */
@@ -132,6 +178,10 @@ export function initPairing({ getConnection, onPaired, showToast, getBusy, setBu
       // reaching out to whatever that happens to be is not this program's business.
       if (!addressChosen()) { badge(t("Адрес не задан"), "neutral"); return; }
       await check();
+    },
+    /** Only the owner holds the signing key, so only the owner can be handed a copy of it. */
+    syncOwner() {
+      $("projectBackupButton").disabled = !isOwner();
     }
   };
 }
