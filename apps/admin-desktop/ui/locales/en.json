@@ -81,7 +81,6 @@
   "Безопасность": "Security",
   "Устройства": "Devices",
   "Среда выполнения": "Runtime",
-  "Компоненты": "Components",
   "История действий": "Activity history",
   "Журнал": "Activity",
   "Ожидает подключения": "Awaiting connection",
@@ -307,9 +306,6 @@
   "Ключ сохранён. Установите этот JAR на сервер и подключитесь. Клиентский JAR передастся автоматически; ссылка для игроков появится здесь.": "Key saved. Install this JAR on the server and connect. The client JAR will upload automatically; the player download link will appear here.",
   "Серверный JAR сформирован": "Server JAR generated",
   "предпросмотр": "preview",
-  "Профилей: {0}": "Profiles: {0}",
-  "Шаблоны не включены": "Templates not included",
-  "Нужно Windows-приложение": "Windows app required",
   "Установщик загрузит среду, если её нет в Windows.": "The installer will download the runtime if Windows does not have it.",
   "Предпросмотр": "Preview",
   "Шаблоны агентов": "Agent templates",
@@ -662,7 +658,6 @@
   "Отправить заявку": "Send request",
   "Проверить ответ": "Check response",
   "Готовая пара JAR": "Ready-to-use JARs",
-  "Проверка компонентов": "Checking components",
   "Проект": "Project",
   "Название и состав": "Name and contents",
   "Нужно менять ID?": "Should I change the ID?",
@@ -1159,7 +1154,6 @@
   "Мод создаёт проект на самом сервере при первом запуске и выдаёт код привязки. Ключей внутри файла нет.": "The mod creates the project on the server itself at first start and issues a pairing code. There are no keys inside the file.",
   "Мод сохранён": "The mod is saved",
   "Один и тот же файл идёт в папку mods сервера и в папку mods каждого игрока. Секретов в нём нет, поэтому передавать его можно как угодно: выложить ссылку, отправить в чат, положить рядом с описанием сервера.": "The same file goes into the server's mods folder and into every player's mods folder. There are no secrets in it, so you can share it any way you like: post a link, send it in chat, put it beside your server description.",
-  "Один файл на всех": "One file for everybody",
   "Положите этот файл в папку mods сервера и запустите его. Тот же файл раздайте игрокам — он один на всех.": "Put this file in the server's mods folder and start it. Give players the same file: there is only one.",
   "Проверка подписей и файлов сборки.": "Checking signatures and modpack files.",
   "Скачать мод": "Download the mod",
@@ -1245,5 +1239,7 @@
   "Появится, когда сервер опубликует мод": "Appears once the server publishes the mod",
   "Подготовит обновление. Перезапуск из панели этому серверу недоступен — перезапустите его сами.": "Prepares the update. This server cannot be restarted from the panel — restart it yourself.",
   "Обновление заменяет мод на сервере; чтобы замена вступила в силу, сервер перезапускается. Игроки обновятся сами при следующем запуске игры.": "An update replaces the mod on the server; the server restarts so the replacement takes effect. Players update themselves the next time they start the game.",
-  "Остановка и перезапуск из панели выключены. Включите их на странице «Сервер» в блоке «Действия сервера».": "Stopping and restarting from the panel are disabled. Enable them on the Server page in \"Server actions\"."
+  "Остановка и перезапуск из панели выключены. Включите их на странице «Сервер» в блоке «Действия сервера».": "Stopping and restarting from the panel are disabled. Enable them on the Server page in \"Server actions\".",
+  "Как установить мод: инструкция на GitHub": "How to install the mod: the guide on GitHub",
+  "Компоненты": "Components"
 }

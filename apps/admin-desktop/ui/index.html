@@ -413,13 +413,12 @@
           </dialog>
 
           <form id="generatorForm" class="generator-form agent-panel dialog-section" data-agent-panel="create" hidden>
-            <div class="section-heading"><div><h2 data-i18n='Один файл на всех'>Один файл на всех</h2></div><span id="generatorAvailability" class="state-badge neutral" data-i18n='Проверка компонентов'>Проверка компонентов</span></div>
-            <p class="muted-copy" data-i18n='Один и тот же файл идёт в папку mods сервера и в папку mods каждого игрока. Секретов в нём нет, поэтому передавать его можно как угодно: выложить ссылку, отправить в чат, положить рядом с описанием сервера.'>Один и тот же файл идёт в папку mods сервера и в папку mods каждого игрока. Секретов в нём нет, поэтому передавать его можно как угодно: выложить ссылку, отправить в чат, положить рядом с описанием сервера.</p>
+            <button id="installGuideLink" class="text-button" type="button" data-dependency="install-guide"><i data-lucide="external-link"></i><span data-i18n='Как установить мод: инструкция на GitHub'>Как установить мод: инструкция на GitHub</span></button>
             <fieldset class="generator-group"><legend><span data-i18n='Версия игры'>Версия игры</span><button class="icon-button compact-icon" type="button" data-edit-setting="platform" title="Изменить совместимость агентов" aria-label="Изменить совместимость агентов" data-i18n-title='Изменить совместимость агентов' data-i18n-aria-label='Изменить совместимость агентов'><i data-lucide="pencil"></i></button></legend><div class="generator-platform">
               <label class="field"><span data-i18n='Загрузчик'>Загрузчик</span><select id="generatorLoader" disabled><option value="fabric">Fabric</option></select></label>
               <label class="field"><span>Minecraft</span><select id="generatorMinecraft" disabled required></select></label>
               <label class="field"><span data-i18n='Версия загрузчика'>Версия загрузчика</span><select id="generatorLoaderVersion" disabled required></select></label>
-            </div><div class="requirements-line"><span id="generatorJava" data-i18n='Java на игровых машинах'>Java на игровых машинах</span><button class="text-button" type="button" data-go-dependencies data-i18n='Компоненты'>Компоненты</button></div></fieldset>
+            </div><div class="requirements-line"><span id="generatorJava" data-i18n='Java на игровых машинах'>Java на игровых машинах</span></div></fieldset>
             <div class="generator-footer"><span class="connection-summary" data-i18n='Мод создаёт проект на самом сервере при первом запуске и выдаёт код привязки. Ключей внутри файла нет.'>Мод создаёт проект на самом сервере при первом запуске и выдаёт код привязки. Ключей внутри файла нет.</span><button id="generateAgentsButton" class="button primary" type="submit"><i data-lucide="download"></i><span data-i18n='Сохранить файл'>Сохранить файл</span></button></div>
             <div id="generatorResult" class="generator-result" role="status" hidden></div>
           </form>

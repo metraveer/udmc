@@ -87,8 +87,6 @@ export function initGenerator({ navigateTo, showToast, getBusy, setBusy: setAppB
     }
     $("appVersion").textContent = `UDMC Control ${status.version}`;
     $("dependencyAppVersion").textContent = status.version;
-    $("generatorAvailability").textContent = catalog.length ? t("Профилей: {0}", catalog.length) : native ? t("Шаблоны не включены") : t("Нужно Windows-приложение");
-    $("generatorAvailability").className = `state-badge ${catalog.length ? "online" : "warning"}`;
     setPlatform(saved || {});
     const rows = [
       ["app-window", "Microsoft Edge WebView2", t("Установщик загрузит среду, если её нет в Windows."), status.webview ? t("Работает") : t("Предпросмотр")],

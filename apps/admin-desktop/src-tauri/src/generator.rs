@@ -323,6 +323,7 @@ pub fn open_dependency(app: tauri::AppHandle, name: String) -> NativeResult<()> 
         "fabric" => "https://fabricmc.net/use/installer/",
         "neoforge" => "https://neoforged.net/",
         "webview" => "https://developer.microsoft.com/microsoft-edge/webview2/",
+        "install-guide" => "https://github.com/metraveer/udmc/blob/main/docs/installation.md",
         _ => {
             return Err(NativeError::new(
                 "DEPENDENCY_UNKNOWN",
