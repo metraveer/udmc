@@ -730,6 +730,10 @@ button.attention-row:hover { border-color: var(--line-strong); color: var(--ink)
 .advanced-settings > summary { cursor: pointer; font-size: 12px; color: var(--muted-strong); }
 .advanced-settings .form-grid { margin-top: 11px; }
 .address-toolbar { display: flex; justify-content: space-between; gap: 12px; align-items: start; flex-wrap: wrap; }
+/* The server summary and the button that re-reads it, without the two colliding. */
+.pair-status-row { display: flex; justify-content: space-between; align-items: start; gap: 12px; flex-wrap: wrap; margin: 12px 0 4px; }
+.pair-status-row > .connection-summary { flex: 1 1 320px; min-width: 0; }
+.pair-status-row > .text-button { flex: 0 0 auto; }
 .connection-summary { font-size: 12px; line-height: 1.55; color: var(--muted-strong); overflow-wrap: anywhere; }
 .catalog-search { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 10px; margin: 12px 0; }
 .catalog-row { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; align-items: center; gap: 14px; padding: 11px 0; border-bottom: 1px solid var(--line); }

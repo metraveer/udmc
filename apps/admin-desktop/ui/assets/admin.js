@@ -7,6 +7,7 @@ import { initCatalog } from "./catalog-ui.js";
 import { initTranslator } from "./translate.js";
 import { initAppUpdates } from "./app-updates.js";
 import { initAccess } from "./access-ui.js";
+import { initPairing } from "./pairing-ui.js";
 import { initProtectedSettings } from "./protected-settings.js";
 import { agentJson, formatAgentError, formatAppError, UPLOAD_TIMEOUT } from "./http.js";
 import { createWorkspaceAccess } from "./workspace-access.js";
@@ -75,6 +76,7 @@ let activityEntries = rememberedUi.activity;
 let consoleEntries = rememberedUi.console;
 let rconState = { status: "idle", checkedAt: null, message: "" };
 let accessUi = null;
+let pairingUi = null;
 let modrinthUi = null;
 let accessRole = null;
 let accessIdentityId = null;
@@ -157,6 +159,11 @@ agentUpdates = initAgentUpdates({ getContext: () => serverStatus, getBinding: ()
 const generatorUi = initGenerator({ navigateTo, showToast, getConnection, onConnection: adoptConnection,
   getBusy: () => buildBusy || protectedSettings?.isEditing(), setBusy: setBuildBusy,
   onFieldsChanged: () => protectedSettings?.syncLocks() });
+pairingUi = initPairing({ getConnection, showToast,
+  getBusy: () => buildBusy || protectedSettings?.isEditing(), setBusy: setBuildBusy,
+  // The server made the project and now hands over the key to it: adopt it like any connection.
+  onPaired: project => adoptConnection(normalizedServerUrl(), project.adminToken,
+    document.getElementById("allowHttpConnection").checked) });
 accessUi = initAccess({ getConnection, setConnection: adoptConnection,
   replaceToken: async token => { elements.tokenInput.value = token; await saveConnection(); },
   getBusy: () => buildBusy || protectedSettings?.isEditing(), setBusy: setBuildBusy, navigateTo, showToast, refresh,
@@ -361,6 +368,7 @@ function navigateTo(viewName) {
 function setAgentMode(mode) {
   if (mode === "create" && accessRole === "admin") { showToast(t("Клиентские и серверные JAR формирует владелец проекта."), "error"); return; }
   document.querySelectorAll("[data-agent-panel]").forEach(panel => { panel.hidden = panel.dataset.agentPanel !== mode; });
+  if (mode === "pair") pairingUi?.show().catch(handleError);
   document.querySelectorAll("[data-agent-mode]").forEach(button => {
     const selected = button.dataset.agentMode === mode;
     button.classList.toggle("active", selected); button.setAttribute("aria-selected", String(selected));
