@@ -1,6 +1,5 @@
 import { t } from "./i18n.js";
 import { normalizeAddress, connectionDefaults } from "./connection.js";
-import { updatePlatformControls } from "./platform.js";
 import { formatAppError } from "./http.js";
 
 export const protectedGroups = {
@@ -13,11 +12,6 @@ export const protectedGroups = {
     title: t("Изменить ключ подключения"),
     warning: t("Неверный ключ лишит эту панель доступа. Ключи проекта на сервере не меняются. Для другого администратора используйте приглашение владельца."),
     fields: [["tokenInput", t("Ключ владельца или устройства")]]
-  },
-  platform: {
-    title: t("Изменить совместимость агентов"),
-    warning: t("Другой Minecraft может потребовать другой Java, загрузчика и модов. Это настройка новых JAR, а не обновление существующей игры или сервера."),
-    fields: [["generatorLoader", t("Загрузчик")], ["generatorMinecraft", "Minecraft"], ["generatorLoaderVersion", t("Версия загрузчика")]]
   },
   rcon: {
     title: t("Изменить подключение RCON"),
@@ -32,7 +26,7 @@ const validPort = value => {
   return String(port);
 };
 
-export function validateProtectedValues(group, input, { serverUrl, templates = [] } = {}) {
+export function validateProtectedValues(group, input, { serverUrl } = {}) {
   if (!Object.hasOwn(protectedGroups, group)) throw new Error(t("Неизвестная настройка."));
   const values = Object.fromEntries(protectedGroups[group].fields.map(([id]) => [id, input[id]]));
   if (group === "connection") {
@@ -44,11 +38,6 @@ export function validateProtectedValues(group, input, { serverUrl, templates = [
   } else if (group === "token") {
     values.tokenInput = String(values.tokenInput || "").trim();
     if (!/^[\x21-\x7e]{1,1024}$/.test(values.tokenInput)) throw new Error(t("Введите ключ подключения без пробелов и переносов строк."));
-  } else if (group === "platform") {
-    const template = templates.find(t => t.minecraft === values.generatorMinecraft && t.loader === values.generatorLoader);
-    if (!template) throw new Error(t("Выберите версию из встроенного каталога агентов."));
-    values.generatorLoader = template.loader;
-    values.generatorLoaderVersion = template.loaderVersion;
   } else if (group === "rcon") {
     values.rconHostInput = String(values.rconHostInput || "").trim();
     values.rconPortInput = validPort(values.rconPortInput);
@@ -91,10 +80,6 @@ export function initProtectedSettings({ getBusy, getBinding, getContext, onApply
   function updateDraft() {
     if (!editing) return;
     const field = id => controls[id];
-    if (editing.group === "platform") {
-      updatePlatformControls({ loader: field("generatorLoader"), minecraft: field("generatorMinecraft"), version: field("generatorLoaderVersion") }, getContext().templates);
-      field("generatorLoaderVersion").disabled = true;
-    }
     const changed = fingerprint(read(controls)) !== editing.original;
     $("protectedSettingsApply").disabled = saving || !changed;
   }

@@ -15,7 +15,8 @@ const nativeInvoke = (name, args) => {
  * released with, one per game version, and saving it is a copy. The same file goes on the
  * server and to every player, so there is no wrong copy to give to the wrong person.
  */
-export function initGenerator({ navigateTo, showToast, getBusy, setBusy: setAppBusy, onFieldsChanged = () => {} }) {
+export function initGenerator({ navigateTo, showToast, getBusy, setBusy: setAppBusy, onFieldsChanged = () => {},
+  getServerPlatform = () => null }) {
   let catalog = [];
   let busy = false;
   const form = $("generatorForm");
@@ -31,6 +32,7 @@ export function initGenerator({ navigateTo, showToast, getBusy, setBusy: setAppB
     busy = value;
     setAppBusy(value);
     form.querySelectorAll("input,select,button").forEach((input) => { input.disabled = value; });
+    if (!value) syncLock();
     onFieldsChanged();
   };
 
@@ -39,8 +41,26 @@ export function initGenerator({ navigateTo, showToast, getBusy, setBusy: setAppB
       { loader: preferred.generatorLoader, minecraft: preferred.generatorMinecraft });
     if (template) $("generatorJava").textContent = t("Java {0}+ на сервере и у игроков", template.java);
   };
-  $("generatorMinecraft").addEventListener("change", setPlatform);
-  $("generatorLoader").addEventListener("change", setPlatform);
+
+  /**
+   * The version is a choice only while nobody has answered it. A connected server has already
+   * said which game it runs, and the file that goes into its mods folder is decided by that —
+   * so there is nothing here to pick, and picking wrong is not a mistake worth allowing.
+   */
+  const serverPlatform = () => {
+    const info = getServerPlatform();
+    if (!info?.minecraft || !info?.loader) return null;
+    return catalog.some(entry => entry.minecraft === info.minecraft && entry.loader === info.loader) ? info : null;
+  };
+  const syncLock = () => {
+    const server = serverPlatform();
+    if (server) setPlatform({ generatorLoader: server.loader, generatorMinecraft: server.minecraft });
+    for (const id of ["generatorLoader", "generatorMinecraft"]) $(id).disabled = busy || Boolean(server);
+    // The loader's own version is derived from the pair above, never chosen.
+    $("generatorLoaderVersion").disabled = true;
+  };
+  $("generatorMinecraft").addEventListener("change", () => { setPlatform(); persistSettings(); });
+  $("generatorLoader").addEventListener("change", () => { setPlatform(); persistSettings(); });
   document.querySelectorAll("[data-go-dependencies]").forEach((button) => button.addEventListener("click", () => navigateTo("dependencies")));
   document.querySelectorAll("[data-go-pack]").forEach((button) => button.addEventListener("click", () => navigateTo("overview")));
   document.querySelectorAll("[data-dependency]").forEach((button) => button.addEventListener("click", async () => {
@@ -88,6 +108,7 @@ export function initGenerator({ navigateTo, showToast, getBusy, setBusy: setAppB
     $("appVersion").textContent = `UDMC Control ${status.version}`;
     $("dependencyAppVersion").textContent = status.version;
     setPlatform(saved || {});
+    syncLock();
     const rows = [
       ["app-window", "Microsoft Edge WebView2", t("Установщик загрузит среду, если её нет в Windows."), status.webview ? t("Работает") : t("Предпросмотр")],
       ["package", t("Шаблоны агентов"), catalog.length ? catalog.map((t) => `${loaderLabel(t.loader)} ${t.minecraft}`).join(" · ") : t("Нужна полная сборка Windows-приложения."), catalog.length ? t("Встроены") : t("Недоступны")],
@@ -111,5 +132,5 @@ export function initGenerator({ navigateTo, showToast, getBusy, setBusy: setAppB
     onFieldsChanged();
   }
   load().catch(report);
-  return { templates: () => catalog, persistSettings, setPlatform };
+  return { templates: () => catalog, persistSettings, setPlatform, syncLock };
 }

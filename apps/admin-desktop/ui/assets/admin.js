@@ -180,6 +180,9 @@ agentUpdates = initAgentUpdates({ getContext: () => serverStatus, getBinding: ()
   } });
 const generatorUi = initGenerator({ navigateTo, showToast,
   getBusy: () => buildBusy || protectedSettings?.isEditing(), setBusy: setBuildBusy,
+  // A connected server has already answered which game it runs; the file follows that answer.
+  getServerPlatform: () => serverStatus?.minecraftVersion
+    ? { minecraft: serverStatus.minecraftVersion, loader: serverStatus.loader?.type } : null,
   onFieldsChanged: () => protectedSettings?.syncLocks() });
 pairingUi = initPairing({
   // A server that says its console is off cannot hand over the code, whatever is in the fields.
@@ -247,8 +250,7 @@ if ((!elements.tokenInput.value && !rememberedUi.restored) || rememberedUi.setti
 protectedSettings = initProtectedSettings({
   getBusy: () => buildBusy || rconState.status === "checking",
   getBinding: () => JSON.stringify([connectionRevision, elements.tokenInput.value]),
-  getContext: () => ({ serverUrl: elements.serverUrlInput.value, templates: generatorUi.templates() }),
-  canEdit: group => (group !== "platform" || (accessRole !== "admin" && generatorUi.templates().length > 0)),
+  getContext: () => ({ serverUrl: elements.serverUrlInput.value }),
   onApply: applyProtectedSettings, showToast
 });
 // A panel with no key has a server to claim, not a file to build: pairing is the way in.
@@ -611,8 +613,6 @@ async function applyProtectedSettings(group, values) {
     }
     for (const [key, id] of [["rconHost", "rconHostInput"], ["rconPort", "rconPortInput"]]) localStorage.setItem(STORAGE_KEYS[key], String(values[id]));
     localStorage.removeItem(STORAGE_KEYS.rconPassword);
-  } else {
-    generatorUi.persistSettings(values);
   }
   for (const [id, value] of Object.entries(values)) {
     const field = document.getElementById(id);
@@ -637,12 +637,11 @@ async function applyProtectedSettings(group, values) {
     generatorUi.persistSettings();
     updateServerLabel();
   } else if (group === "token") elements.tokenInput.dispatchEvent(new Event("input"));
-  else if (group === "platform") generatorUi.setPlatform(values);
   else if (group === "rcon") {
     rconState = { status: "idle", checkedAt: null, message: t("Параметры изменены") };
     updateRconFields(); addActivity(t("Настройки RCON сохранены."), "success");
   }
-  if (["platform", "connection"].includes(group)) document.getElementById("generatorResult").hidden = true;
+  if (group === "connection") document.getElementById("generatorResult").hidden = true;
   // A settled address or key is an instruction to use it; there is nothing else the panel would
   // be waiting for, and no button left to press.
   if (reconnect) await refresh().catch(handleError);
@@ -1195,6 +1194,8 @@ function renderServerStatus(status) {
   elements.stopServerButton.title = powerEnabled ? t("Остановить сервер") : t("Этот сервер нельзя остановить из панели");
   renderPackRestartNotice();
   renderDashboard();
+  // A connected server decides the game version the mod is saved for.
+  generatorUi.syncLock();
 
   // What the server itself says about its console, folded into the one chip that shows it.
   serverRcon = status.rcon || null;
@@ -1230,6 +1231,7 @@ function resetServerStatus() {
   elements.restartServerButton.disabled = true;
   elements.stopServerButton.disabled = true;
   renderDashboard();
+  generatorUi?.syncLock();
 }
 
 // The running process keeps serving the release it started with, so a published

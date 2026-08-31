@@ -41,18 +41,6 @@ test("keys accept existing printable formats but reject whitespace and excess le
   for (const token of ["", " ", "two keys", "first\nsecond", "a\u0000b", "a".repeat(1025)]) assert.throws(() => validate("token", { tokenInput: token }));
 });
 
-test("platform edits select a bundled template and derive the loader version", () => {
-  const templates = [{ minecraft: "26.2", loader: "fabric", loaderVersion: "0.19.3" }];
-  const input = { generatorMinecraft: "26.2", generatorLoader: "fabric", generatorLoaderVersion: "invalid" };
-  assert.deepEqual(validate("platform", input, { templates }), { generatorMinecraft: "26.2", generatorLoader: "fabric", generatorLoaderVersion: "0.19.3" });
-  assert.throws(() => validate("platform", { generatorMinecraft: "unknown" }, { templates }));
-  assert.throws(() => validate("platform", input));
-  assert.throws(() => validate("platform", { ...input, generatorLoader: "forge" }, { templates }));
-  const neo = { minecraft: "1.21.1", loader: "neoforge", loaderVersion: "21.1.248" };
-  assert.equal(validate("platform", { generatorMinecraft: "1.21.1", generatorLoader: "neoforge" }, { templates: [...templates, neo] }).generatorLoaderVersion, "21.1.248");
-  assert.throws(() => validate("platform", { ...input, generatorLoader: "neoforge" }, { templates: [...templates, neo] }));
-});
-
 test("RCON ports must be within range", () => {
   for (const port of ["", "0", "-1", "65536", "1.5", "NaN", "Infinity"]) {
     assert.throws(() => validate("rcon", { rconPortInput: port }));

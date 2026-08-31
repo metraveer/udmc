@@ -150,8 +150,8 @@ test("English admin boot translates static, dynamic and command-reference text",
   assert.equal(app.$("draftStatusTitle").textContent, "Draft matches the published pack");
   app.w.document.querySelector('[data-view="console"]').click();
   await until(() => app.$("commandCatalog").textContent.includes("List players currently online."));
-  app.edit("platform");
-  assert.equal(app.$("protectedSettingsDialog").querySelector("h2").textContent, "Change agent compatibility");
+  app.edit("rcon");
+  assert.equal(app.$("protectedSettingsDialog").querySelector("h2").textContent, "Change RCON connection");
   for (const el of app.w.document.querySelectorAll("[data-i18n]")) assert.doesNotMatch(el.textContent, /[А-Яа-яЁё]/, el.outerHTML);
   assert.equal(app.errors.length, 0);
 });
@@ -171,7 +171,7 @@ test("manual language survives another server profile and preserves user names",
 
 test("language cannot change while protected settings are being edited", async t => {
   const app = await createAdmin(t, { language: "en" });
-  app.edit("platform");
+  app.edit("rcon");
   app.input("languageSelect", "ru");
   assert.equal(app.$("languageSelect").value, "en");
   assert.equal(app.saved()["udmc-language"], undefined);

@@ -234,27 +234,34 @@ test("an asynchronous save cannot be submitted twice or cancelled halfway", asyn
   assert.equal(ui.$("tokenInput").value, "replacement");
 });
 
-test("platform selection derives the supported loader and persists", async t => {
-  const ui = await createAdmin(t);
-  ui.edit("platform"); ui.input("edit-generatorMinecraft", "1.21.1");
-  assert.equal(ui.$("edit-generatorLoaderVersion").value, "0.19.3");
-  assert.equal(ui.$("edit-generatorLoaderVersion").disabled, true);
-  ui.submit("protectedSettingsForm"); await until(() => !ui.$("protectedSettingsDialog").open);
-  assert.equal(ui.$("generatorMinecraft").value, "1.21.1");
+test("the game version is chosen without a server and taken from one with it", async t => {
+  // Nobody has answered which game this is yet, so the choice is the person's.
+  const ui = await createAdmin(t, { connected: false });
+  assert.equal(ui.$("generatorMinecraft").disabled, false);
+  ui.input("generatorMinecraft", "1.21.1");
+  assert.equal(ui.$("generatorLoaderVersion").value, "0.19.3");
+  assert.equal(ui.$("generatorLoaderVersion").disabled, true, "The loader version is derived, never picked");
   assert.ok(ui.$("generatorJava").textContent.includes("21"));
-  assert.equal(ui.$("generatorMinecraft").disabled, true);
+  assert.equal(ui.saved()["udmc-generator-settings"], JSON.stringify({ generatorLoader: "fabric", generatorMinecraft: "1.21.1" }));
+
+  // A connected server has answered it: the file follows the server, and there is nothing to pick.
+  const connected = await createAdmin(t, { storage: ui.saved() });
+  await until(() => connected.$("generatorMinecraft").disabled === true);
+  assert.equal(connected.$("generatorMinecraft").value, "26.2");
+  assert.equal(connected.$("generatorLoader").disabled, true);
+  assert.equal(connected.w.document.querySelector('[data-edit-setting="platform"]'), null,
+    "There is no editor for a version the server dictates");
 });
 
 test("NeoForge selection survives restart and generates the correct template for the same Minecraft version", async t => {
-  const ui = await createAdmin(t);
-  ui.edit("platform"); ui.input("edit-generatorLoader", "neoforge");
-  assert.equal(ui.$("edit-generatorMinecraft").value, "1.21.1");
-  assert.equal(ui.$("edit-generatorMinecraft").options.length, 1);
-  assert.equal(ui.$("edit-generatorLoaderVersion").value, "21.1.248");
-  ui.submit("protectedSettingsForm"); await until(() => !ui.$("protectedSettingsDialog").open);
+  const ui = await createAdmin(t, { connected: false });
+  ui.input("generatorLoader", "neoforge");
+  assert.equal(ui.$("generatorMinecraft").value, "1.21.1");
+  assert.equal(ui.$("generatorMinecraft").options.length, 1);
+  assert.equal(ui.$("generatorLoaderVersion").value, "21.1.248");
   assert.equal(ui.$("generatorLoader").value, "neoforge");
   assert.equal(ui.$("generatorLoaderVersion").value, "21.1.248");
-  const reopened = await createAdmin(t, { storage: ui.saved(), native: name => name === "save_agent" ? null : undefined });
+  const reopened = await createAdmin(t, { connected: false, storage: ui.saved(), native: name => name === "save_agent" ? null : undefined });
   assert.equal(reopened.$("generatorLoader").value, "neoforge");
   assert.equal(reopened.$("generatorMinecraft").value, "1.21.1");
   reopened.submit("generatorForm"); await until(() => reopened.invocations.some(c => c.name === "save_agent"));
@@ -265,15 +272,14 @@ test("NeoForge selection survives restart and generates the correct template for
   assert.deepEqual(Object.keys(request).sort(), ["loaderVersion", "templateId"]);
   // The dialog only opens once saving has finished releasing the form.
   await until(() => !reopened.$("generateAgentsButton").disabled);
-  reopened.edit("platform"); reopened.input("edit-generatorLoader", "fabric");
-  assert.equal(reopened.$("edit-generatorMinecraft").value, "1.21.1");
-  assert.equal(reopened.$("edit-generatorLoaderVersion").value, "0.19.3");
-  reopened.click("protectedSettingsCancel");
-  assert.equal(reopened.$("generatorLoader").value, "neoforge");
+  reopened.input("generatorLoader", "fabric");
+  assert.equal(reopened.$("generatorMinecraft").value, "1.21.1");
+  assert.equal(reopened.$("generatorLoaderVersion").value, "0.19.3");
 });
 
 test("old Fabric settings without a loader remain Fabric", async t => {
-  const ui = await createAdmin(t, { storage: { "udmc-generator-settings": JSON.stringify({ generatorMinecraft: "1.21.1" }) } });
+  // Unconnected: what was stored is what is offered, since no server has said otherwise.
+  const ui = await createAdmin(t, { connected: false, storage: { "udmc-generator-settings": JSON.stringify({ generatorMinecraft: "1.21.1" }) } });
   assert.equal(ui.$("generatorLoader").value, "fabric");
   assert.equal(ui.$("generatorMinecraft").value, "1.21.1");
 });

@@ -423,8 +423,6 @@
   "Изменить ключ подключения": "Change connection key",
   "Неверный ключ лишит эту панель доступа. Ключи проекта на сервере не меняются. Для другого администратора используйте приглашение владельца.": "An incorrect key will prevent this app from connecting. Project keys on the server will not change. Use an owner invitation for another administrator.",
   "Ключ владельца или устройства": "Owner or device key",
-  "Изменить совместимость агентов": "Change agent compatibility",
-  "Другой Minecraft может потребовать другой Java, загрузчика и модов. Это настройка новых JAR, а не обновление существующей игры или сервера.": "Another Minecraft version may need a different Java, loader and mods. This configures new JARs; it does not update the existing game or server.",
   "Загрузчик": "Loader",
   "Версия загрузчика": "Loader version",
   "Изменить сеть агента": "Change agent network",
@@ -443,7 +441,6 @@
   "Для этого адреса нужен HTTPS или явное разрешение HTTP в доверенной сети.": "This address requires HTTPS or explicit permission to use HTTP on a trusted network.",
   "Укажите порт UDMC, а не стандартный порт Minecraft или RCON.": "Enter the UDMC port, not the default Minecraft or RCON port.",
   "Введите ключ подключения без пробелов и переносов строк.": "Enter a connection key without spaces or line breaks.",
-  "Выберите версию из встроенного каталога агентов.": "Choose a version from the bundled agent catalog.",
   "Выберите допустимый адрес прослушивания.": "Choose a valid listen address.",
   "Для API нужен отдельный порт, не стандартный порт Minecraft или RCON.": "The API needs its own port, not the default Minecraft or RCON port.",
   "Введите домен или IP без протокола и порта. Порт задаётся отдельно.": "Enter a domain or IP without a protocol or port. Set the port separately.",
@@ -1151,7 +1148,6 @@
   "Как подключить второго администратора?": "How do I add a second administrator?",
   "Ключи доступа к серверам и сохранённый пароль RCON.": "Server access keys and the saved RCON password.",
   "Мод UDMC": "The UDMC mod",
-  "Мод создаёт проект на самом сервере при первом запуске и выдаёт код привязки. Ключей внутри файла нет.": "The mod creates the project on the server itself at first start and issues a pairing code. There are no keys inside the file.",
   "Мод сохранён": "The mod is saved",
   "Один и тот же файл идёт в папку mods сервера и в папку mods каждого игрока. Секретов в нём нет, поэтому передавать его можно как угодно: выложить ссылку, отправить в чат, положить рядом с описанием сервера.": "The same file goes into the server's mods folder and into every player's mods folder. There are no secrets in it, so you can share it any way you like: post a link, send it in chat, put it beside your server description.",
   "Положите этот файл в папку mods сервера и запустите его. Тот же файл раздайте игрокам — он один на всех.": "Put this file in the server's mods folder and start it. Give players the same file: there is only one.",
@@ -1241,5 +1237,6 @@
   "Обновление заменяет мод на сервере; чтобы замена вступила в силу, сервер перезапускается. Игроки обновятся сами при следующем запуске игры.": "An update replaces the mod on the server; the server restarts so the replacement takes effect. Players update themselves the next time they start the game.",
   "Остановка и перезапуск из панели выключены. Включите их на странице «Сервер» в блоке «Действия сервера».": "Stopping and restarting from the panel are disabled. Enable them on the Server page in \"Server actions\".",
   "Как установить мод: инструкция на GitHub": "How to install the mod: the guide on GitHub",
-  "Компоненты": "Components"
+  "Компоненты": "Components",
+  "Пока панель говорит с сервером, версия берётся у него: файл всегда подходит этому серверу. Без подключения выберите версию сами — ту, на которой сервер будет работать.": "While the panel is talking to a server, the version comes from it: the file always fits that server. Without a connection, pick the version yourself — the one the server will run."
 }
