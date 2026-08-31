@@ -81,6 +81,18 @@
                 <p id="playerListMore" class="connection-summary" hidden></p>
               </div>
             </div>
+            <div class="summary-item summary-popover-host">
+              <button id="packSummary" class="summary-trigger" type="button" aria-expanded="false" aria-controls="packPopover" disabled><span data-i18n='Сборка'>Сборка</span><strong id="serverPackName">-</strong><i data-lucide="chevron-down"></i></button>
+              <div id="packPopover" class="summary-popover" hidden>
+                <div class="players-popover-head"><strong id="dashPackName">-</strong><button id="dashOpenBuild" class="text-button" type="button"><span data-i18n='Открыть сборку'>Открыть сборку</span><i data-lucide="arrow-right"></i></button></div>
+                <dl class="facts-list">
+                  <div><dt data-i18n='Опубликована'>Опубликована</dt><dd id="dashPublishedVersion">-</dd></div>
+                  <div><dt data-i18n='Файлов в сборке'>Файлов в сборке</dt><dd id="dashFileCount">-</dd></div>
+                  <div><dt data-i18n='Черновик'>Черновик</dt><dd id="dashDraftState">-</dd></div>
+                  <div><dt data-i18n='Проверка состава'>Проверка состава</dt><dd id="dashValidation">-</dd></div>
+                </dl>
+              </div>
+            </div>
             <div class="summary-item"><span>TPS</span><strong id="serverTps">-</strong></div>
             <div class="summary-item"><span data-i18n='Работает'>Работает</span><strong id="serverUptime">-</strong></div>
           </div>
@@ -109,29 +121,18 @@
               </div>
             </section>
 
-            <div class="dashboard-stack">
-              <section class="surface build-surface">
-                <div class="section-heading"><div><span class="section-kicker" data-i18n='Сборка'>Сборка</span><h2 id="dashPackName">-</h2></div><button id="dashOpenBuild" class="text-button" type="button"><span data-i18n='Открыть сборку'>Открыть сборку</span><i data-lucide="arrow-right"></i></button></div>
-                <dl class="facts-list">
-                  <div><dt data-i18n='Опубликована'>Опубликована</dt><dd id="dashPublishedVersion">-</dd></div>
-                  <div><dt data-i18n='Файлов в сборке'>Файлов в сборке</dt><dd id="dashFileCount">-</dd></div>
-                  <div><dt data-i18n='Черновик'>Черновик</dt><dd id="dashDraftState">-</dd></div>
-                  <div><dt data-i18n='Проверка состава'>Проверка состава</dt><dd id="dashValidation">-</dd></div>
-                </dl>
-              </section>
-            </div>
-          </div>
-
           <section class="surface server-actions-surface">
             <div class="section-heading"><div><h2 data-i18n='Действия сервера'>Действия сервера</h2></div></div>
-            <div class="server-actions">
-              <button class="button subtle" type="button" data-quick-command="save-all flush"><svg viewBox="0 0 24 24"><path d="M15.2 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8.8Z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg><span data-i18n='Сохранить мир'>Сохранить мир</span></button>
-              <button class="button subtle" type="button" data-quick-command="list"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg><span data-i18n='Проверить игроков'>Проверить игроков</span></button>
-              <span class="actions-spacer"></span>
+            <div class="server-actions stacked">
+              <span class="action-with-hint"><button class="button subtle" type="button" data-quick-command="save-all flush"><svg viewBox="0 0 24 24"><path d="M15.2 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8.8Z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg><span data-i18n='Сохранить мир'>Сохранить мир</span></button><button class="hint" type="button" tabindex="0" aria-label="Подсказка" data-i18n-aria-label='Подсказка' data-hint="Просит сервер записать мир и все его изменения на диск прямо сейчас, не дожидаясь обычного автосохранения. Игру не прерывает. Стоит нажать перед тем, как менять моды или останавливать сервер." data-i18n-data-hint='Просит сервер записать мир и все его изменения на диск прямо сейчас, не дожидаясь обычного автосохранения. Игру не прерывает. Стоит нажать перед тем, как менять моды или останавливать сервер.'><i data-lucide="circle-help"></i></button></span>
+              <span class="action-with-hint"><button class="button subtle" type="button" data-quick-command="list"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg><span data-i18n='Проверить игроков'>Проверить игроков</span></button><button class="hint" type="button" tabindex="0" aria-label="Подсказка" data-i18n-aria-label='Подсказка' data-hint="Спрашивает у сервера, кто сейчас в игре, и печатает ответ в консоли. То же, что команда list. Список онлайн есть и наверху, в «Игроках»; здесь — ответ самого сервера." data-i18n-data-hint='Спрашивает у сервера, кто сейчас в игре, и печатает ответ в консоли. То же, что команда list. Список онлайн есть и наверху, в «Игроках»; здесь — ответ самого сервера.'><i data-lucide="circle-help"></i></button></span>
+              
               <button id="restartServerButton" class="button warning" type="button" disabled><svg viewBox="0 0 24 24"><path d="M20 11a8.1 8.1 0 0 0-15.5-2M4 4v5h5M4 13a8.1 8.1 0 0 0 15.5 2M20 20v-5h-5"/></svg><span data-i18n='Перезапустить'>Перезапустить</span></button>
               <button id="stopServerButton" class="button danger-outline" type="button" disabled><svg viewBox="0 0 24 24"><rect width="14" height="14" x="5" y="5" rx="2"/></svg><span data-i18n='Остановить'>Остановить</span></button>
             </div>
           </section>
+          </div>
+
         </section>
 
         <section id="overviewView" class="view" data-view-panel="overview">

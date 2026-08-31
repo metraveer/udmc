@@ -57,6 +57,7 @@ const elements = Object.fromEntries([
   "serverState", "serverPlayers", "serverTps", "serverUptime", "liveBadge", "serverMotd", "serverGamePort",
   "serverEnvironment", "serverWorlds", "serverTickTime", "serverJava", "serverMemoryText", "serverMemoryBar",
   "playerCountBadge", "playerList", "playerFilter", "playerListMore", "playersSummary", "playersPopover",
+  "packSummary", "packPopover", "serverPackName",
   "restartServerButton", "stopServerButton", "commandTransportLabel",
   "clearConsoleButton", "consoleOutput", "commandForm", "commandInput", "commandSubmitButton", "powerDialog",
   "powerForm", "powerDialogTitle", "powerDialogText", "powerConfirmButton"
@@ -65,6 +66,13 @@ elements.uploadButtonLabel = document.querySelector("#uploadButton span");
 
 let selectedFiles = [];
 let playerNames = [];
+/**
+ * The dropdowns in the summary strip. Both hang from the number they belong to.
+ */
+const SUMMARY_POPOVERS = [
+  { trigger: "playersSummary", panel: "playersPopover", focus: "playerFilter" },
+  { trigger: "packSummary", panel: "packPopover" },
+];
 let manifest = null;
 let draftState = null;
 let buildBusy = false;
@@ -259,26 +267,28 @@ function bindEvents() {
   document.querySelectorAll("[data-view]").forEach((button) => {
     button.addEventListener("click", () => navigateTo(button.dataset.view));
   });
-  elements.playersSummary.addEventListener("click", () => togglePlayers());
+  for (const entry of SUMMARY_POPOVERS) {
+    elements[entry.trigger].addEventListener("click", () => toggleSummary(entry.trigger));
+  }
   elements.playerFilter.addEventListener("input", () => renderPlayers(playerNames));
-  // Anywhere outside it, or Escape: a popover that will not go away is worse than a card.
+  // Anywhere outside them, or Escape: a panel that will not go away is worse than a card.
   document.addEventListener("click", event => {
-    if (elements.playersPopover.hidden) return;
-    if (!event.target.closest(".summary-players")) togglePlayers(false);
+    if (!event.target.closest(".summary-popover-host")) closeSummaries();
   });
-  document.addEventListener("keydown", event => {
-    if (event.key === "Escape" && !elements.playersPopover.hidden) togglePlayers(false);
-  });
-  // Anchored to the viewport, so it has to follow when the viewport changes under it.
-  window.addEventListener("resize", () => { if (!elements.playersPopover.hidden) placePlayers(); });
-  document.addEventListener("scroll", () => {
-    if (elements.playersPopover.hidden) return;
-    // Once the count it belongs to has scrolled away, the list is floating over unrelated
-    // content and pointing at nothing. Follow the anchor while it is visible, close after.
-    const anchor = elements.playersSummary.getBoundingClientRect();
-    if (anchor.bottom < 0 || anchor.top > window.innerHeight) togglePlayers(false);
-    else placePlayers();
-  }, true);
+  document.addEventListener("keydown", event => { if (event.key === "Escape") closeSummaries(); });
+  const followAnchors = () => {
+    for (const entry of SUMMARY_POPOVERS) {
+      if (elements[entry.panel].hidden) continue;
+      // Once the number it belongs to has scrolled away, the panel floats over unrelated
+      // content and points at nothing. Follow the anchor while it is visible, close after.
+      const anchor = elements[entry.trigger].getBoundingClientRect();
+      if (anchor.bottom < 0 || anchor.top > window.innerHeight) toggleSummary(entry.trigger, false);
+      else placePopover(entry);
+    }
+  };
+  // Anchored to the viewport, so they have to follow when the viewport changes under them.
+  window.addEventListener("resize", followAnchors);
+  document.addEventListener("scroll", followAnchors, true);
   document.getElementById("openJoinButton").addEventListener("click", () => document.getElementById("joinDialog").showModal());
   document.querySelectorAll("[data-close-dialog]").forEach((button) => {
     button.addEventListener("click", () => document.querySelector(`#${button.dataset.closeDialog}`).close());
@@ -1143,6 +1153,9 @@ function renderDashboard() {
   const byId = id => document.getElementById(id);
   const changes = draftState?.changes;
   byId("dashPackName").textContent = manifest?.pack?.name || t("Нет данных");
+  byId("serverPackName").textContent = manifest?.pack?.name || "-";
+  elements.packSummary.disabled = !manifest;
+  if (elements.packSummary.disabled) toggleSummary("packSummary", false);
   byId("dashPublishedVersion").textContent = manifest ? manifest.pack.version : "-";
   byId("dashFileCount").textContent = manifest ? String(manifest.files.length) : "-";
   byId("dashDraftState").textContent = !draftState ? "-"
@@ -1269,22 +1282,39 @@ function renderPlayers(players) {
   elements.playerListMore.textContent = t("Показаны первые {0} из {1}. Уточните поиск, чтобы найти игрока.", shown.length, matching.length);
 }
 
-function placePlayers() {
-  const anchor = elements.playersSummary.getBoundingClientRect();
-  const width = elements.playersPopover.offsetWidth || 340;
-  elements.playersPopover.style.top = `${Math.round(anchor.bottom + 6)}px`;
-  // Kept on screen when the strip's players column sits near the right edge.
-  elements.playersPopover.style.left = `${Math.round(Math.max(12, Math.min(anchor.left, window.innerWidth - width - 12)))}px`;
+/**
+ * Positioned against the viewport rather than the strip: the strip clips its own children to
+ * keep its rounded corners, and a panel inside it would be cut off at the first row.
+ */
+function placePopover(entry) {
+  const anchor = elements[entry.trigger].getBoundingClientRect();
+  const panel = elements[entry.panel];
+  const width = panel.offsetWidth || 340;
+  panel.style.top = `${Math.round(anchor.bottom + 6)}px`;
+  // Kept on screen when the column it belongs to sits near the right edge.
+  panel.style.left = `${Math.round(Math.max(12, Math.min(anchor.left, window.innerWidth - width - 12)))}px`;
 }
 
-function togglePlayers(open) {
-  const next = open ?? elements.playersPopover.hidden;
-  elements.playersPopover.hidden = !next;
-  elements.playersSummary.setAttribute("aria-expanded", String(next));
+function toggleSummary(name, open) {
+  const entry = SUMMARY_POPOVERS.find(item => item.trigger === name);
+  const panel = elements[entry.panel];
+  const next = open ?? panel.hidden;
+  // Only one at a time: two panels hanging off the same strip would overlap.
+  if (next) for (const other of SUMMARY_POPOVERS) if (other !== entry) elements[other.panel].hidden = true;
+  panel.hidden = !next;
+  for (const other of SUMMARY_POPOVERS) {
+    elements[other.trigger].setAttribute("aria-expanded", String(!elements[other.panel].hidden));
+  }
   if (!next) return;
-  placePlayers();
-  elements.playerFilter.focus();
+  placePopover(entry);
+  if (entry.focus) elements[entry.focus].focus();
 }
+
+// Declarations, not const arrows: the first refresh calls these before this line is reached,
+// and a const is not yet initialised at that point.
+function togglePlayers(open) { toggleSummary("playersSummary", open); }
+
+function closeSummaries() { for (const entry of SUMMARY_POPOVERS) toggleSummary(entry.trigger, false); }
 
 function renderFilteredFiles() {
   document.getElementById("draftTabCount").textContent = draftState?.changes?.total || 0;

@@ -303,7 +303,7 @@ h2 { margin-bottom: 0; font-family: "Segoe UI Variable Display", "Segoe UI", ui-
 .view.active { display: block; }
 .summary-strip {
   display: grid;
-  grid-template-columns: repeat(3, minmax(120px, 0.7fr)) minmax(220px, 1.4fr);
+  grid-template-columns: minmax(110px, 0.8fr) minmax(120px, 0.8fr) minmax(150px, 1.2fr) minmax(90px, 0.6fr) minmax(120px, 0.8fr);
   margin-bottom: 14px;
   border: 1px solid var(--line);
   border-radius: 10px;
@@ -313,8 +313,8 @@ h2 { margin-bottom: 0; font-family: "Segoe UI Variable Display", "Segoe UI", ui-
 }
 .summary-item { min-width: 0; padding: 11px 16px; border-right: 1px solid var(--line); }
 .summary-item:last-child { border-right: 0; }
-.summary-item span { display: block; margin-bottom: 3px; overflow-wrap: break-word; color: var(--muted); font-size: 10px; font-weight: 720; text-transform: uppercase; letter-spacing: 0.05em; }
-.summary-item strong { display: block; overflow: hidden; font-size: 17px; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.summary-item > span { display: block; margin-bottom: 3px; overflow-wrap: break-word; color: var(--muted); font-size: 10px; font-weight: 720; text-transform: uppercase; letter-spacing: 0.05em; }
+.summary-item > strong { display: block; overflow: hidden; font-size: 17px; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .summary-item.wide strong { font-size: 13px; line-height: 20px; }
 
 .draft-bar {
@@ -474,7 +474,9 @@ th:last-child { background: var(--canvas-deep); }
 .row-action svg { width: 15px; height: 15px; }
 .empty-table td { height: 88px; color: var(--muted); text-align: center; }
 
-.dashboard-grid { display: grid; grid-template-columns: minmax(440px, 1.35fr) minmax(300px, 0.75fr); gap: 14px; align-items: start; margin-bottom: 14px; }
+/* Обе колонки одной высоты: действия сервера стоят рядом с диагностикой, а не висят
+   огрызком над пустотой. */
+.dashboard-grid { display: grid; grid-template-columns: minmax(440px, 1.35fr) minmax(300px, 0.75fr); gap: 14px; align-items: stretch; margin-bottom: 14px; }
 .dashboard-grid .surface { min-width: 0; margin-bottom: 0; }
 .dashboard-stack { display: grid; gap: 14px; min-width: 0; }
 .dashboard-stack .surface { margin-bottom: 0; }
@@ -570,7 +572,16 @@ button.attention-row:hover { border-color: var(--line-strong); color: var(--ink)
 .player-row strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .player-online { color: var(--green); font-size: 11px; font-weight: 700; }
 .server-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
-.actions-spacer { flex: 1 1 32px; }
+/* One per line beside the diagnostics: a row of four in a narrow column wrapped into an
+   unreadable staircase, and each action deserves its own line anyway. */
+.server-actions.stacked { flex-direction: column; align-items: stretch; gap: 10px; }
+.server-actions.stacked .button { justify-content: flex-start; }
+/* A button and its hint are one line: the hint explains that button, not the list. */
+.action-with-hint { display: flex; align-items: center; gap: 8px; }
+.action-with-hint > .button { flex: 1 1 auto; min-width: 0; }
+.action-with-hint > .hint { flex: 0 0 auto; margin: 0; }
+.action-with-hint > .hint::after { left: auto; right: 0; }
+.server-actions-surface { display: flex; flex-direction: column; }
 
 .console-surface { margin-bottom: 0; }
 .console-heading-actions { display: flex; align-items: center; gap: 8px; }
@@ -740,7 +751,7 @@ button.attention-row:hover { border-color: var(--line-strong); color: var(--ink)
    The count is in the summary strip, so the names belong under it rather than in a card
    competing for the same screen. A full server is a thousand names: the list scrolls, only
    a screenful is ever built, and past twenty players a filter appears. */
-.summary-players { padding: 0; }
+.summary-popover-host { padding: 0; }
 .summary-trigger {
   position: relative;
   display: flex; flex-direction: column; align-items: flex-start; gap: 3px;
@@ -757,7 +768,7 @@ button.attention-row:hover { border-color: var(--line-strong); color: var(--ink)
 
 /* Positioned against the viewport, not the strip: the strip clips its own children to keep
    its rounded corners, and a popover inside it would be cut off at the first row of names. */
-.players-popover {
+.summary-popover {
   position: fixed; z-index: 50;
   width: min(340px, calc(100vw - 48px));
   padding: 12px 14px 10px;
@@ -765,9 +776,12 @@ button.attention-row:hover { border-color: var(--line-strong); color: var(--ink)
   background: var(--surface); box-shadow: var(--shadow);
 }
 .players-popover-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.players-popover-head strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.players-popover-head .text-button { display: inline-flex; align-items: center; gap: 5px; flex: 0 0 auto; margin: 0; white-space: nowrap; }
 .players-filter { margin-bottom: 10px; }
-.players-popover .player-list { max-height: 300px; overflow-y: auto; }
-.players-popover .connection-summary { margin-top: 8px; }
+.summary-popover .player-list { max-height: 300px; overflow-y: auto; }
+.summary-popover .connection-summary { margin-top: 8px; }
+.summary-popover .facts-list { margin: 0; }
 @media (prefers-reduced-motion: reduce) { .summary-trigger > svg { transition: none; } }
 
 /* ---- explanations that stay out of the way ---------------------------------

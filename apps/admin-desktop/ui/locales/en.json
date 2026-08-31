@@ -1232,5 +1232,7 @@
   "Этот сервер нельзя остановить из панели": "This server cannot be stopped from the panel",
   "Этот сервер нельзя перезапустить из панели": "This server cannot be restarted from the panel",
   "Встроено в приложение": "Built into the app",
-  "Нужно на сервере и у игроков": "Needed on the server and on players' machines"
+  "Нужно на сервере и у игроков": "Needed on the server and on players' machines",
+  "Просит сервер записать мир и все его изменения на диск прямо сейчас, не дожидаясь обычного автосохранения. Игру не прерывает. Стоит нажать перед тем, как менять моды или останавливать сервер.": "Asks the server to write the world and all its changes to disk right now, without waiting for the usual autosave. It does not interrupt play. Worth pressing before changing mods or stopping the server.",
+  "Спрашивает у сервера, кто сейчас в игре, и печатает ответ в консоли. То же, что команда list. Список онлайн есть и наверху, в «Игроках»; здесь — ответ самого сервера.": "Asks the server who is in game right now and prints its answer in the console. The same as the list command. The online list is also up top under “Players”; this is the server's own answer."
 }
