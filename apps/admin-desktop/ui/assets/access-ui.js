@@ -28,7 +28,10 @@ export function initAccess({ getConnection, setConnection, replaceToken, getBusy
   const report = error => showToast(formatAgentError(error), "error");
   function update(identity) {
     me = identity; binding = identity ? key(getConnection()) : ""; onRole(me);
-    $("connectionIdentity").textContent = identity ? `${identity.role === "owner" ? t("Владелец") : t("Администратор")} · ${identity.name}` : t("Не проверен");
+    // The name is what the owner sees in their device list; an agent that does not send one
+    // must not put the word "undefined" on screen in its place.
+    const role = identity && (identity.role === "owner" ? t("Владелец") : t("Администратор"));
+    $("connectionIdentity").textContent = identity ? [role, identity.name].filter(Boolean).join(" · ") : t("Не проверен");
     $("connectionIdentity").className = `state-badge ${identity ? "online" : "neutral"}`;
     $("inviteDeviceButton").disabled = !identity || identity.role !== "owner" || getBusy();
     $("deviceRequestCount").hidden = !identity?.pending;

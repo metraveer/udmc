@@ -28,16 +28,18 @@ const STORAGE_KEYS = {
   rconPassword: "udmc-control-rcon-password"
 };
 
+// The heading of each page. There used to be a second line above it naming the same page in
+// other words; two names for one screen only made the reader check whether they differed.
 const viewDetails = {
-  dashboard: { eyebrow: t("Мониторинг"), title: t("Сервер") },
-  overview: { eyebrow: t("Управление файлами"), title: t("Сборка") },
-  modrinth: { eyebrow: t("Источники модов"), title: t("Каталог модов") },
-  console: { eyebrow: t("Команды Minecraft"), title: t("Консоль") },
-  generator: { eyebrow: t("Подключение и установка"), title: t("Агент и доступ") },
-  devices: { eyebrow: t("Безопасность"), title: t("Устройства") },
-  dependencies: { eyebrow: t("Среда выполнения"), title: t("Компоненты") },
-  activity: { eyebrow: t("История действий"), title: t("Журнал") },
-  settings: { eyebrow: t("Приложение"), title: t("Настройки") }
+  dashboard: t("Сервер"),
+  overview: t("Сборка"),
+  modrinth: t("Каталог модов"),
+  console: t("Консоль"),
+  generator: t("Настройка сервера"),
+  devices: t("Устройства"),
+  dependencies: t("Компоненты"),
+  activity: t("Журнал"),
+  settings: t("Настройки")
 };
 
 const elements = Object.fromEntries([
@@ -51,7 +53,7 @@ const elements = Object.fromEntries([
   "bulkSideInput", "clearSelectedButton", "uploadButton", "refreshButton", "clearLogButton", "draftBar",
   "draftStatusTitle", "draftStatusText", "draftChangeCounts", "resetDraftButton", "resetDraftDialog", "resetDraftForm",
   "filesTable", "fileSearchInput", "fileSideFilter", "visibleFileCount", "logOutput", "activityCount",
-  "viewTitle", "viewEyebrow", "toastRegion", "detectedMinecraft", "detectedLoader",
+  "viewTitle", "toastRegion", "detectedMinecraft", "detectedLoader",
   "serverState", "serverPlayers", "serverTps", "serverUptime", "liveBadge", "serverMotd", "serverGamePort",
   "serverEnvironment", "serverWorlds", "serverTickTime", "serverJava", "serverMemoryText", "serverMemoryBar",
   "playerCountBadge", "playerList", "playerFilter", "playerListMore", "playersSummary", "playersPopover",
@@ -371,7 +373,6 @@ function setBuildTab(name) {
     button.setAttribute("aria-selected", String(selected)); button.tabIndex = selected ? 0 : -1;
   });
   document.querySelectorAll("[data-build-panel]").forEach(panel => { panel.hidden = !panel.dataset.buildPanel.split(" ").includes(name); });
-  document.getElementById("filesHeadingKicker").textContent = name === "published" ? t("Состав") : t("Черновик");
   document.getElementById("filesHeadingTitle").textContent = name === "published" ? t("Файлы у игроков") : t("Изменения к публикации");
   if (name === "server" && draftState) serverTools?.ensureInventory();
   if (name === "validation") serverTools?.ensureValidation();
@@ -382,9 +383,7 @@ function navigateTo(viewName) {
   if (viewName === "generator") { document.getElementById("serverProfileDialog").showModal(); return; }
   document.getElementById("serverProfileDialog").close();
   activeView = viewName;
-  const details = viewDetails[viewName] || viewDetails.dashboard;
-  elements.viewTitle.textContent = details.title;
-  elements.viewEyebrow.textContent = details.eyebrow;
+  elements.viewTitle.textContent = viewDetails[viewName] || viewDetails.dashboard;
   document.querySelectorAll("[data-view]").forEach((button) => button.classList.toggle("active", button.dataset.view === viewName));
   document.querySelectorAll("[data-view-panel]").forEach((panel) => panel.classList.toggle("active", panel.dataset.viewPanel === viewName));
   elements.publishOpenButton.hidden = viewName !== "overview";

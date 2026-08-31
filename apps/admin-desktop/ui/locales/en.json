@@ -1230,5 +1230,7 @@
   "Поиск по нику": "Search by name",
   "Показаны первые {0} из {1}. Уточните поиск, чтобы найти игрока.": "Showing the first {0} of {1}. Narrow the search to find a player.",
   "Этот сервер нельзя остановить из панели": "This server cannot be stopped from the panel",
-  "Этот сервер нельзя перезапустить из панели": "This server cannot be restarted from the panel"
+  "Этот сервер нельзя перезапустить из панели": "This server cannot be restarted from the panel",
+  "Встроено в приложение": "Built into the app",
+  "Нужно на сервере и у игроков": "Needed on the server and on players' machines"
 }
