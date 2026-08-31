@@ -84,7 +84,7 @@ svg {
 }
 .brand { display: flex; align-items: center; gap: 10px; min-height: 42px; padding: 0 8px; }
 .brand-mark {
-  display: grid;
+  display: grid; flex: 0 0 auto;
   place-items: center;
   width: 34px;
   height: 34px;
@@ -183,7 +183,9 @@ svg {
 .workspace .text-button { margin: 0; color: var(--blue); }
 .workspace .text-button:hover { color: var(--blue-strong); }
 
-.workspace { min-width: 0; min-height: 0; overflow-y: auto; overflow-x: hidden; scrollbar-gutter: stable; padding: 0 26px 22px; }
+/* No page title bar: the page's name is already the highlighted item in the sidebar, and
+   repeating it cost a row of every screen. Each page opens straight into its content. */
+.workspace { min-width: 0; min-height: 0; overflow-y: auto; overflow-x: hidden; scrollbar-gutter: stable; padding: 20px 26px 22px; }
 .view.active > :last-child { margin-bottom: 0; }
 /* Wheel input over an open dialog chains to the ancestor scroller; the page must stay still under a modal. */
 .workspace:has(dialog[open]) { overflow-y: hidden; }
@@ -248,9 +250,6 @@ dialog { overscroll-behavior: contain; }
   .generator-platform { grid-template-columns: minmax(0, 1.3fr) repeat(2, minmax(0, 1fr)); }
   .console-heading { flex-wrap: wrap; }
 }
-/* The page's name is already the highlighted item in the sidebar; repeating it here cost a
-   row of every screen. What is left is the row of actions, which collapses when empty. */
-.workspace-header { display: flex; align-items: center; justify-content: flex-end; min-height: 0; gap: 16px; padding: 12px 0; }
 .eyebrow, .section-kicker { margin: 0 0 3px; color: var(--accent); font-size: 10px; font-weight: 780; text-transform: uppercase; letter-spacing: 0.11em; }
 h1, h2, p { margin-top: 0; }
 h1 { margin-bottom: 0; font-family: "Segoe UI Variable Display", "Segoe UI", ui-sans-serif, system-ui, sans-serif; font-size: 20px; font-weight: 750; letter-spacing: -0.01em; line-height: 1.15; }
@@ -728,12 +727,14 @@ button.attention-row:hover { border-color: var(--line-strong); color: var(--ink)
 .connection-details > .field, .connection-details > .identity-toolbar { margin-top: 12px; }
 .agent-panel > .field-help { margin-top: 12px; }
 .standalone-toggle { padding-bottom: 12px; margin-bottom: 14px; border-bottom: 1px solid var(--line); }
-.pack-title { display: flex; align-items: center; gap: 4px; padding-bottom: 16px; }
+.pack-heading { display: flex; align-items: center; gap: 16px; padding-bottom: 16px; }
+.pack-heading > .button { flex: 0 0 auto; margin-left: auto; }
+.pack-title { display: flex; align-items: center; gap: 4px; min-width: 0; }
 .pack-title > strong { font-size: 19px; font-weight: 600; letter-spacing: -0.01em; overflow-wrap: anywhere; }
 .pack-title > .hint { margin-left: 2px; }
 .pack-title > .text-button { display: inline-flex; align-items: center; gap: 5px; margin: 0 0 0 8px; }
 .pack-title > .text-button svg { width: 13px; height: 13px; }
-.pack-settings { display: grid; grid-template-columns: minmax(180px, 340px) auto; justify-content: start; align-items: end; gap: 12px; padding-bottom: 16px; }
+.pack-settings { display: grid; grid-template-columns: minmax(180px, 340px) auto; justify-content: start; align-items: end; gap: 12px; }
 .rename-actions { display: flex; align-items: center; gap: 14px; padding-bottom: 3px; }
 .rename-actions > .text-button { margin: 0; }
 .generator-group .field > strong { padding: 6px 0; font-size: 13px; overflow-wrap: anywhere; }
@@ -978,6 +979,7 @@ input[data-protected-setting][type="number"]::-webkit-inner-spin-button { appear
 
 @media (max-width: 1050px) {
   .app-shell { grid-template-columns: 190px minmax(0, 1fr); }
+  .brand { padding: 0 2px; }
   .workspace { padding-right: 18px; padding-left: 18px; }
   .upload-layout, .settings-grid, .dashboard-grid { grid-template-columns: 1fr; }
   .settings-grid .span-full { grid-column: auto; }

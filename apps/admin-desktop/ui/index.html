@@ -54,15 +54,7 @@
       </aside>
 
       <main class="workspace">
-        <header class="workspace-header">
-          <h1 id="viewTitle" class="sr-only" data-i18n='Сервер'>Сервер</h1>
-          <div class="header-actions">
-            <button id="publishOpenButton" class="button primary" type="button" hidden>
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 21h14a2 2 0 0 0 2-2v-4M3 15v4a2 2 0 0 0 2 2"/></svg>
-              <span id="publishButtonLabel" data-i18n='Опубликовать'>Опубликовать</span>
-            </button>
-          </div>
-        </header>
+        <h1 id="viewTitle" class="sr-only" data-i18n='Сервер'>Сервер</h1>
 
         <div id="appUpdateBanner" class="app-update-banner" role="status" hidden><i data-lucide="download"></i><span id="appUpdateText"></span><button id="appUpdateInstall" class="button primary" type="button"><span data-i18n='Обновить и перезапустить'>Обновить и перезапустить</span></button><button id="appUpdateLater" class="text-button" type="button" data-i18n='Позже'>Позже</button></div>
         <div id="workspacePresence" class="workspace-presence" role="status" hidden><i data-lucide="users"></i><span id="workspacePresenceText"></span></div>
@@ -140,8 +132,11 @@
         </section>
 
         <section id="overviewView" class="view" data-view-panel="overview">
+          <div class="pack-heading">
           <div id="packTitleRow" class="pack-title"><strong id="packNameHeading">-</strong><button class="hint" type="button" tabindex="0" aria-label="Подсказка" data-i18n-aria-label='Подсказка' data-hint="Так проект называется у игроков: клиент показывает это имя, когда предлагает настроиться под сервер. Имя одно на весь проект и с версиями не связано — номер версии панель ставит сама при публикации." data-i18n-data-hint='Так проект называется у игроков: клиент показывает это имя, когда предлагает настроиться под сервер. Имя одно на весь проект и с версиями не связано — номер версии панель ставит сама при публикации.'><i data-lucide="circle-help"></i></button><button id="renamePackButton" class="text-button" type="button"><i data-lucide="pencil"></i><span data-i18n='Переименовать'>Переименовать</span></button></div>
           <form id="packSettingsForm" class="pack-settings" hidden><label class="field"><span data-i18n='Новое название'>Новое название</span><input id="packNameInput" maxlength="128" required value="Основная сборка"></label><div class="rename-actions"><button class="button primary" type="submit"><span data-i18n='Сохранить'>Сохранить</span></button><button id="cancelRenameButton" class="text-button" type="button" data-i18n='Отмена'>Отмена</button></div></form>
+          <button id="publishOpenButton" class="button primary" type="button" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 21h14a2 2 0 0 0 2-2v-4M3 15v4a2 2 0 0 0 2 2"/></svg><span id="publishButtonLabel" data-i18n='Опубликовать'>Опубликовать</span></button>
+          </div>
           <div class="summary-strip" aria-label="Состояние сборки" data-i18n-aria-label='Состояние сборки'>
             <div class="summary-item"><span data-i18n='У игроков'>У игроков</span><strong id="currentVersion">-</strong></div>
             <div class="summary-item"><span data-i18n='В черновике'>В черновике</span><strong id="currentFileCount">-</strong></div>
