@@ -1033,13 +1033,12 @@ function fillManifest(nextManifest) {
   showPackName(nextManifest.pack.name || "");
   document.querySelector("#currentVersion").textContent = nextManifest.pack.version || "-";
   const draft = draftState?.draft || nextManifest;
-  document.querySelector("#currentFileCount").textContent = String((draft.files || []).length);
+  // How many files there are is on the tabs: what changed on «Черновик», the whole
+  // composition on «Опубликовано».
   document.querySelector("#currentTotalSize").textContent = formatBytes((draft.files || []).reduce((total, file) => total + Number(file.size || 0), 0));
-  document.querySelector("#currentPlatform").textContent = [
-    `Minecraft ${nextManifest.minecraft.version}`,
-    capitalize(nextManifest.minecraft.loader.type),
-    nextManifest.minecraft.loader.version
-  ].filter(Boolean).join(" · ");
+  document.querySelector("#currentPlatform").textContent = [`Minecraft ${nextManifest.minecraft.version}`,
+    [capitalize(nextManifest.minecraft.loader.type), nextManifest.minecraft.loader.version].filter(Boolean).join(" ")]
+    .filter(Boolean).join(" · ");
 }
 
 function renderDraftState() {
@@ -1125,7 +1124,7 @@ function renderServerStatus(status) {
 }
 
 function resetManifest() {
-  ["currentVersion", "currentFileCount", "currentTotalSize", "currentPlatform"].forEach((id) => {
+  ["currentVersion", "currentTotalSize", "currentPlatform"].forEach((id) => {
     document.querySelector(`#${id}`).textContent = "-";
   });
   elements.packNameHeading.textContent = "-";

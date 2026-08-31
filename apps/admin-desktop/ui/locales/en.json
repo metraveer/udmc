@@ -563,10 +563,7 @@
   "Действия сервера": "Server actions",
   "Разрешить остановку и перезапуск из панели": "Allow stop and restart from Control",
   "Сохранить мир": "Save world",
-  "Состояние сборки": "Pack status",
   "Опубликованная версия": "Published version",
-  "В черновике": "In draft",
-  "Объём черновика": "Draft size",
   "Отменить изменения": "Discard changes",
   "Черновик": "Draft",
   "Опубликовано": "Published",
@@ -610,7 +607,6 @@
   "Новые": "Newest",
   "Недавно обновлённые": "Recently updated",
   "По совпадению": "Relevance",
-  "Что устанавливается?": "What gets installed?",
   "Только моды под загрузчик и версию подключённого сервера и их обязательные зависимости. Вход в Modrinth не нужен. Назначение берётся из метаданных автора. Миры, сборки целиком, шейдеры и ресурсы через каталог пока не устанавливаются. Моды исполняют код: выбирайте авторов, которым доверяете, и делайте резервную копию мира.": "Only mods for the connected server's loader and Minecraft version, plus their required dependencies. No Modrinth account needed. Destinations come from the author's metadata. Worlds, complete modpacks, shaders and resource packs are not installed through the catalog yet. Mods execute code: choose trusted authors and back up the world.",
   "Загрузка каталога...": "Loading catalog...",
   "Подготовка модов": "Preparing mods",
@@ -1101,7 +1097,6 @@
   "Агент на сервере: {0}, клиент для скачивания: {1}. Это последняя версия из этого приложения.": "Server agent: {0}, client for download: {1}. This is the latest version this app provides.",
   "Приглашение {0}": "Invitation {0}",
   "до {0}": "until {0}",
-  "У игроков": "Players have",
   "Обновить и перезапустить": "Update and restart",
   "Остановка и перезапуск из панели выключены. Включите их на странице «Сервер» в блоке «Действия сервера».": "Stopping and restarting from the panel are disabled. Enable them on the Server page in \"Server actions\".",
   "Обновление уже подготовлено: остановите или перезапустите сервер, чтобы оно применилось.": "An update is already staged: stop or restart the server to apply it.",
@@ -1236,5 +1231,6 @@
   "Новое название": "New name",
   "Сохранить": "Save",
   "Так проект называется у игроков: клиент показывает это имя, когда предлагает настроиться под сервер. Имя одно на весь проект и с версиями не связано — номер версии панель ставит сама при публикации.": "This is what the project is called for players: the client shows this name when it offers to set the game up for this server. One name covers the whole project and has nothing to do with version numbers — the panel assigns those itself when you publish.",
-  "Перечитать данные с сервера": "Re-read data from the server"
+  "Перечитать данные с сервера": "Re-read data from the server",
+  "Версия, которая сейчас у игроков": "The version players have right now"
 }
