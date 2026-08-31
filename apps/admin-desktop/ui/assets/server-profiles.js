@@ -79,11 +79,27 @@ export function profileInvoke(command, args = {}) {
 export function initServerProfiles({ getBusy, hasLocalFiles, showToast, openSettings, beforeReload = () => {}, reload = () => window.location.reload() }) {
   const $ = id => document.getElementById(id);
   let target = null;
+  const editingName = () => !$("serverProfileName").readOnly;
   const render = () => {
     $("serverProfileSelect").replaceChildren(...serverProfiles.list().map(p => new Option(p.name, p.id)));
     $("serverProfileSelect").value = serverProfiles.active();
-    $("serverProfileName").value = serverProfiles.list().find(p => p.id === serverProfiles.active()).name;
+    if (!editingName()) $("serverProfileName").value = serverProfiles.list().find(p => p.id === serverProfiles.active()).name;
   };
+
+  /**
+   * The name shows what it is until the pencil is pressed, the same way the address does. The
+   * one button does both halves of that: it opens the field, then saves what was typed.
+   */
+  function editName(on = true) {
+    const input = $("serverProfileName");
+    const button = $("renameProfileButton");
+    input.readOnly = !on;
+    button.classList.toggle("editing", on);
+    const label = on ? t("Сохранить имя сервера") : t("Изменить имя сервера");
+    button.title = label;
+    button.setAttribute("aria-label", label);
+    if (on) { input.focus(); input.select(); }
+  }
   function activate(id) {
     if (getBusy()) { render(); showToast(t("Дождитесь завершения текущей операции."), "error"); return; }
     if (id === serverProfiles.active()) return;
@@ -104,8 +120,21 @@ export function initServerProfiles({ getBusy, hasLocalFiles, showToast, openSett
   });
   $("serverProfileForm").addEventListener("submit", event => {
     event.preventDefault(); if (getBusy()) return;
-    try { serverProfiles.rename(serverProfiles.active(), $("serverProfileName").value); render(); showToast(t("Название сервера сохранено")); }
-    catch (error) { showToast(error.message, "error"); }
+    try {
+      serverProfiles.rename(serverProfiles.active(), $("serverProfileName").value);
+      editName(false); render();
+      showToast(t("Название сервера сохранено"));
+    } catch (error) { showToast(error.message, "error"); }
+  });
+  $("renameProfileButton").addEventListener("click", () => {
+    if (getBusy()) return;
+    if (editingName()) $("serverProfileForm").requestSubmit(); else editName(true);
+  });
+  // Leaving without saving puts back what the server is actually called.
+  $("serverProfileName").addEventListener("keydown", event => {
+    if (event.key !== "Escape" || !editingName()) return;
+    event.preventDefault(); event.stopPropagation();
+    editName(false); render();
   });
   $("switchProfileForm").addEventListener("submit", event => {
     event.preventDefault(); if (getBusy() || !target) return;
@@ -120,4 +149,5 @@ export function initServerProfiles({ getBusy, hasLocalFiles, showToast, openSett
     $("profileStorageError").textContent = serverProfiles.error(); $("profileStorageError").hidden = false;
     for (const control of [$("serverProfileSelect"), $("addServerProfileButton"), ...$("serverProfileForm").elements]) control.disabled = true;
   }
+  return { editName };
 }

@@ -141,10 +141,14 @@ sideFilter = rememberedUi.side;
 elements.fileSideFilter.querySelectorAll("button").forEach(button => button.classList.toggle("active", button.dataset.sideFilter === sideFilter));
 renderActivity(); renderConsole(); renderServerReply();
 bindEvents();
-initServerProfiles({ getBusy: () => buildBusy || protectedSettings?.isEditing() || rconState.status === "checking",
+const serverProfilesUi = initServerProfiles({ getBusy: () => buildBusy || protectedSettings?.isEditing() || rconState.status === "checking",
   hasLocalFiles: () => selectedFiles.length > 0, showToast, beforeReload: saveUiSession, openSettings: () => navigateTo("generator") });
-// After the profile module fills the saved display name, an unsaved edit from this session wins.
-if (profileNameDirty) document.getElementById("serverProfileName").value = rememberedUi.profileName;
+// After the profile module fills the saved display name, an unsaved edit from this session wins,
+// and the field opens on it: a name half-typed is not a name to hide behind a pencil.
+if (profileNameDirty) {
+  document.getElementById("serverProfileName").value = rememberedUi.profileName;
+  serverProfilesUi.editName();
+}
 initLanguage({ getBusy: () => buildBusy || protectedSettings?.isEditing() || rconState.status === "checking",
   hasLocalFiles: () => selectedFiles.length > 0, showToast, beforeReload: saveUiSession });
 await restoreSecureCredentials();
