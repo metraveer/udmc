@@ -303,7 +303,9 @@ h2 { margin-bottom: 0; font-family: "Segoe UI Variable Display", "Segoe UI", ui-
 .view.active { display: block; }
 .summary-strip {
   display: grid;
-  grid-template-columns: minmax(110px, 0.8fr) minmax(120px, 0.8fr) minmax(150px, 1.2fr) minmax(90px, 0.6fr) minmax(120px, 0.8fr);
+  /* The pack page's strip carries four numbers, the server page's five. One template for both
+     left the pack page a phantom fifth column and squeezed its environment into an ellipsis. */
+  grid-template-columns: minmax(110px, 0.75fr) minmax(110px, 0.7fr) minmax(130px, 0.85fr) minmax(200px, 1.7fr);
   margin-bottom: 14px;
   border: 1px solid var(--line);
   border-radius: 10px;
@@ -311,6 +313,7 @@ h2 { margin-bottom: 0; font-family: "Segoe UI Variable Display", "Segoe UI", ui-
   background: var(--surface);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045);
 }
+.summary-strip.server-summary { grid-template-columns: minmax(110px, 0.8fr) minmax(120px, 0.8fr) minmax(150px, 1.2fr) minmax(90px, 0.6fr) minmax(120px, 0.8fr); }
 .summary-item { min-width: 0; padding: 11px 16px; border-right: 1px solid var(--line); }
 .summary-item:last-child { border-right: 0; }
 .summary-item > span { display: block; margin-bottom: 3px; overflow-wrap: break-word; color: var(--muted); font-size: 10px; font-weight: 720; text-transform: uppercase; letter-spacing: 0.05em; }
@@ -582,6 +585,15 @@ button.attention-row:hover { border-color: var(--line-strong); color: var(--ink)
 .action-with-hint > .hint { flex: 0 0 auto; margin: 0; }
 .action-with-hint > .hint::after { left: auto; right: 0; }
 .server-actions-surface { display: flex; flex-direction: column; }
+.broadcast-form { display: grid; grid-template-columns: minmax(0, 1fr) 40px; align-items: end; gap: 8px; margin-bottom: 12px; }
+/* A button used to give a toast and nothing else: its answer went to the console page, which
+   is not where the button is. */
+.server-reply { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--line); }
+.server-reply-head { display: flex; align-items: baseline; gap: 8px; }
+.server-reply-head > span { flex: 0 0 auto; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; white-space: nowrap; color: var(--muted); }
+.server-reply-head > strong { flex: 1 1 auto; min-width: 0; font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 12px; font-weight: 500; color: var(--muted-strong); text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.server-reply > p { margin: 6px 0 0; max-height: 58px; overflow-y: auto; font-size: 12px; line-height: 1.5; color: var(--ink); white-space: pre-wrap; overflow-wrap: anywhere; }
+.server-reply > p.waiting { color: var(--muted); }
 
 .console-surface { margin-bottom: 0; }
 .console-heading-actions { display: flex; align-items: center; gap: 8px; }
@@ -709,8 +721,14 @@ button.attention-row:hover { border-color: var(--line-strong); color: var(--ink)
 .connection-details > .field, .connection-details > .identity-toolbar { margin-top: 12px; }
 .agent-panel > .field-help { margin-top: 12px; }
 .standalone-toggle { padding-bottom: 12px; margin-bottom: 14px; border-bottom: 1px solid var(--line); }
-.pack-settings { display: grid; grid-template-columns: minmax(180px, 1fr) 40px auto; align-items: end; gap: 10px; padding-bottom: 16px; }
-.pack-platform { display: grid; gap: 4px; padding-left: 12px; font-size: 12px; color: var(--muted-strong); }
+.pack-title { display: flex; align-items: center; gap: 4px; padding-bottom: 16px; }
+.pack-title > strong { font-size: 19px; font-weight: 600; letter-spacing: -0.01em; overflow-wrap: anywhere; }
+.pack-title > .hint { margin-left: 2px; }
+.pack-title > .text-button { display: inline-flex; align-items: center; gap: 5px; margin: 0 0 0 8px; }
+.pack-title > .text-button svg { width: 13px; height: 13px; }
+.pack-settings { display: grid; grid-template-columns: minmax(180px, 340px) auto; justify-content: start; align-items: end; gap: 12px; padding-bottom: 16px; }
+.rename-actions { display: flex; align-items: center; gap: 14px; padding-bottom: 3px; }
+.rename-actions > .text-button { margin: 0; }
 .generator-group .field > strong { padding: 6px 0; font-size: 13px; overflow-wrap: anywhere; }
 .generator-group .field > .text-button { width: fit-content; }
 .generator-group > .field-help { margin-top: 12px; }
@@ -969,8 +987,7 @@ input[data-protected-setting][type="number"]::-webkit-inner-spin-button { appear
   .rcon-fields .field:nth-child(3), .check-row { grid-column: 1 / -1; }
 }
 @media (max-width: 820px) {
-  .pack-settings { grid-template-columns: minmax(0, 1fr) 40px; }
-  .pack-platform { grid-column: 1 / -1; padding-left: 0; }
+  .pack-settings { grid-template-columns: minmax(0, 1fr) auto; }
   .agent-address .form-grid { grid-template-columns: minmax(0, 1fr); }
   .device-row { grid-template-columns: 24px minmax(0, 1fr) auto; gap: 12px; }
   .device-controls { grid-column: 3; }

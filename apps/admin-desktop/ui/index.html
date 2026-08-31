@@ -123,12 +123,19 @@
 
           <section class="surface server-actions-surface">
             <div class="section-heading"><div><h2 data-i18n='Действия сервера'>Действия сервера</h2></div></div>
+            <form id="broadcastForm" class="broadcast-form">
+              <label class="field"><span data-i18n='Сообщение игрокам'>Сообщение игрокам</span><input id="broadcastInput" maxlength="200" autocomplete="off" placeholder="Через пять минут перезапуск" data-i18n-placeholder='Через пять минут перезапуск'></label>
+              <button id="broadcastButton" class="icon-button" type="submit" title="Отправить в чат всем, кто в игре" aria-label="Отправить в чат всем, кто в игре" data-i18n-title='Отправить в чат всем, кто в игре' data-i18n-aria-label='Отправить в чат всем, кто в игре'><i data-lucide="send"></i></button>
+            </form>
             <div class="server-actions stacked">
               <span class="action-with-hint"><button class="button subtle" type="button" data-quick-command="save-all flush"><svg viewBox="0 0 24 24"><path d="M15.2 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8.8Z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg><span data-i18n='Сохранить мир'>Сохранить мир</span></button><button class="hint" type="button" tabindex="0" aria-label="Подсказка" data-i18n-aria-label='Подсказка' data-hint="Просит сервер записать мир и все его изменения на диск прямо сейчас, не дожидаясь обычного автосохранения. Игру не прерывает. Стоит нажать перед тем, как менять моды или останавливать сервер." data-i18n-data-hint='Просит сервер записать мир и все его изменения на диск прямо сейчас, не дожидаясь обычного автосохранения. Игру не прерывает. Стоит нажать перед тем, как менять моды или останавливать сервер.'><i data-lucide="circle-help"></i></button></span>
-              <span class="action-with-hint"><button class="button subtle" type="button" data-quick-command="list"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg><span data-i18n='Проверить игроков'>Проверить игроков</span></button><button class="hint" type="button" tabindex="0" aria-label="Подсказка" data-i18n-aria-label='Подсказка' data-hint="Спрашивает у сервера, кто сейчас в игре, и печатает ответ в консоли. То же, что команда list. Список онлайн есть и наверху, в «Игроках»; здесь — ответ самого сервера." data-i18n-data-hint='Спрашивает у сервера, кто сейчас в игре, и печатает ответ в консоли. То же, что команда list. Список онлайн есть и наверху, в «Игроках»; здесь — ответ самого сервера.'><i data-lucide="circle-help"></i></button></span>
               
               <button id="restartServerButton" class="button warning" type="button" disabled><svg viewBox="0 0 24 24"><path d="M20 11a8.1 8.1 0 0 0-15.5-2M4 4v5h5M4 13a8.1 8.1 0 0 0 15.5 2M20 20v-5h-5"/></svg><span data-i18n='Перезапустить'>Перезапустить</span></button>
               <button id="stopServerButton" class="button danger-outline" type="button" disabled><svg viewBox="0 0 24 24"><rect width="14" height="14" x="5" y="5" rx="2"/></svg><span data-i18n='Остановить'>Остановить</span></button>
+            </div>
+            <div class="server-reply">
+              <div class="server-reply-head"><span data-i18n='Ответ сервера'>Ответ сервера</span><strong id="serverReplyCommand"></strong></div>
+              <p id="serverReplyText" data-i18n='Здесь появится ответ на команду'>Здесь появится ответ на команду</p>
             </div>
           </section>
           </div>
@@ -136,7 +143,8 @@
         </section>
 
         <section id="overviewView" class="view" data-view-panel="overview">
-          <form id="packSettingsForm" class="pack-settings"><label class="field"><span data-i18n='Название сборки'>Название сборки</span><input id="packNameInput" maxlength="128" required value="Основная сборка"></label><button class="icon-button" type="submit" title="Сохранить название сборки" aria-label="Сохранить название сборки" data-i18n-title='Сохранить название сборки' data-i18n-aria-label='Сохранить название сборки'><i data-lucide="save"></i></button><div class="pack-platform"><span id="detectedMinecraft" data-i18n='Minecraft не определён'>Minecraft не определён</span><span id="detectedLoader" data-i18n='Загрузчик не определён'>Загрузчик не определён</span></div></form>
+          <div id="packTitleRow" class="pack-title"><strong id="packNameHeading">-</strong><button class="hint" type="button" tabindex="0" aria-label="Подсказка" data-i18n-aria-label='Подсказка' data-hint="Так проект называется у игроков: клиент показывает это имя, когда предлагает настроиться под сервер. Имя одно на весь проект и с версиями не связано — номер версии панель ставит сама при публикации." data-i18n-data-hint='Так проект называется у игроков: клиент показывает это имя, когда предлагает настроиться под сервер. Имя одно на весь проект и с версиями не связано — номер версии панель ставит сама при публикации.'><i data-lucide="circle-help"></i></button><button id="renamePackButton" class="text-button" type="button"><i data-lucide="pencil"></i><span data-i18n='Переименовать'>Переименовать</span></button></div>
+          <form id="packSettingsForm" class="pack-settings" hidden><label class="field"><span data-i18n='Новое название'>Новое название</span><input id="packNameInput" maxlength="128" required value="Основная сборка"></label><div class="rename-actions"><button class="button primary" type="submit"><span data-i18n='Сохранить'>Сохранить</span></button><button id="cancelRenameButton" class="text-button" type="button" data-i18n='Отмена'>Отмена</button></div></form>
           <div class="summary-strip" aria-label="Состояние сборки" data-i18n-aria-label='Состояние сборки'>
             <div class="summary-item"><span data-i18n='У игроков'>У игроков</span><strong id="currentVersion">-</strong></div>
             <div class="summary-item"><span data-i18n='В черновике'>В черновике</span><strong id="currentFileCount">-</strong></div>

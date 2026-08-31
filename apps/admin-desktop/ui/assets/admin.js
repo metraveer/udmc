@@ -53,7 +53,8 @@ const elements = Object.fromEntries([
   "bulkSideInput", "clearSelectedButton", "uploadButton", "refreshButton", "clearLogButton", "draftBar",
   "draftStatusTitle", "draftStatusText", "draftChangeCounts", "resetDraftButton", "resetDraftDialog", "resetDraftForm",
   "filesTable", "fileSearchInput", "fileSideFilter", "visibleFileCount", "logOutput", "activityCount",
-  "viewTitle", "toastRegion", "detectedMinecraft", "detectedLoader",
+  "viewTitle", "toastRegion", "packNameHeading",
+  "broadcastForm", "broadcastInput", "broadcastButton", "serverReplyCommand", "serverReplyText",
   "serverState", "serverPlayers", "serverTps", "serverUptime", "liveBadge", "serverMotd", "serverGamePort",
   "serverEnvironment", "serverWorlds", "serverTickTime", "serverJava", "serverMemoryText", "serverMemoryBar",
   "playerCountBadge", "playerList", "playerFilter", "playerListMore", "playersSummary", "playersPopover",
@@ -125,12 +126,13 @@ restoreConnection();
 restoreRconSettings();
 if (packNameDirty) {
   document.getElementById("packNameInput").value = rememberedUi.packName;
+  togglePackRename(true);
 }
 elements.fileSearchInput.value = rememberedUi.fileSearch;
 document.getElementById("commandSearch").value = rememberedUi.commandSearch;
 sideFilter = rememberedUi.side;
 elements.fileSideFilter.querySelectorAll("button").forEach(button => button.classList.toggle("active", button.dataset.sideFilter === sideFilter));
-renderActivity(); renderConsole();
+renderActivity(); renderConsole(); renderServerReply();
 bindEvents();
 initServerProfiles({ getBusy: () => buildBusy || protectedSettings?.isEditing() || rconState.status === "checking",
   hasLocalFiles: () => selectedFiles.length > 0, showToast, beforeReload: saveUiSession, openSettings: () => navigateTo("generator") });
@@ -326,6 +328,14 @@ function bindEvents() {
   // The switch is the whole setting: it saves itself instead of waiting for a button.
   document.getElementById("packNameInput").addEventListener("input", () => { packNameDirty = true; });
   document.getElementById("packSettingsForm").addEventListener("submit", savePackName);
+  document.getElementById("renamePackButton").addEventListener("click", () => togglePackRename(true));
+  document.getElementById("cancelRenameButton").addEventListener("click", () => {
+    const known = elements.packNameHeading.textContent;
+    if (known && known !== "-") document.getElementById("packNameInput").value = known;
+    packNameDirty = false;
+    togglePackRename(false);
+  });
+  elements.broadcastForm.addEventListener("submit", broadcastToPlayers);
   document.getElementById("serverProfileName").addEventListener("input", () => { profileNameDirty = true; });
   document.getElementById("serverProfileForm").addEventListener("submit", () => { profileNameDirty = false; });
   elements.rconForm.addEventListener("submit", saveRconSettings);
@@ -538,6 +548,17 @@ async function refreshServerStatus(silent = false) {
   }
 }
 
+function showPackName(name) {
+  elements.packNameHeading.textContent = name || "-";
+  if (!packNameDirty) document.getElementById("packNameInput").value = name;
+}
+
+function togglePackRename(open) {
+  document.getElementById("packTitleRow").hidden = open;
+  document.getElementById("packSettingsForm").hidden = !open;
+  if (open) document.getElementById("packNameInput").focus();
+}
+
 async function savePackName(event) {
   event.preventDefault();
   if (buildBusy) return;
@@ -549,6 +570,8 @@ async function savePackName(event) {
     packNameDirty = false;
     localStorage.setItem("udmc-pack-name", name);
     if (manifest) await refresh({ silent: true });
+    showPackName(name);
+    togglePackRename(false);
     showToast(manifest ? t("Название сборки сохранено") : t("Название сохранено для создания JAR"));
   } catch (error) { handleError(error); } finally { setBuildBusy(false); }
 }
@@ -629,6 +652,16 @@ async function submitCommand(event) {
   elements.commandInput.value = "";
   await executeServerCommand(command, elements.commandSubmitButton);
   elements.commandInput.focus();
+}
+
+// Warning the players is what an administrator does right before the two buttons under this
+// field, and until now it meant typing a command on the console page.
+async function broadcastToPlayers(event) {
+  event.preventDefault();
+  const message = elements.broadcastInput.value.trim().replace(/\s+/g, " ");
+  if (!message) return;
+  const answered = await executeServerCommand(`say ${message}`, elements.broadcastButton);
+  if (answered !== null) elements.broadcastInput.value = "";
 }
 
 async function runQuickCommand(button) {
@@ -989,9 +1022,7 @@ async function resetDraft(event) {
 }
 
 function fillManifest(nextManifest) {
-  if (!packNameDirty) document.querySelector("#packNameInput").value = nextManifest.pack.name || "";
-  elements.detectedMinecraft.textContent = nextManifest.minecraft.version || "-";
-  elements.detectedLoader.textContent = [capitalize(nextManifest.minecraft.loader.type), nextManifest.minecraft.loader.version].filter(Boolean).join(" ");
+  showPackName(nextManifest.pack.name || "");
   document.querySelector("#currentVersion").textContent = nextManifest.pack.version || "-";
   const draft = draftState?.draft || nextManifest;
   document.querySelector("#currentFileCount").textContent = String((draft.files || []).length);
@@ -1054,7 +1085,9 @@ function renderServerStatus(status) {
   elements.liveBadge.className = `state-badge ${status.state === "online" ? "online" : "warning"}`;
   elements.serverMotd.textContent = status.motd || "-";
   elements.serverGamePort.textContent = status.gamePort || "-";
-  elements.serverEnvironment.textContent = `Minecraft ${status.minecraftVersion || "-"} · ${capitalize(status.loader?.type)} ${status.loader?.version || ""}`;
+  // A server that has not reported its loader yet used to leave a separator hanging: "Minecraft - ·".
+  elements.serverEnvironment.textContent = [`Minecraft ${status.minecraftVersion || "-"}`,
+    [capitalize(status.loader?.type), status.loader?.version].filter(Boolean).join(" ")].filter(Boolean).join(" · ");
   elements.serverWorlds.textContent = String(status.worlds ?? "-");
   elements.serverTickTime.textContent = t("{0} мс", Number(performance.averageTickMs || 0).toFixed(2));
   elements.serverJava.textContent = status.javaVersion || "-";
@@ -1087,8 +1120,7 @@ function resetManifest() {
   ["currentVersion", "currentFileCount", "currentTotalSize", "currentPlatform"].forEach((id) => {
     document.querySelector(`#${id}`).textContent = "-";
   });
-  elements.detectedMinecraft.textContent = t("Определяется сервером");
-  elements.detectedLoader.textContent = t("Определяется сервером");
+  elements.packNameHeading.textContent = "-";
   renderDraftState();
   updateDropZone();
 }
@@ -1655,6 +1687,16 @@ function addConsoleEntry(command, output, transport, error = false) {
   });
   consoleEntries = consoleEntries.slice(-80);
   renderConsole();
+  renderServerReply();
+}
+
+// The answer belongs next to the button that asked for it. Without this, pressing one gave a
+// toast and nothing else: what the server actually said appeared on a page nobody was on.
+function renderServerReply() {
+  const last = consoleEntries.at(-1);
+  elements.serverReplyCommand.textContent = last ? `> ${last.command}` : "";
+  elements.serverReplyText.textContent = last ? last.output : t("Здесь появится ответ на команду");
+  elements.serverReplyText.classList.toggle("waiting", !last);
 }
 
 function renderConsole() {
@@ -1681,6 +1723,7 @@ function renderConsole() {
 function clearConsole() {
   consoleEntries = [];
   elements.consoleOutput.innerHTML = t("<div class=\"console-empty\">Консоль готова</div>");
+  renderServerReply();
 }
 
 function toggleTokenVisibility() {
