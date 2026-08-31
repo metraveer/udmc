@@ -17,12 +17,16 @@ import java.nio.file.Path;
 import java.util.List;
 
 public final class UdmcClientUi {
-    private record State(Component title, Component message, List<ClientModCheck.Conflict> conflicts, boolean running, boolean restart, boolean success, String gameAddress) {
+    private record State(Component title, Component message, List<ClientModCheck.Conflict> conflicts, boolean running, boolean restart, boolean success, String gameAddress,
+                         ClientProject.Offer offer) {
         State(Component title, Component message, List<ClientModCheck.Conflict> conflicts, boolean running, boolean restart) {
-            this(title, message, conflicts, running, restart, false, "");
+            this(title, message, conflicts, running, restart, false, "", null);
         }
         State(Component title, Component message, List<ClientModCheck.Conflict> conflicts, boolean running, boolean restart, boolean success) {
-            this(title, message, conflicts, running, restart, success, "");
+            this(title, message, conflicts, running, restart, success, "", null);
+        }
+        State(Component title, Component message, List<ClientModCheck.Conflict> conflicts, boolean running, boolean restart, boolean success, String gameAddress) {
+            this(title, message, conflicts, running, restart, success, gameAddress, null);
         }
     }
     private static volatile State state;
@@ -35,10 +39,12 @@ public final class UdmcClientUi {
         gameDir = directory;
         config = settings;
         dismissed = false;
-        // A JAR built from source has no server to talk to. Syncing against whatever the
-        // previous config happened to say is how a client keeps a project nobody serves.
-        if (!settings.fromBootstrap) {
-            state = new State(text("udmc_sync.title.failed"), text("udmc_sync.message.unconfigured"), List.of(), false, false);
+        // One mod for everybody means a fresh client belongs to nothing until it joins a
+        // server and the player accepts what that server offers. Until then there is no
+        // project to sync against, and guessing one from a leftover config is how a client
+        // ends up answering for a server nobody serves.
+        if (!ClientProject.configured(settings)) {
+            state = new State(text("udmc_sync.title.unclaimed"), text("udmc_sync.message.unclaimed"), List.of(), false, false);
             return;
         }
         state = new State(text("udmc_sync.title.check"), text("udmc_sync.message.connecting"), List.of(), true, false);
@@ -86,8 +92,37 @@ public final class UdmcClientUi {
     private static Component text(String key, Object... args) { return component(Messages.of(key, args)); }
 
     public static void tick() {
-        if (state == null || dismissed || !(ClientPlatform.screen() instanceof TitleScreen)) return;
+        // Only here: a project decision belongs between sessions, not on top of a game the
+        // player is in the middle of. The offer waits in the protocol until they come back.
+        if (!(ClientPlatform.screen() instanceof TitleScreen)) return;
+        if (config != null) consider(AgentLoginProtocol.takeOffer());
+        if (state == null || dismissed) return;
         ClientPlatform.open(new StatusScreen());
+    }
+
+    /** Turns what the last server said about itself into something the player can answer. */
+    private static void consider(ClientProject.Offer offer) {
+        if (offer == null) return;
+        String name = offer.packName().isEmpty() ? offer.packId() : offer.packName();
+        switch (ClientProject.reconcile(gameDir, config, offer)) {
+            case NEW_PROJECT -> show(new State(text("udmc_sync.title.setup"),
+                text("udmc_sync.message.setup", name, spaced(offer.fingerprint())), List.of(), false, false, false, "", offer));
+            case OTHER_PROJECT -> show(new State(text("udmc_sync.title.other_project"),
+                text("udmc_sync.message.other_project", config.packName, name), List.of(), false, false));
+            case KEY_CHANGED -> show(new State(text("udmc_sync.title.key_changed"),
+                text("udmc_sync.message.key_changed", name, spaced(offer.fingerprint())), List.of(), false, false));
+            default -> { }
+        }
+    }
+
+    private static void show(State next) {
+        dismissed = false;
+        state = next;
+    }
+
+    /** A 64-character hash is compared by eye, so it is read in groups rather than as a wall. */
+    private static String spaced(String fingerprint) {
+        return fingerprint.replaceAll("(.{4})(?=.)", "$1 ");
     }
 
     private static final class StatusScreen extends Screen {
@@ -122,6 +157,16 @@ public final class UdmcClientUi {
                 previous.active = index > 0; addRenderableWidget(previous);
                 Button next = Button.builder(text("udmc_sync.button.next"), b -> { index++; rebuildWidgets(); }).bounds(x + half + 8, y + 24, half, 20).build();
                 next.active = index + 1 < displayed.conflicts.size(); addRenderableWidget(next);
+            } else if (displayed.offer != null) {
+                addRenderableWidget(Button.builder(text("udmc_sync.button.accept"), b -> {
+                    ClientProject.accept(gameDir, config, displayed.offer);
+                    start(gameDir, config);
+                }).bounds(x, y, contentWidth, 20).build());
+                addRenderableWidget(Button.builder(text("udmc_sync.button.decline"), b -> {
+                    state = null;
+                    dismissed = true;
+                    ClientPlatform.open(new TitleScreen());
+                }).bounds(x, y + 24, contentWidth, 20).build());
             } else if (!displayed.running) {
                 boolean direct = displayed.success && !displayed.gameAddress.isBlank();
                 if (direct) {

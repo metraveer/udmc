@@ -85,5 +85,16 @@
   "udmc_sync.login.client": "Your client: UDMC %1$s, project \"%2$s\"",
   "udmc_sync.message.unconfigured": "This UDMC file is not set up for any server: it was built from source instead of handed out by Control. Download the client from your server's install page.",
   "udmc_sync.login.rebuilt": "The UDMC client file is not the one this server hands out: same version (%1$s), different build.",
-  "udmc_sync.login.restart": "UDMC: %1$s\n\nClose the game and start it again: the client updates itself, nothing to download."
+  "udmc_sync.login.restart": "UDMC: %1$s\n\nClose the game and start it again: the client updates itself, nothing to download.",
+  "udmc_sync.title.unclaimed": "UDMC is not set up yet",
+  "udmc_sync.message.unclaimed": "UDMC is installed but does not belong to a modpack yet. Join the server whose pack you want: it will offer you its project, and you decide whether to accept it.",
+  "udmc_sync.title.setup": "Set up for this server?",
+  "udmc_sync.message.setup": "The server offers the modpack “%1$s” and will manage the mods in this game folder.\n\nIts signing key:\n%2$s\n\nAccept only if this is your server or one you trust. The owner can show you the same key in UDMC Control.",
+  "udmc_sync.button.accept": "Accept and set up",
+  "udmc_sync.button.decline": "Not now",
+  "udmc_sync.title.other_project": "Another modpack",
+  "udmc_sync.message.other_project": "This game folder is set up for “%1$s”, and this server hands out “%2$s”. Two modpacks cannot share one mods folder. Use a separate game profile for the other server.",
+  "udmc_sync.title.key_changed": "The server's key has changed",
+  "udmc_sync.message.key_changed": "“%1$s” now signs with a different key than the one this client trusts:\n%2$s\n\nEither the owner rebuilt the project, or this is not the server you think it is. Ask the owner to confirm the key before doing anything else. Nothing has been changed.",
+  "udmc_sync.login.unclaimed": "The UDMC client is installed but not set up for any modpack yet. Leave the server once: UDMC will offer to set up for “%1$s”, and you can accept it there."
 }

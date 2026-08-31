@@ -46,7 +46,11 @@ public final class AgentLoginProtocol {
         String hash = "";
         try { hash = Hashes.sha256(LoaderPlatform.agentPath()); }
         catch (Exception error) { UdmcSync.LOGGER.warn("Cannot identify the client agent for login verification", error); }
-        client = new Answer(PROTOCOL, config.packId, PlatformDefaults.get("agentVersion"), hash);
+        // A client that belongs to no project yet says so with an empty name. Reporting the
+            // default project id instead would let it pass for a member of a server that happens
+            // to use the default too - installed, but with none of the pack downloaded.
+            String project = ClientProject.configured(config) ? config.packId : "";
+            client = new Answer(PROTOCOL, project, PlatformDefaults.get("agentVersion"), hash);
     }
 
     public static Query query() {
@@ -98,6 +102,12 @@ public final class AgentLoginProtocol {
         String offered = offeredClientVersion();
         if (answer == null) return invalid(expected, offered, "", "", "udmc_sync.login.missing");
         if (answer.protocol != PROTOCOL) return invalid(expected, offered, answer.version, answer.packId, "udmc_sync.login.incompatible");
+        if (answer.packId.isBlank()) {
+            // Installed, current, and not yet set up for anything: the player has to accept the
+            // project once. Saying "set up for another project" here would send them looking for
+            // a mistake they have not made.
+            return invalid(expected, offered, answer.version, answer.packId, "udmc_sync.login.unclaimed", expected.packId);
+        }
         if (!expected.packId.equals(answer.packId)) {
             return invalid(expected, offered, answer.version, answer.packId, "udmc_sync.login.foreign", expected.packId);
         }
