@@ -48,7 +48,6 @@ pub fn generator_catalog() -> Value {
     })
 }
 
-
 /// What the panel asks for: a game version from the catalog, and nothing about any project.
 /// The file is the same for every server and every player, so there is nothing to personalise.
 #[derive(Deserialize)]
@@ -77,7 +76,8 @@ fn package(template: &'static Template, update: bool) -> Result<Value, String> {
         // The server expects the pair it has always expected. Both entries are the same file
         // now, which is exactly what makes an update a matter of replacing one mod.
         let mut zip = ZipWriter::new(Cursor::new(Vec::new()));
-        let options = SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
+        let options =
+            SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
         for name in ["client.jar", "server.jar"] {
             zip.start_file(name, options).map_err(error)?;
             zip.write_all(template.bytes).map_err(error)?;
@@ -122,7 +122,10 @@ pub async fn save_agent(
     let Some(parent) = app
         .dialog()
         .file()
-        .set_title(native_label(dialog_title, "Choose a folder for the UDMC mod"))
+        .set_title(native_label(
+            dialog_title,
+            "Choose a folder for the UDMC mod",
+        ))
         .blocking_pick_folder()
     else {
         return Ok(None);
@@ -149,7 +152,9 @@ pub async fn save_project_backup(
     dialog_title: Option<String>,
 ) -> NativeResult<Option<String>> {
     if content.len() > MAX_BACKUP {
-        return Err(backup_error("The backup is larger than a project backup can be."));
+        return Err(backup_error(
+            "The backup is larger than a project backup can be.",
+        ));
     }
     let name = native_label(file_name, "udmc-project-backup.json");
     let Some(path) = app
@@ -186,7 +191,9 @@ pub async fn read_project_backup(
     let path = path.into_path().map_err(backup_error)?;
     let size = fs::metadata(&path).map_err(backup_error)?.len();
     if size > MAX_BACKUP as u64 {
-        return Err(backup_error("This file is too large to be a project backup."));
+        return Err(backup_error(
+            "This file is too large to be a project backup.",
+        ));
     }
     Ok(Some(fs::read_to_string(&path).map_err(backup_error)?))
 }
@@ -200,7 +207,11 @@ fn backup_error(detail: impl std::fmt::Display) -> NativeError {
 }
 
 fn agent_error(detail: impl std::fmt::Display) -> NativeError {
-    NativeError::detail("AGENT_EXPORT_FAILED", "Could not save the UDMC mod.", detail)
+    NativeError::detail(
+        "AGENT_EXPORT_FAILED",
+        "Could not save the UDMC mod.",
+        detail,
+    )
 }
 
 #[tauri::command]
@@ -328,7 +339,6 @@ pub fn open_dependency(app: tauri::AppHandle, name: String) -> NativeResult<()> 
     })
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -347,9 +357,15 @@ mod tests {
     fn native_labels_are_bounded_and_have_safe_fallbacks() {
         assert_eq!(native_label(None, "Fallback"), "Fallback");
         assert_eq!(native_label(Some("  ".into()), "Fallback"), "Fallback");
-        assert_eq!(native_label(Some("Выберите папку".into()), "Fallback"), "Выберите папку");
+        assert_eq!(
+            native_label(Some("Выберите папку".into()), "Fallback"),
+            "Выберите папку"
+        );
         assert_eq!(native_label(Some("x".repeat(200)), "Fallback"), "Fallback");
-        assert_eq!(native_label(Some("line\nbreak".into()), "Fallback"), "Fallback");
+        assert_eq!(
+            native_label(Some("line\nbreak".into()), "Fallback"),
+            "Fallback"
+        );
     }
 
     #[test]
@@ -427,4 +443,3 @@ mod tests {
         }
     }
 }
-
