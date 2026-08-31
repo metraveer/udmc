@@ -36,6 +36,17 @@ final class AgentUpdater {
         return checked;
     }
 
+    /** True when the running agent has reached the version a record was aiming for. */
+    private static boolean superseded(String running, String target) {
+        try {
+            return AgentPackages.compareVersions(running, target) >= 0;
+        } catch (IOException error) {
+            // An unreadable version cannot be compared; fall back to the exact match this
+            // check used to be, which is the safe half of the answer.
+            return running.equals(target);
+        }
+    }
+
     static Map<String, Object> status(Path gameDir) throws IOException {
         Path directory = ManagedPaths.internal(gameDir, "agent-update");
         Path task = directory.resolve("task.properties"), result = directory.resolve("result.properties");
@@ -48,13 +59,20 @@ final class AgentUpdater {
         Properties helper = Files.exists(helperFile) ? AgentUpdateHelper.read(helperFile) : settings;
         Properties state = Files.exists(result) ? AgentUpdateHelper.read(result) : new Properties();
         String value = state.getProperty("state", "scheduled");
-        // Self-heal: the agent answering this request IS the installed agent. If its own
-        // version matches the update target, the update arrived (helper, in-place swap or
-        // a manual replacement) - a stale interrupted/failed record must not linger.
+        // Self-heal: the agent answering this request IS the installed agent. If it is already
+        // at or past the version the record was aiming for, that update has arrived - by the
+        // helper, by an in-place swap, or because someone replaced the file by hand.
+        //
+        // "At or past", not "equal to": replacing the JAR by hand with a newer build leaves the
+        // old record behind, and reading it as an update still waiting made the panel ask for a
+        // restart that had already happened and would never make the message go away.
+        String running = PlatformDefaults.get("agentVersion");
         String targetVersion = settings.getProperty("version", "");
-        if (!targetVersion.isEmpty() && targetVersion.equals(PlatformDefaults.get("agentVersion"))
-            && !Set.of("scheduled", "waiting").contains(value)) {
-            return Map.of("state", "applied", "version", targetVersion, "backup", "udmc-sync/agent-update/previous.jar");
+        if (!targetVersion.isEmpty() && !Set.of("scheduled", "waiting").contains(value)
+            && superseded(running, targetVersion)) {
+            // Reported as the running version rather than the record's: what is installed is
+            // what the panel has to compare against, and they are the same thing now.
+            return Map.of("state", "applied", "version", running, "backup", "udmc-sync/agent-update/previous.jar");
         }
         String code = null, message = null;
         if (value.equals("scheduled") || value.equals("waiting")) {

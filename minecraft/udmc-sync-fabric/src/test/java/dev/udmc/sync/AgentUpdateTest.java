@@ -63,10 +63,29 @@ public final class AgentUpdateTest {
             check(Boolean.FALSE.equals(described.get("canUpdate")), "Unpackaged test agent must not offer remote self-update");
             check(((Map<?, ?>) described.get("updateReason")).get("code").equals("AGENT_UPDATE_PACKAGED_REQUIRED"), "Unavailable updates need a stable reason code");
             Path updateState = game.resolve("udmc-sync/agent-update"); Files.createDirectories(updateState);
-            Properties task = new Properties(); task.setProperty("version", "0.3.1"); AgentUpdateHelper.write(updateState.resolve("task.properties"), task);
+            // A version this agent has not reached: a failed update only means anything while the
+            // thing it was aiming for is still ahead of what is installed.
+            Properties task = new Properties(); task.setProperty("version", "999.0.1"); AgentUpdateHelper.write(updateState.resolve("task.properties"), task);
             Properties failed = new Properties(); failed.setProperty("state", "failed"); failed.setProperty("message", "private technical detail"); AgentUpdateHelper.write(updateState.resolve("result.properties"), failed);
             Map<String, Object> status = AgentUpdater.status(game);
             check(status.get("code").equals("AGENT_UPDATE_FAILED") && !GSON.toJson(status).contains("private technical detail"), "Failed updates expose a code while details stay in helper.log");
+            // Replacing the JAR by hand with a newer build leaves the old record behind. Reading
+            // it as an update still waiting made the panel ask for a restart that had already
+            // happened, and nothing the administrator did could make the message go away.
+            Properties older = new Properties();
+            older.setProperty("version", "0.0.1");
+            AgentUpdateHelper.write(updateState.resolve("task.properties"), older);
+            Properties applied = new Properties();
+            applied.setProperty("state", "applied");
+            AgentUpdateHelper.write(updateState.resolve("result.properties"), applied);
+            Map<String, Object> superseded = AgentUpdater.status(game);
+            check(superseded.get("state").equals("applied") && superseded.get("version").equals(PlatformDefaults.get("agentVersion")),
+                "A record the running agent has already passed must report the running version: " + superseded);
+            // And the other half: something genuinely ahead is still reported as not arrived.
+            AgentUpdateHelper.write(updateState.resolve("task.properties"), task);
+            check(!PlatformDefaults.get("agentVersion").equals(AgentUpdater.status(game).get("version")),
+                "An update to a version this agent has not reached must not be reported as already arrived");
+            AgentUpdateHelper.write(updateState.resolve("result.properties"), failed);
             fails(() -> distribution.publicFile("../../server.jar"));
             fails(() -> distribution.publishClient(secret));
             check(distribution.release().verify(config, "client").getProperty("sequence").equals("1"), "Rejected upload preserves release");
