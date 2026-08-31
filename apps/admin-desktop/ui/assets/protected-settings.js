@@ -84,7 +84,7 @@ export function initProtectedSettings({ getBusy, getBinding, getContext, onApply
         else control.readOnly = true;
       }
     }
-    document.querySelectorAll("[data-edit-setting],#localConnectionButton").forEach(button => {
+    document.querySelectorAll("[data-edit-setting]").forEach(button => {
       const group = button.dataset.editSetting || "connection";
       button.disabled = saving || getBusy() || !canEdit(group);
     });
@@ -164,7 +164,6 @@ export function initProtectedSettings({ getBusy, getBinding, getContext, onApply
     }
   });
   document.querySelectorAll("[data-edit-setting]").forEach(button => button.addEventListener("click", () => open(button.dataset.editSetting)));
-  $("localConnectionButton").addEventListener("click", () => open("connection", { serverUrlInput: "http://127.0.0.1:3077/", allowHttpConnection: false }));
   syncLocks();
   return { syncLocks, isEditing: () => dialog.open, open };
 }

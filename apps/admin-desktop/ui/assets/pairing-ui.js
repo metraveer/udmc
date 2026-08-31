@@ -47,10 +47,15 @@ export function initPairing({ getConnection, onPaired, showToast, getBusy, setBu
     $("pairButtonLabel").textContent = viaRcon ? t("Привязать по RCON") : t("Привязать");
   };
   const report = (error) => showToast(formatAppError(error), "error");
-  const badge = (text, state) => {
+  /**
+   * The one thing on this tab that says where the server stands. What used to be a paragraph
+   * under it is the explanation it carries: read on hover, out of the way the rest of the time.
+   */
+  const badge = (text, state, hint = "") => {
     const element = $("pairAvailability");
     element.textContent = text;
     element.className = `state-badge ${state}`;
+    if (hint) element.setAttribute("data-hint", hint); else element.removeAttribute("data-hint");
   };
 
   const address = () => {
@@ -68,9 +73,9 @@ export function initPairing({ getConnection, onPaired, showToast, getBusy, setBu
       const state = await agentJson(`${base}/pair`);
       section.hidden = !state.unpaired;
       if (state.unpaired) {
-        badge(t("Ждёт привязки"), "warn");
-        $("pairServerSummary").textContent = t("Сервер «{0}» (Minecraft {1}, {2}) ещё никем не занят. Введите его код, чтобы взять под управление.",
-          state.packName || "UDMC", state.minecraftVersion || "?", state.loaderType || "?");
+        badge(t("Ждёт привязки"), "warning attention",
+          t("Сервер «{0}» (Minecraft {1}, {2}) ещё никем не занят. Введите его код, чтобы взять под управление.",
+            state.packName || "UDMC", state.minecraftVersion || "?", state.loaderType || "?"));
       }
     } catch (error) {
       // A server that cannot be reached might be anything; do not put a form in the way.
@@ -136,8 +141,7 @@ export function initPairing({ getConnection, onPaired, showToast, getBusy, setBu
         body: JSON.stringify(restoring ? { code, project: restoring } : { code })
       });
       $("pairCodeInput").value = "";
-      badge(t("Привязан"), "ok");
-      $("pairServerSummary").textContent = "";
+      badge(t("Привязан"), "online");
       restoring = null;
       $("pairRestoreState").textContent = "";
       $("pairFingerprint").textContent = project.fingerprint || "";

@@ -2009,7 +2009,6 @@ function setBuildBusy(busy) {
   elements.serverUrlInput.disabled = busy;
   elements.tokenInput.disabled = busy;
   document.querySelector("#connectButton").disabled = busy;
-  document.querySelector("#localConnectionButton").disabled = busy;
   document.querySelectorAll("#generatorForm input, #generatorForm select, #generatorForm button, #recoverIdentityButton, #deviceNameInput, #allowHttpConnection, [data-agent-mode], #joinForm input, #joinForm textarea, #joinForm button, #deviceList button, #packSettingsForm input, #packSettingsForm button").forEach(input => { input.disabled = busy; });
   document.getElementById("agentCreateTab").disabled = busy;
   document.getElementById("inviteDeviceButton").disabled = busy || accessRole !== "owner";
