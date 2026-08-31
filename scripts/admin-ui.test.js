@@ -107,8 +107,8 @@ test("agent update confirmations cannot survive a changed server release", async
     if (url.pathname === "/admin/status") return response({ state: "online", agentProtocol: 1, capabilities: {} });
     if (url.pathname === "/admin/agents") return response(value);
   } });
-  await until(() => !ui.$("agentUpdateButton").disabled);
-  ui.click("agentUpdateButton");
+  await until(() => !ui.$("agentUpdateRestartButton").disabled);
+  ui.click("agentUpdateRestartButton");
   value = { ...value, client: { version: "0.3.1", sequence: 2 } };
   ui.click("refreshButton");
   await until(() => ui.$("agentDeliveryStatus").textContent.includes("0.3.1"));
@@ -144,13 +144,12 @@ test("the game address renders from the agent, saves through settings and shows 
   await until(() => settingsBodies.length === 3 && ui.$("toastRegion").textContent.includes("Теперь войти можно только с клиентским UDMC"));
   assert.deepEqual(settingsBodies[2], { requireClient: true, gameAddress: "play.new.example:25565" });
   assert.equal(ui.$("requireClientAgent").checked, true);
-  // Each control belongs to a caption that names it: the section used to be one pile in
-  // which the version, the player link and the join rules were told apart only by reading.
-  const groups = [...ui.w.document.querySelectorAll('[data-agent-panel="agents"] fieldset.generator-group')];
-  assert.deepEqual(groups.map(group => group.querySelector("legend").textContent.trim()),
-    ["Версия агента на сервере", "Ссылка для игроков", "Правила входа игроков"]);
+  // Each control still names itself — by the label of the field it sits in, by its own
+  // accessible name, or by the words on it. The captions above piles of them are gone.
   for (const control of ui.w.document.querySelectorAll('[data-agent-panel="agents"] input, [data-agent-panel="agents"] button')) {
-    assert.ok(control.closest("fieldset.generator-group"), `Вне группы: ${control.id || control.textContent.trim()}`);
+    const named = control.closest("label") || control.getAttribute("aria-label")
+      || (control.id && ui.w.document.querySelector(`label[for="${control.id}"]`)) || control.textContent.trim();
+    assert.ok(named, `Без подписи: ${control.id || control.outerHTML.slice(0, 60)}`);
   }
 });
 
@@ -167,17 +166,17 @@ test("connecting automatically delivers only the public client agent and require
       if (url.pathname === "/admin/agents/settings") { value = { ...value, ...JSON.parse(options.body) }; return response(value); }
     }
   });
-  await until(() => ui.$("agentDownloadUrl").textContent.includes("/agents/download") && !ui.$("agentUpdateButton").disabled);
+  await until(() => ui.$("agentDownloadUrl").value.includes("/agents/download") && !ui.$("agentUpdateRestartButton").disabled);
   assert.equal(ui.requests.filter(r => r.url.pathname === "/admin/agents/client").length, 1);
   ui.click("refreshButton");
   await until(() => !ui.$("refreshButton").disabled);
   assert.equal(ui.requests.filter(r => r.url.pathname === "/admin/agents/client").length, 1);
-  ui.click("agentUpdateButton");
+  ui.click("agentUpdateRestartButton");
   assert.equal(ui.$("agentUpdateConfirmDialog").open, true);
   assert.equal(ui.requests.filter(r => r.url.pathname === "/admin/agents/update").length, 0);
   ui.submit("agentUpdateConfirmForm");
   await until(() => ui.$("agentUpdateState").textContent.includes("0.4.0"));
-  assert.equal(ui.$("agentUpdateButton").disabled, true);
+  assert.equal(ui.$("agentUpdateRestartButton").disabled, true);
   assert.equal(ui.invocations.filter(r => r.name === "prepare_agent_package")[1].args.update, true);
 });
 
@@ -809,9 +808,11 @@ test("update-and-restart stages the update then opens the restart dialog, and gr
   const blocked = await createAdmin(t, build(false));
   blocked.click("serverProfileSettingsButton");
   blocked.w.document.querySelector('[data-agent-mode="agents"]').click();
-  await until(() => blocked.$("agentUpdateButton").disabled === false);
-  assert.equal(blocked.$("agentUpdateRestartButton").disabled, true, "Without power rights the button stays grey");
-  assert.match(blocked.$("agentUpdateRestartButton").title, /Остановка и перезапуск из панели выключены/);
+  await until(() => blocked.$("agentUpdateRestartButton").disabled === false);
+  // Without power rights the one button only prepares the replacement, and says which it is:
+  // a server the panel cannot restart still has to be updatable.
+  assert.equal(blocked.$("agentUpdateLabel").textContent, "Обновить агенты");
+  assert.match(blocked.$("agentUpdateRestartButton").title, /Перезапуск из панели этому серверу недоступен/);
   assert.equal(ui.errors.length + blocked.errors.length, 0);
 });
 
@@ -828,7 +829,7 @@ test("an up-to-date agent raises no update row and says so in the agents section
         client: { version: "0.5.0" }, downloadUrl: "http://agent.test/agents/download", requireClient: true, gameAddress: "" });
     } });
   await until(() => ui.$("agentDeliveryStatus").textContent.includes("0.5.0"));
-  assert.match(ui.$("agentDeliveryStatus").textContent, /Это последняя версия из этого приложения/);
+  assert.match(ui.$("agentDeliveryStatus").textContent, /новых версий нет/);
   assert.ok(![...ui.$("attentionList").querySelectorAll(".attention-row")].some(row => /обновление агентов/.test(row.textContent)),
     "A matching agent version must not be advertised as an available update");
   assert.equal(ui.errors.length, 0);

@@ -22,33 +22,55 @@ export function initAgentUpdates({ getContext, getBinding, getRevision, getBusy,
   const getTemplate = () => getTemplates().find(entry =>
     entry.minecraft === current?.minecraftVersion && entry.loader === current?.loaderType) || null;
   const fingerprint = () => JSON.stringify([getBinding(), getRevision(), current?.client, current?.update]);
+
+  /** Where the agent stands in one line: what runs, what players got, what it can become. */
+  const versionLine = () => {
+    if (!current) return t("Проверка агентов...");
+    if (!current.client) return t("Клиентский JAR ещё не загружен на сервер.");
+    const parts = [t("Агент на сервере {0}", current.currentVersion)];
+    // Normally the same file; worth naming only when players are on another build.
+    if (current.client.version !== current.currentVersion) parts.push(t("у игроков {0}", current.client.version));
+    parts.push(newerAvailable() ? t("обновление до {0}", appVersion) : t("новых версий нет"));
+    return parts.join(" · ");
+  };
+
+  /**
+   * The address is shown until the pencil is pressed, the same way the ones on the connection
+   * tab are. The one button opens the field and then saves it.
+   */
+  const editingAddress = () => !$("gameAddressInput").readOnly;
+  function editAddress(on) {
+    const input = $("gameAddressInput");
+    const button = $("agentPolicySave");
+    input.readOnly = !on;
+    button.classList.toggle("editing", on);
+    const label = on ? t("Сохранить игровой адрес") : t("Изменить игровой адрес");
+    button.title = label;
+    button.setAttribute("aria-label", label);
+    if (on) { input.focus(); input.select(); }
+  }
   const pending = () => ["scheduled", "waiting"].includes(current?.update?.state);
   function render() {
     const ready = Boolean(getContext()?.agentProtocol);
     $("agentDeliverySection").hidden = !ready;
     $("agentDeliveryEmpty").hidden = ready;
-    $("agentDeliveryStatus").textContent = !current ? t("Проверка агентов...")
-      : current.client ? (newerAvailable()
-        ? t("Агент на сервере: {0}, клиент для скачивания: {1}. В приложении есть {2} - нажмите «Обновить агенты».", current.currentVersion, current.client.version, appVersion)
-        : t("Агент на сервере: {0}, клиент для скачивания: {1}. Это последняя версия из этого приложения.", current.currentVersion, current.client.version))
-        : t("Клиентский JAR ещё не загружен на сервер.");
-    $("agentDownloadUrl").textContent = current?.client ? current.downloadUrl : "";
-    $("agentDownloadUrl").hidden = !current?.client;
+    $("agentDeliveryStatus").textContent = versionLine();
+    $("agentDownloadUrl").value = current?.client ? current.downloadUrl : "";
     $("copyAgentDownloadButton").disabled = !current?.client;
     // A server publishes the file it runs, so this is the fallback for one that could not.
     // Without a server to ask, there is nothing to fall back from and nothing to show.
     $("agentClientUploadButton").hidden = !current || Boolean(current.client);
     $("agentClientUploadButton").disabled = !current?.signed || getBusy();
-    $("agentUpdateButton").disabled = !current?.canUpdate || !current?.signed || getBusy() || pending();
-    // Update-and-restart needs the same rights plus remote power actions: when the
-    // server forbids them the button stays grey and says why on hover.
+    // One button, and it says what it will do. A server that does not let the panel restart
+    // it still has to be updatable: there the same button only prepares the replacement.
     const powerAllowed = getContext()?.capabilities?.powerActions === true;
-    const restartButton = $("agentUpdateRestartButton");
-    restartButton.disabled = $("agentUpdateButton").disabled || !powerAllowed;
-    restartButton.title = !powerAllowed
-      ? t("Остановка и перезапуск из панели выключены. Включите их на странице «Сервер» в блоке «Действия сервера».")
-      : pending() ? t("Обновление уже подготовлено: остановите или перезапустите сервер, чтобы оно применилось.")
-        : t("Подготовит обновление и сразу предложит перезапуск с предупреждением игроков.");
+    const button = $("agentUpdateRestartButton");
+    button.disabled = !current?.canUpdate || !current?.signed || getBusy() || pending();
+    $("agentUpdateLabel").textContent = powerAllowed ? t("Обновить и перезапустить") : t("Обновить агенты");
+    button.title = pending()
+      ? t("Обновление уже подготовлено: остановите или перезапустите сервер, чтобы оно применилось.")
+      : powerAllowed ? t("Подготовит обновление и сразу предложит перезапуск с предупреждением игроков.")
+        : t("Подготовит обновление. Перезапуск из панели этому серверу недоступен — перезапустите его сами.");
     // Keep the switch where the player put it until the server answers, so it does not
     // flick back to the old value for the length of the request.
     if (!policySaving) $("requireClientAgent").checked = current?.requireClient === true;
@@ -56,6 +78,7 @@ export function initAgentUpdates({ getContext, getBinding, getRevision, getBusy,
     if (!addressDirty && document.activeElement !== $("gameAddressInput")) $("gameAddressInput").value = current?.gameAddress || "";
     $("gameAddressInput").disabled = !current || getBusy();
     $("agentPolicySave").disabled = !current || getBusy();
+    if (!current) editAddress(false);
     const state = current?.update?.state;
     $("agentUpdateState").textContent = pending() ? t("Обновление {0} подготовлено. Остановите Minecraft-сервер; JAR заменится после выхода процесса. Затем запустите сервер.", current.update.version)
       : state === "applied" ? t("Обновление {0} применено: файл заменён, сервер начнёт использовать его после перезапуска процесса. Резервная копия: {1}.", current.update.version, current.update.backup)
@@ -141,8 +164,8 @@ export function initAgentUpdates({ getContext, getBinding, getRevision, getBusy,
     $("agentUpdateConfirmSubmit").textContent = withRestart ? t("Обновить и перезапустить") : t("Подготовить обновление");
     $("agentUpdateConfirmDialog").showModal();
   };
-  $("agentUpdateButton").addEventListener("click", () => openUpdateConfirm(false));
-  $("agentUpdateRestartButton").addEventListener("click", () => openUpdateConfirm(true));
+  $("agentUpdateRestartButton").addEventListener("click", () =>
+    openUpdateConfirm(getContext()?.capabilities?.powerActions === true));
   $("agentUpdateConfirmForm").addEventListener("submit", async event => {
     event.preventDefault();
     const valid = confirmed !== null && confirmed === fingerprint();
@@ -168,13 +191,25 @@ export function initAgentUpdates({ getContext, getBinding, getRevision, getBusy,
     policySaving = true; setBusy(true); render();
     try {
       const value = await adminJson("/admin/agents/settings", payload);
-      if (started === getBinding()) { current = value; addressDirty = false; showToast(message); }
+      if (started === getBinding()) { current = value; addressDirty = false; editAddress(false); showToast(message); }
     } catch (error) { showToast(formatAgentError(error), "error"); }
     finally { policySaving = false; if (started === getBinding()) { setBusy(false); render(); } }
   }
   // A rejected address stays in the field so it can be corrected, instead of snapping
   // back to the last accepted one.
   $("gameAddressInput").addEventListener("input", () => { addressDirty = true; });
+  $("agentPolicySave").addEventListener("click", () => {
+    if (getBusy() || !current) return;
+    if (editingAddress()) $("agentPolicyForm").requestSubmit(); else editAddress(true);
+  });
+  // Leaving without saving puts back the address the server actually has.
+  $("gameAddressInput").addEventListener("keydown", event => {
+    if (event.key !== "Escape" || !editingAddress()) return;
+    event.preventDefault(); event.stopPropagation();
+    addressDirty = false; editAddress(false); render();
+  });
+  // Anywhere on the link copies it: the button inside is a hint at that, not the only way.
+  $("agentDownloadUrl").addEventListener("click", () => $("copyAgentDownloadButton").click());
   $("requireClientAgent").addEventListener("change", () => savePolicy($("requireClientAgent").checked
     ? t("Теперь войти можно только с клиентским UDMC")
     : t("Теперь войти можно и без клиентского UDMC")));

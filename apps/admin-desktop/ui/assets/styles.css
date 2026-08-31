@@ -682,6 +682,16 @@ button.state-badge:disabled { cursor: default; }
    enough to push this column out of line with the console beside it. */
 .pair-field > .connection-summary { margin-top: 8px; }
 .pair-field > .connection-summary:empty { display: none; }
+
+/* ---- the tab about players ---------------------------------------------------
+   Two facts to hand out and one rule, then the update at the foot of the page. */
+.policy-row { margin: 14px 0 0; padding: 11px 13px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface-soft); }
+.copy-field > input { cursor: pointer; }
+.agent-update-bar { display: flex; align-items: center; gap: 14px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+.agent-update-copy { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; font-size: 12px; color: var(--muted-strong); }
+.agent-update-copy > .connection-summary { flex-basis: 100%; margin: 0; }
+.agent-update-copy > .connection-summary:empty { display: none; }
+.agent-update-bar > .button { flex: 0 0 auto; }
 .dialog-block { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
 .compact-dialog .muted-copy { margin: 0 0 14px; max-width: 62ch; }
 .compact-dialog .form-actions { justify-content: flex-start; padding-top: 0; border-top: 0; }
