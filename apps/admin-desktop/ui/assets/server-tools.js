@@ -30,7 +30,7 @@ const descriptions = {
   tick: t("Управление скоростью тиков и паузой симуляции."),
   perf: t("Записать диагностический профиль производительности.")
 };
-const risky = new Set(["stop", "save-off", "op", "deop", "ban", "ban-ip", "kill", "clear", "fill", "clone", "setblock", "datapack"]);
+export const RISKY_COMMANDS = new Set(["stop", "save-off", "op", "deop", "ban", "ban-ip", "kill", "clear", "fill", "clone", "setblock", "datapack"]);
 const $ = (id) => document.getElementById(id);
 
 export function initServerTools({ adminGet, adminJson, refresh, showToast, getBusy, setBusy, getBinding, getRevision, insertCommand, removeServerFile, removeManagedFile, onValidation, getDirty }) {
@@ -164,7 +164,7 @@ export function initServerTools({ adminGet, adminJson, refresh, showToast, getBu
         insert.addEventListener("click", () => insertCommand(usage));
         row.append(syntax, insert); item.append(row);
       }
-      if (risky.has(command.name)) {
+      if (RISKY_COMMANDS.has(command.name)) {
         const warning = document.createElement("p"); warning.className = "command-risk";
         warning.textContent = t("Меняет мир, доступ игроков или состояние сервера. Проверьте аргументы перед выполнением."); item.append(warning);
       }

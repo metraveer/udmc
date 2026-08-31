@@ -1,7 +1,7 @@
 import { t, getLocale, countText, translateDocument, initLanguage } from "./i18n.js";
 import { initialFileSettings, inspectFile } from "./file-intake.js";
 import { initGenerator } from "./generator-ui.js";
-import { initServerTools } from "./server-tools.js";
+import { initServerTools, RISKY_COMMANDS } from "./server-tools.js";
 import { normalizeAddress } from "./connection.js";
 import { initCatalog } from "./catalog-ui.js";
 import { initTranslator } from "./translate.js";
@@ -44,9 +44,9 @@ const viewDetails = {
 
 const elements = Object.fromEntries([
   "statusBadge", "statusDot", "serverLabel", "serverUrlInput", "tokenInput", "tokenVisibilityButton",
-  "connectionForm", "rconForm",
+  "connectionForm",
   "rconHostInput", "rconPortInput", "rconPasswordInput", "rconFields",
-  "testRconButton", "rconDetectedBadge", "publishDialog", "publishForm", "publishOpenButton",
+  "publishDialog", "publishForm", "publishOpenButton",
   "publishButtonLabel", "publishVersionInput", "publishChangeSummary", "publishRestartNote",
   "deleteDialog", "deleteForm", "deleteFileName", "deleteDialogText", "fileInput", "dropZone", "dropTitle",
   "dropSubtitle", "selectedFiles", "selectedFilesTitle", "stagedFileList", "stagedValidation", "bulkRootInput",
@@ -91,6 +91,7 @@ let activityEntries = rememberedUi.activity;
 let unreadActivity = rememberedUi.unreadActivity || 0;
 let consoleEntries = rememberedUi.console;
 let rconState = { status: "idle", checkedAt: null, message: "" };
+let serverRcon = null;
 let accessUi = null;
 let pairingUi = null;
 let modrinthUi = null;
@@ -347,12 +348,19 @@ function bindEvents() {
   elements.broadcastForm.addEventListener("submit", broadcastToPlayers);
   document.getElementById("serverProfileName").addEventListener("input", () => { profileNameDirty = true; });
   document.getElementById("serverProfileForm").addEventListener("submit", () => { profileNameDirty = false; });
-  elements.rconForm.addEventListener("submit", saveRconSettings);
   [elements.rconHostInput, elements.rconPortInput, elements.rconPasswordInput].forEach((input) => input.addEventListener("input", () => {
     rconState = { status: "idle", checkedAt: null, message: t("Параметры изменены") };
     renderRconStatus();
   }));
-  elements.testRconButton.addEventListener("click", testRcon);
+  document.getElementById("rconConnectionStatus").addEventListener("click", testRcon);
+  document.getElementById("commandGuardForm").addEventListener("submit", event => {
+    event.preventDefault();
+    const dialog = document.getElementById("commandGuardDialog");
+    // Written before closing rather than passed to close(): every other way out of this dialog
+    // leaves the value alone, and it is cleared when the dialog is opened.
+    dialog.returnValue = "run";
+    dialog.close();
+  });
   elements.publishOpenButton.addEventListener("click", openPublishDialog);
   elements.publishForm.addEventListener("submit", publishVersion);
   elements.deleteForm.addEventListener("submit", confirmDelete);
@@ -476,6 +484,8 @@ async function refresh(options = {}) {
     [manifest, serverStatus, draftState] = result;
     workspaceAccess.receive(serverStatus.workspace);
     workspaceAccess.acceptDraft(draftState.workspaceRevision);
+    // Who else is here is worth knowing on the first load, not five seconds into it.
+    renderWorkspaceAccess();
     renderWorkspaceAccess();
     if (!draftState.draft || !draftState.changes) throw new Error(t("Обновите UDMC Agent на сервере: эта версия не поддерживает черновики."));
     serverTools.syncStatus(serverStatus, manifest);
@@ -585,11 +595,6 @@ async function savePackName(event) {
   } catch (error) { handleError(error); } finally { setBuildBusy(false); }
 }
 
-async function saveRconSettings(event) {
-  event.preventDefault();
-  protectedSettings?.open("rcon");
-}
-
 async function applyProtectedSettings(group, values) {
   let oldUrl = null;
   try { oldUrl = normalizedServerUrl(); } catch { /* Allow repairing a previously saved invalid address. */ }
@@ -645,8 +650,37 @@ async function applyProtectedSettings(group, values) {
   if (["platform", "connection"].includes(group)) document.getElementById("generatorResult").hidden = true;
 }
 
+/** Everyone else this panel can see working on the same server right now. */
+function otherAdmins() {
+  const state = workspaceAccess.status();
+  const others = state?.online?.filter(device => !device.mine && device.deviceId !== accessIdentityId) || [];
+  return [...new Set(others.map(device => device.name).filter(Boolean))];
+}
+
+/**
+ * RCON goes straight to Minecraft and takes no part in the panel's lock, so two administrators
+ * can send commands at the same moment without either one knowing. The panel cannot serialise
+ * them, but it does know who else is here — so before a command that changes something, it
+ * says so and lets the person decide.
+ */
+function agreedWithOthers(command) {
+  const others = otherAdmins();
+  const name = String(command).trim().split(/\s+/)[0].toLowerCase();
+  if (!others.length || !RISKY_COMMANDS.has(name)) return Promise.resolve(true);
+  const dialog = document.getElementById("commandGuardDialog");
+  document.getElementById("commandGuardText").textContent =
+    t("Сейчас в панели этого сервера: {0}. Команда «{1}» подействует и на них, а очереди у консоли нет.",
+      others.join(", "), command);
+  dialog.returnValue = "";
+  dialog.showModal();
+  return new Promise(resolve => {
+    dialog.addEventListener("close", () => resolve(dialog.returnValue === "run"), { once: true });
+  });
+}
+
 async function testRcon() {
-  setBusy(elements.testRconButton, true);
+  const chip = document.getElementById("rconConnectionStatus");
+  setBusy(chip, true);
   try {
     const output = await invokeRcon("list");
     addConsoleEntry("list", output, "RCON");
@@ -655,7 +689,7 @@ async function testRcon() {
   } catch (error) {
     handleError(error);
   } finally {
-    setBusy(elements.testRconButton, false);
+    setBusy(chip, false);
   }
 }
 
@@ -685,6 +719,7 @@ async function runQuickCommand(button) {
 
 async function executeServerCommand(command, button) {
   if (buildBusy) return null;
+  if (!await agreedWithOthers(command)) return null;
   setBuildBusy(true);
   setBusy(button, true);
   try {
@@ -748,27 +783,45 @@ function rconConfigured() {
     && Number.isInteger(port) && port > 0 && port < 65536);
 }
 
+/**
+ * One chip carries the whole story: whether the console is set up, whether the server even
+ * offers it, and what came back last time it was tried. Pressing it tries again.
+ */
+function rconChipState() {
+  const checked = rconState.checkedAt ? t("Проверено {0}", new Date(rconState.checkedAt).toLocaleTimeString(getLocale())) : "";
+  if (!rconConfigured()) {
+    return { label: t("Не настроен"), state: "neutral",
+      hint: t("Задайте адрес и пароль RCON, чтобы панель выполняла команды в консоли сама.") };
+  }
+  if (serverRcon && serverRcon.enabled === false) {
+    return { label: t("Выключен на сервере"), state: "warning",
+      hint: t("В server.properties этого сервера enable-rcon=false. Пока он выключен, пароль не поможет.") };
+  }
+  if (rconState.status === "checking") return { label: t("Проверка RCON..."), state: "neutral", hint: "" };
+  if (rconState.status === "error") return { label: t("Нет доступа"), state: "error", hint: rconState.message };
+  const stale = rconState.checkedAt && Date.now() - rconState.checkedAt > 60000;
+  if (rconState.status === "online" && !stale) return { label: t("Доступен"), state: "online", hint: checked };
+  return { label: stale ? t("Проверка устарела") : t("Доступ не проверен"), state: "neutral",
+    hint: [checked, t("Нажмите, чтобы проверить.")].filter(Boolean).join(" ") };
+}
+
 function renderRconStatus() {
   const enabled = rconConfigured();
-  const stale = rconState.checkedAt && Date.now() - rconState.checkedAt > 60000;
-  const label = !enabled ? t("Не настроен") : rconState.status === "checking" ? t("Проверка RCON...")
-    : rconState.status === "online" ? stale ? t("Проверка устарела") : t("Доступен") : rconState.status === "error" ? t("Нет доступа") : t("Доступ не проверен");
-  const status = !enabled || stale ? "neutral" : rconState.status;
+  const { label, state, hint } = rconChipState();
   for (const id of ["rconConnectionStatus", "rconConsoleStatus"]) {
     const badge = document.getElementById(id);
     badge.textContent = label;
-    badge.className = `state-badge ${status}`;
-    badge.title = rconState.message;
+    badge.className = `state-badge ${state}`;
+    if (hint) badge.setAttribute("data-hint", hint); else badge.removeAttribute("data-hint");
   }
   document.getElementById("rconConsoleStatus").hidden = !enabled;
   document.getElementById("rconCoordinationWarning").hidden = !enabled;
   const sidebar = document.getElementById("rconSidebarStatus");
   sidebar.textContent = `RCON: ${label.toLowerCase()}`;
-  sidebar.className = `sidebar-rcon ${status}`;
-  document.getElementById("rconCheckedAt").textContent = rconState.checkedAt ? t("Проверено {0}", new Date(rconState.checkedAt).toLocaleTimeString(getLocale())) : "";
+  sidebar.className = `sidebar-rcon ${state}`;
   // Where the console is, in place of three read-only copies of what the editor holds.
   const rconHost = elements.rconHostInput.value.trim();
-  document.getElementById("rconSummary").textContent = rconHost
+  document.getElementById("rconSummary").value = rconHost
     ? `${rconHost}:${elements.rconPortInput.value}${elements.rconPasswordInput.value ? "" : ` · ${t("пароль не задан")}`}`
     : t("Не настроен");
   pairingUi?.sync();
@@ -1139,9 +1192,9 @@ function renderServerStatus(status) {
   renderPackRestartNotice();
   renderDashboard();
 
-  const rconEnabled = Boolean(status.rcon?.enabled);
-  elements.rconDetectedBadge.textContent = rconEnabled ? t("На сервере включён · {0}", status.rcon.port) : t("На сервере выключен");
-  elements.rconDetectedBadge.className = `state-badge ${rconEnabled ? "online" : "neutral"}`;
+  // What the server itself says about its console, folded into the one chip that shows it.
+  serverRcon = status.rcon || null;
+  renderRconStatus();
   if (!localStorage.getItem(STORAGE_KEYS.rconPort) && status.rcon?.port) elements.rconPortInput.value = String(status.rcon.port);
   if (!elements.rconHostInput.value) elements.rconHostInput.value = inferredRconHost();
 }
@@ -1972,7 +2025,7 @@ function restoreRconSettings() {
 
 function updateRconFields() {
   const ready = rconConfigured();
-  elements.testRconButton.disabled = !ready;
+  document.getElementById("rconConnectionStatus").disabled = !ready;
   elements.commandTransportLabel.textContent = ready ? "RCON" : "UDMC Agent";
   elements.commandTransportLabel.classList.toggle("rcon", ready);
   renderRconStatus();

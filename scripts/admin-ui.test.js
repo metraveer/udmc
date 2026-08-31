@@ -47,6 +47,42 @@ test("a pending server command blocks duplicate commands and language changes", 
   assert.equal(ui.$("commandSubmitButton").disabled, false);
 });
 
+test("a command that changes the server names who else is in the panel", async t => {
+  const ui = await createAdmin(t, { fetch: ({ url }) => {
+    if (url.pathname === "/admin/status") {
+      return response({ state: "online", agentProtocol: 1, capabilities: {},
+        workspace: { revision: "r1", online: [{ deviceId: "other", name: "Вася", mine: false }] } });
+    }
+    // The draft carries the workspace revision the status announces, or every write would be
+    // refused as stale before it reached the guard.
+    if (url.pathname === "/admin/files") {
+      return response({ revision: "rev-1", draft: null, files: [], workspaceRevision: "r1",
+        changes: { added: 0, updated: 0, removed: 0, total: 0, dirty: false } });
+    }
+    if (url.pathname === "/admin/server/command") return response({ output: "ok" });
+  } });
+  await until(() => ui.$("workspacePresenceText").textContent.includes("Вася"));
+  const sent = () => ui.requests.filter(r => r.url.pathname === "/admin/server/command").length;
+
+  // Asking the server something changes nothing, so it goes straight through.
+  ui.input("commandInput", "list"); ui.submit("commandForm");
+  await until(() => sent() === 1);
+  assert.equal(ui.$("commandGuardDialog").open, false);
+
+  // A command that changes the server stops to say who else is working on it.
+  ui.input("commandInput", "stop"); ui.submit("commandForm");
+  await until(() => ui.$("commandGuardDialog").open);
+  assert.match(ui.$("commandGuardText").textContent, /Вася/);
+  ui.$("commandGuardDialog").close();
+  await until(() => !ui.$("commandGuardDialog").open);
+  assert.equal(sent(), 1, "A cancelled warning must not send the command");
+
+  ui.input("commandInput", "stop"); ui.submit("commandForm");
+  await until(() => ui.$("commandGuardDialog").open);
+  ui.submit("commandGuardForm");
+  await until(() => sent() === 2);
+});
+
 test("agent update confirmations cannot survive a changed server release", async t => {
   let value = { protocol: 1, currentVersion: "0.3.0", signed: true, canUpdate: true, client: { version: "0.3.0", sequence: 1 },
     packId: "test", minecraftVersion: "26.2", loaderType: "fabric", loaderVersion: "0.19.3", downloadUrl: "https://agent.test/agents/download", update: { state: "idle" } };
@@ -316,7 +352,7 @@ test("RCON shows checking, confirmed access and failure in the console and sideb
   } });
   ui.edit("rcon"); ui.input("edit-rconPasswordInput", " secret ");
   ui.submit("protectedSettingsForm"); await until(() => !ui.$("protectedSettingsDialog").open);
-  ui.click("testRconButton");
+  ui.click("rconConnectionStatus");
   await until(() => ui.$("rconConsoleStatus").textContent === "Проверка RCON...");
   assert.equal(ui.$("rconSidebarStatus").textContent, "RCON: проверка rcon...");
   gate.resolve("Players: Alex");
@@ -324,9 +360,9 @@ test("RCON shows checking, confirmed access and failure in the console and sideb
   assert.equal(ui.$("rconConnectionStatus").textContent, "Доступен");
   assert.equal(ui.invocations.find(c => c.name === "rcon_execute").args.password, " secret ");
   assert.ok(ui.$("consoleOutput").textContent.includes("Players: Alex"));
-  fail = true; ui.click("testRconButton");
+  fail = true; ui.click("rconConnectionStatus");
   await until(() => ui.$("rconConsoleStatus").textContent === "Нет доступа");
-  assert.equal(ui.$("rconConnectionStatus").title, "Сервер отклонил пароль RCON.");
+  assert.equal(ui.$("rconConnectionStatus").dataset.hint, "Сервер отклонил пароль RCON.");
   assert.ok(!ui.$("consoleOutput").textContent.includes(" secret "));
 });
 test("build tabs separate editing, published files, server inventory and diagnostics", async t => {

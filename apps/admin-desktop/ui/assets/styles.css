@@ -850,6 +850,7 @@ button.attention-row:hover { border-color: var(--line-strong); color: var(--ink)
 /* ---- the setup screen ------------------------------------------------------ */
 
 .setup-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 14px; align-items: end; }
+.setup-row + .setup-row { margin-top: 14px; }
 .setup-row .profile-name-form { margin: 0; }
 @media (max-width: 720px) { .setup-row { grid-template-columns: 1fr; } }
 

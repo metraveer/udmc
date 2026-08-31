@@ -175,8 +175,6 @@
   "Неизвестно": "Unknown",
   "{0} мс": "{0} ms",
   "Разрешите остановку и перезапуск выше": "Allow stop and restart above",
-  "На сервере включён · {0}": "Enabled on server · {0}",
-  "На сервере выключен": "Disabled on server",
   "Нет данных": "No data",
   "Никого нет на сервере": "No players online",
   "Онлайн": "Online",
@@ -1187,7 +1185,6 @@
   "Если сервер не ваш, владелец выдаёт приглашение в разделе «Устройства», а вы вставляете его здесь. Код привязки для этого не нужен: он тратится один раз, когда сервер впервые берут под управление.": "If the server is not yours, its owner issues an invitation under “Devices” and you paste it here. The pairing code is not for this: it is spent once, when the server is first taken over.",
   "Ключ, которым сервер подписывает сборку, есть только у него. Если сервер потеряется, без копии проект придётся заводить заново, и всем игрокам — заново доверять новому ключу. В файле лежит ключ подписи: храните его как пароль.": "The key the server signs the modpack with exists only there. If the server is lost, without a backup the project has to be started over and every player has to trust a new key. The file holds that signing key: keep it like a password.",
   "Ключ, которым эта панель входит на сервер. Заполняется сам при привязке или по приглашению; вводить вручную нужно только при переносе на другой компьютер.": "The key this panel signs in to the server with. It fills itself in when you pair or accept an invitation; typing it by hand is only for moving to another computer.",
-  "Консоль сервера по RCON": "Server console over RCON",
   "Подсказка": "Hint",
   "Привязан": "Paired",
   "Привязать": "Pair",
@@ -1228,5 +1225,12 @@
   "Один адрес для панели и для игроков, не порт входа в Minecraft. Домен без порта означает HTTPS через уже настроенный прокси; прямое подключение — IP:3077. Сервер на этом же компьютере — http://127.0.0.1:3077, но игрокам с других компьютеров нужен доступный им адрес.": "One address for the panel and for players, not the Minecraft login port. A domain without a port means HTTPS through a proxy you already run; a direct connection is IP:3077. A server on this same computer is http://127.0.0.1:3077, but players on other machines need an address they can reach.",
   "Пароль из server.properties": "Password from server.properties",
   "Пароль из server.properties вашего сервера. С ним панель выполняет команды в консоли и может сама забрать код привязки; без него команды выполняет UDMC Agent. RCON не шифрует пароль: через интернет используйте VPN или консоль UDMC по HTTPS.": "The password from your server's server.properties. With it the panel runs console commands and can fetch the pairing code itself; without it, commands go through the UDMC Agent. RCON does not encrypt the password: over the internet use a VPN or the UDMC console over HTTPS.",
-  "Введите пароль RCON.": "Enter the RCON password."
+  "Введите пароль RCON.": "Enter the RCON password.",
+  "В панели не только вы": "You are not alone in the panel",
+  "Всё равно выполнить": "Run it anyway",
+  "Сейчас в панели этого сервера: {0}. Команда «{1}» подействует и на них, а очереди у консоли нет.": "Also in this server's panel right now: {0}. The command “{1}” affects them too, and the console has no queue.",
+  "Выключен на сервере": "Turned off on the server",
+  "В server.properties этого сервера enable-rcon=false. Пока он выключен, пароль не поможет.": "This server's server.properties has enable-rcon=false. While it is off, no password will help.",
+  "Задайте адрес и пароль RCON, чтобы панель выполняла команды в консоли сама.": "Set an RCON address and password to have the panel run console commands itself.",
+  "Нажмите, чтобы проверить.": "Press to check."
 }
