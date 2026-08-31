@@ -13,13 +13,16 @@ const API_PORT = /API port (\d{1,5})\b/;
  * the server, and pairing only decides which panel gets to manage it.
  */
 export function initPairing({ getConnection, onPaired, showToast, getBusy, setBusy, addressChosen = () => true,
-  adminGet = null, isOwner = () => false }) {
+  adminGet = null, isOwner = () => false, consoleUsable = () => true }) {
   const section = $("pairSection");
   const inputs = () => section.querySelectorAll("input,button");
   let busy = false;
   // A project saved from a server that is gone. Held until the code is entered: restoring is
   // the same act as claiming, and the code is what says this server may be spoken for.
   let restoring = null;
+  // Set when the owner asks for the field back, or when reading the code over the console has
+  // just failed: the way in must not disappear with the thing that did not work.
+  let manualEntry = false;
   const invoke = (name, args) => {
     const call = window.__TAURI__?.core?.invoke;
     if (!call) throw new Error(t("Эта операция доступна в Windows-приложении UDMC Control."));
@@ -35,16 +38,23 @@ export function initPairing({ getConnection, onPaired, showToast, getBusy, setBu
 
   /** The console password doubles as a way in: with it the panel can read the code itself. */
   const rconReady = () => Boolean(window.__TAURI__?.core?.invoke
-    && $("rconHostInput").value.trim() && $("rconPasswordInput").value);
+    && $("rconHostInput").value.trim() && $("rconPasswordInput").value && consoleUsable());
 
   /**
    * There is one button because there is one intention. Which of the two former buttons to
    * press was a question about the panel's plumbing, not about the server.
    */
   const syncButton = () => {
-    const viaRcon = !$("pairCodeInput").value.trim() && rconReady();
-    $("pairButton").disabled = busy || getBusy() || (!$("pairCodeInput").value.trim() && !viaRcon);
-    $("pairButtonLabel").textContent = viaRcon ? t("Привязать по RCON") : t("Привязать");
+    // Either the panel can fetch the code itself, or someone types it in. Showing both at once
+    // was the question this used to ask instead of answering.
+    const viaRcon = rconReady() && !manualEntry;
+    const code = $("pairCodeInput").value.trim();
+    $("pairRconButton").hidden = !viaRcon;
+    $("pairManualButton").hidden = !viaRcon;
+    $("pairEntry").hidden = viaRcon;
+    $("pairButton").hidden = viaRcon || !code;
+    $("pairButton").disabled = busy || getBusy();
+    $("pairRconButton").disabled = busy || getBusy();
   };
   const report = (error) => showToast(formatAppError(error), "error");
   /**
@@ -121,10 +131,16 @@ export function initPairing({ getConnection, onPaired, showToast, getBusy, setBu
     }
   };
 
-  /** Types the code or reads it over the console, then claims the server with it. */
-  const pair = async () => {
+  /** Reads the code over the console and claims the server with it. */
+  const pairByRcon = async () => {
     if (busy || getBusy()) return;
-    if (!$("pairCodeInput").value.trim() && rconReady() && !await fetchByRcon()) return;
+    if (!await fetchByRcon()) {
+      // The console did not give it up; the field is the way that is left.
+      manualEntry = true;
+      syncButton();
+      $("pairCodeInput").focus();
+      return;
+    }
     await submit();
   };
 
@@ -191,8 +207,19 @@ export function initPairing({ getConnection, onPaired, showToast, getBusy, setBu
     } catch (error) { report(error); } finally { setLocalBusy(false); }
   };
 
-  $("pairButton").addEventListener("click", () => { pair().catch(report); });
+  $("pairButton").addEventListener("click", () => { submit().catch(report); });
+  $("pairRconButton").addEventListener("click", () => { pairByRcon().catch(report); });
+  $("pairManualButton").addEventListener("click", () => {
+    manualEntry = true;
+    syncButton();
+    $("pairCodeInput").focus();
+  });
   $("pairCodeInput").addEventListener("input", syncButton);
+  $("pairCodeInput").addEventListener("keydown", event => {
+    if (event.key !== "Enter" || !$("pairCodeInput").value.trim()) return;
+    event.preventDefault();
+    submit().catch(report);
+  });
   $("pairRestoreButton").addEventListener("click", loadBackup);
   $("projectBackupButton").addEventListener("click", saveBackup);
 

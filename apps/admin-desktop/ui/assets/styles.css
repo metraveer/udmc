@@ -664,6 +664,15 @@ button.attention-row:hover { border-color: var(--line-strong); color: var(--ink)
 .field-with-icon input { padding-right: 36px; }
 .field-with-icon > .field-icon-button { top: auto; bottom: 2px; }
 .field-with-icon input:read-only { background: var(--surface-soft); color: var(--muted-strong); opacity: 1; box-shadow: none; }
+/* The pairing code is the one field here that is typed into, so it keeps the look of an open
+   field, and the button that uses it appears inside it once there is something to use. */
+.pair-entry { position: relative; display: block; }
+.pair-field > .button { width: 100%; justify-content: center; }
+.pair-field > .group-actions { margin-top: 10px; }
+.pair-field > .text-button { width: fit-content; justify-self: start; margin-left: 0; }
+.pair-apply { color: var(--accent); }
+.pair-apply:hover { color: var(--accent-hover); }
+.pair-apply:disabled { color: var(--muted); }
 .field-icon-button .edit-off, .field-icon-button.editing .edit-on { display: none; }
 .field-icon-button.editing .edit-off { display: block; }
 .field-icon-button.editing { color: var(--accent); }

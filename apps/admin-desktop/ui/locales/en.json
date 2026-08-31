@@ -1146,7 +1146,6 @@
   "Привязать сервер": "Pair the server",
   "Привязка": "Pairing",
   "Привязка забирает доступ к серверу, но не ключ подписи: сервер подписывает сборку сам.": "Pairing takes over access to the server, but not the signing key: the server signs the modpack itself.",
-  "Привязка сервера": "Pair a server",
   "Проверить сервер": "Check the server",
   "Сервер не выдал код. Ответ: {0}": "The server returned no code. Reply: {0}",
   "Сервер привязан.": "The server is paired.",
@@ -1232,5 +1231,6 @@
   "Выключен на сервере": "Turned off on the server",
   "В server.properties этого сервера enable-rcon=false. Пока он выключен, пароль не поможет.": "This server's server.properties has enable-rcon=false. While it is off, no password will help.",
   "Задайте адрес и пароль RCON, чтобы панель выполняла команды в консоли сама.": "Set an RCON address and password to have the panel run console commands itself.",
-  "Нажмите, чтобы проверить.": "Press to check."
+  "Нажмите, чтобы проверить.": "Press to check.",
+  "Ввести код вручную": "Enter the code by hand"
 }

@@ -181,7 +181,9 @@ agentUpdates = initAgentUpdates({ getContext: () => serverStatus, getBinding: ()
 const generatorUi = initGenerator({ navigateTo, showToast,
   getBusy: () => buildBusy || protectedSettings?.isEditing(), setBusy: setBuildBusy,
   onFieldsChanged: () => protectedSettings?.syncLocks() });
-pairingUi = initPairing({ getConnection, showToast, adminGet,
+pairingUi = initPairing({
+  // A server that says its console is off cannot hand over the code, whatever is in the fields.
+  consoleUsable: () => serverRcon?.enabled !== false, getConnection, showToast, adminGet,
   isOwner: () => accessRole === "owner",
   addressChosen: () => Boolean(localStorage.getItem(STORAGE_KEYS.serverUrl) || localStorage.getItem("udm-admin-server-url")),
   getBusy: () => buildBusy || protectedSettings?.isEditing(), setBusy: setBuildBusy,
