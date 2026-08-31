@@ -438,7 +438,9 @@ input:disabled, select:disabled { background: var(--surface-soft); color: var(--
 .search-field svg { position: absolute; top: 9px; left: 10px; width: 16px; height: 16px; color: #6d717b; pointer-events: none; }
 .search-field input { padding-left: 33px; }
 .table-wrap { overflow-x: auto; border-top: 1px solid var(--line); }
-table { width: 100%; min-width: 860px; table-layout: fixed; border-collapse: collapse; }
+/* The floor was set above what the window's own minimum width can give the table, so the
+   file list scrolled sideways on every screen. */
+table { width: 100%; min-width: 720px; table-layout: fixed; border-collapse: collapse; }
 th, td { padding: 8px 10px; border-bottom: 1px solid #23252c; text-align: left; vertical-align: middle; }
 th:first-child { width: 30%; }
 th:nth-child(2) { width: 14%; }
@@ -586,7 +588,6 @@ button.attention-row:hover { border-color: var(--line-strong); color: var(--ink)
 .action-with-hint { display: flex; align-items: center; gap: 8px; }
 .action-with-hint > .button { flex: 1 1 auto; min-width: 0; }
 .action-with-hint > .hint { flex: 0 0 auto; margin: 0; }
-.action-with-hint > .hint::after { left: auto; right: 0; }
 .server-actions-surface { display: flex; flex-direction: column; }
 .broadcast-form { display: grid; grid-template-columns: minmax(0, 1fr) 40px; align-items: end; gap: 8px; margin-bottom: 12px; }
 /* A button used to give a toast and nothing else: its answer went to the console page, which
@@ -817,32 +818,15 @@ button.attention-row:hover { border-color: var(--line-strong); color: var(--ink)
 /* ---- explanations that stay out of the way ---------------------------------
    A page of settings should be readable in one pass. Long explanations used to sit in
    expandables that pushed everything else off the screen once opened; now they live behind
-   a question mark and appear only while it is hovered or focused. */
+   a question mark, and the bubble itself is drawn by tooltip.js. */
 .hint {
   display: inline-flex; align-items: center; justify-content: center;
-  position: relative; margin: 0 0 0 6px; padding: 0;
+  margin: 0 0 0 6px; padding: 0;
   border: 0; background: transparent; color: var(--muted);
   cursor: help; line-height: 0; vertical-align: middle;
 }
 .hint svg { width: 14px; height: 14px; }
 .hint:hover, .hint:focus-visible { color: var(--muted-strong); }
-.hint::after {
-  content: attr(data-hint);
-  position: absolute; top: calc(100% + 8px); left: 0;
-  width: 320px; max-width: min(60vw, 320px);
-  padding: 10px 12px; z-index: 60;
-  border: 1px solid var(--line-strong); border-radius: 8px;
-  background: var(--surface-soft); color: var(--muted-strong);
-  box-shadow: var(--shadow);
-  font-size: 12px; line-height: 1.55; font-weight: 400;
-  text-align: left; text-transform: none; letter-spacing: normal; white-space: normal;
-  opacity: 0; visibility: hidden; transition: opacity 120ms ease;
-  pointer-events: none;
-}
-/* Near the right edge the bubble would run off the dialog, so it hangs the other way. */
-.minor-action:last-of-type .hint::after, .rcon-fields .hint::after { left: auto; right: 0; }
-.hint:hover::after, .hint:focus-visible::after { opacity: 1; visibility: visible; }
-@media (prefers-reduced-motion: reduce) { .hint::after { transition: none; } }
 
 /* ---- the setup screen ------------------------------------------------------ */
 
@@ -856,7 +840,6 @@ button.attention-row:hover { border-color: var(--line-strong); color: var(--ink)
 .minor-action .text-button { margin: 0; }
 
 .compact-dialog { width: min(520px, calc(100vw - 64px)); padding: 18px 22px 22px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
-.compact-dialog::backdrop { background: rgba(8, 9, 11, .62); }
 .compact-dialog .section-heading { margin-bottom: 14px; }
 
 /* The server summary and the button that re-reads it, without the two colliding. */
@@ -920,7 +903,7 @@ button.attention-row:hover { border-color: var(--line-strong); color: var(--ink)
 
 .modal { width: min(430px, calc(100vw - 32px)); border: 1px solid var(--line-strong); border-radius: 10px; padding: 0; background: transparent; box-shadow: var(--shadow); }
 #publishDialog { width: min(520px, calc(100vw - 32px)); }
-.modal::backdrop { background: rgba(5, 6, 8, 0.62); backdrop-filter: blur(2px); }
+dialog::backdrop { background: rgba(5, 6, 8, 0.72); backdrop-filter: blur(3px); }
 .modal-card { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 14px; padding: 18px; background: var(--surface); }
 .modal-icon { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 8px; box-shadow: var(--bevel-raised); }
 .modal-icon.publish { background: var(--accent-soft); color: var(--accent); }

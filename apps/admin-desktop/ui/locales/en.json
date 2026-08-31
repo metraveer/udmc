@@ -1158,7 +1158,6 @@
   "Привязка забирает доступ к серверу, но не ключ подписи: сервер подписывает сборку сам.": "Pairing takes over access to the server, but not the signing key: the server signs the modpack itself.",
   "Привязка сервера": "Pair a server",
   "Проверить сервер": "Check the server",
-  "Сервер выдаёт код при первом запуске и не меняет его при перезапусках. Найти его можно в консоли сервера, в файле config/udmc-pairing.txt рядом с настройками, командой /udmc pair в игре от оператора — либо забрать по RCON кнопкой ниже. Срока у кода нет: он перестаёт работать только после привязки.": "The server issues the code at first start and keeps it across restarts. Find it in the server console, in config/udmc-pairing.txt next to the settings, with /udmc pair in game as an operator — or fetch it over RCON with the button below. The code does not expire: it stops working only once the server is paired.",
   "Сервер не выдал код. Ответ: {0}": "The server returned no code. Reply: {0}",
   "Сервер привязан.": "The server is paired.",
   "Сервер уже привязан к панели.": "The server is already paired with a panel.",
@@ -1193,7 +1192,6 @@
   "Резервная копия проекта": "Project backup",
   "Сохранить копию проекта": "Save a project backup",
   "Это не файл резервной копии проекта UDMC.": "This is not a UDMC project backup file.",
-  "Взять по RCON": "Fetch over RCON",
   "Если сервер не ваш, владелец выдаёт приглашение в разделе «Устройства», а вы вставляете его здесь. Код привязки для этого не нужен: он тратится один раз, когда сервер впервые берут под управление.": "If the server is not yours, its owner issues an invitation under “Devices” and you paste it here. The pairing code is not for this: it is spent once, when the server is first taken over.",
   "Ключ, которым сервер подписывает сборку, есть только у него. Если сервер потеряется, без копии проект придётся заводить заново, и всем игрокам — заново доверять новому ключу. В файле лежит ключ подписи: храните его как пароль.": "The key the server signs the modpack with exists only there. If the server is lost, without a backup the project has to be started over and every player has to trust a new key. The file holds that signing key: keep it like a password.",
   "Ключ, которым эта панель входит на сервер. Заполняется сам при привязке или по приглашению; вводить вручную нужно только при переносе на другой компьютер.": "The key this panel signs in to the server with. It fills itself in when you pair or accept an invitation; typing it by hand is only for moving to another computer.",
@@ -1204,7 +1202,6 @@
   "Привязан": "Paired",
   "Привязать": "Pair",
   "Сервер «{0}» (Minecraft {1}, {2}) ещё никем не занят. Введите его код, чтобы взять под управление.": "The server “{0}” (Minecraft {1}, {2}) is not claimed by anyone yet. Enter its code to take charge of it.",
-  "Сервер выдаёт код при первом запуске и не меняет его при перезапусках. Он есть в консоли сервера, в файле config/udmc-pairing.txt рядом с настройками и по команде /udmc pair в игре от оператора. Срока у кода нет: он перестаёт работать только после привязки.": "The server issues the code at first start and keeps it across restarts. It is in the server console, in config/udmc-pairing.txt next to the settings, and from /udmc pair in game as an operator. The code does not expire: it stops working only once the server is paired.",
   "У меня приглашение": "I have an invitation",
   "Заполните подключение RCON выше: адрес и пароль из server.properties.": "Fill in the RCON connection above: the address and the password from server.properties.",
   "«Обновить агенты» готовит замену, «Обновить и перезапустить» ещё и перезапускает сервер, чтобы она вступила в силу. Игроки обновятся сами при следующем запуске игры.": "“Update agents” prepares the replacement; “Update and restart” also restarts the server so it takes effect. Players update themselves the next time they start the game.",
@@ -1232,5 +1229,9 @@
   "Сохранить": "Save",
   "Так проект называется у игроков: клиент показывает это имя, когда предлагает настроиться под сервер. Имя одно на весь проект и с версиями не связано — номер версии панель ставит сама при публикации.": "This is what the project is called for players: the client shows this name when it offers to set the game up for this server. One name covers the whole project and has nothing to do with version numbers — the panel assigns those itself when you publish.",
   "Перечитать данные с сервера": "Re-read data from the server",
-  "Версия, которая сейчас у игроков": "The version players have right now"
+  "Версия, которая сейчас у игроков": "The version players have right now",
+  "Привязать по RCON": "Pair over RCON",
+  "пароль не задан": "no password set",
+  "Сервер выдаёт код при первом запуске и не меняет его при перезапусках. Найти его можно в консоли сервера, в файле config/udmc-pairing.txt рядом с настройками, командой /udmc pair в игре от оператора — либо забрать по RCON кнопкой ниже. Срока у кода нет: он перестаёт работать только после привязки.": "The server issues the code at first start and keeps it across restarts. Find it in the server console, in config/udmc-pairing.txt next to the settings, with /udmc pair in game as an operator — or fetch it over RCON with the button below. The code does not expire: it stops working only once the server is paired.",
+  "Панель возьмёт код сама, если ниже задано подключение RCON. Сервер выдаёт код при первом запуске и не меняет его при перезапусках. Он есть в консоли сервера, в файле config/udmc-pairing.txt рядом с настройками и по команде /udmc pair в игре от оператора. Срока у кода нет: он перестаёт работать только после привязки.": "The panel fetches the code itself when the RCON connection below is set. The server issues the code at first start and keeps it across restarts. It is in the server console, in config/udmc-pairing.txt next to the settings, and from /udmc pair in game as an operator. The code does not expire: it stops working only once the server is paired."
 }

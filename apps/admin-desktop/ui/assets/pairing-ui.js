@@ -30,6 +30,21 @@ export function initPairing({ getConnection, onPaired, showToast, getBusy, setBu
     busy = value;
     setBusy(value);
     inputs().forEach((input) => { input.disabled = value; });
+    syncButton();
+  };
+
+  /** The console password doubles as a way in: with it the panel can read the code itself. */
+  const rconReady = () => Boolean(window.__TAURI__?.core?.invoke
+    && $("rconHostInput").value.trim() && $("rconPasswordInput").value);
+
+  /**
+   * There is one button because there is one intention. Which of the two former buttons to
+   * press was a question about the panel's plumbing, not about the server.
+   */
+  const syncButton = () => {
+    const viaRcon = !$("pairCodeInput").value.trim() && rconReady();
+    $("pairButton").disabled = busy || getBusy() || (!$("pairCodeInput").value.trim() && !viaRcon);
+    $("pairButtonLabel").textContent = viaRcon ? t("Привязать по RCON") : t("Привязать");
   };
   const report = (error) => showToast(formatAppError(error), "error");
   const badge = (text, state) => {
@@ -64,17 +79,16 @@ export function initPairing({ getConnection, onPaired, showToast, getBusy, setBu
   };
 
   const fetchByRcon = async () => {
-    if (busy || getBusy()) return;
     const invoke = window.__TAURI__?.core?.invoke;
-    if (!invoke) { report(new Error(t("RCON доступен только в установленном приложении UDMC Control."))); return; }
+    if (!invoke) { report(new Error(t("RCON доступен только в установленном приложении UDMC Control."))); return false; }
     // The same RCON connection the console uses. One server, one password, entered once.
     const port = Number($("rconPortInput").value);
     const password = $("rconPasswordInput").value;
     if (!$("rconHostInput").value.trim() || !password) {
       report(new Error(t("Заполните подключение RCON выше: адрес и пароль из server.properties.")));
-      return;
+      return false;
     }
-    if (!Number.isInteger(port) || port < 1 || port > 65535) { report(new Error(t("Укажите порт RCON от 1 до 65535."))); return; }
+    if (!Number.isInteger(port) || port < 1 || port > 65535) { report(new Error(t("Укажите порт RCON от 1 до 65535."))); return false; }
     setLocalBusy(true);
     try {
       const output = await invoke("rcon_execute", {
@@ -93,12 +107,20 @@ export function initPairing({ getConnection, onPaired, showToast, getBusy, setBu
       $("pairCodeInput").value = code[1];
       const apiPort = API_PORT.exec(output);
       $("pairApiPort").textContent = apiPort ? t("Агент слушает порт {0}", apiPort[1]) : "";
-      showToast(t("Код получен по RCON."), "success");
+      return true;
     } catch (error) {
       report(error);
+      return false;
     } finally {
       setLocalBusy(false);
     }
+  };
+
+  /** Types the code or reads it over the console, then claims the server with it. */
+  const pair = async () => {
+    if (busy || getBusy()) return;
+    if (!$("pairCodeInput").value.trim() && rconReady() && !await fetchByRcon()) return;
+    await submit();
   };
 
   const submit = async () => {
@@ -165,8 +187,8 @@ export function initPairing({ getConnection, onPaired, showToast, getBusy, setBu
     } catch (error) { report(error); } finally { setLocalBusy(false); }
   };
 
-  $("pairButton").addEventListener("click", () => { submit().catch(report); });
-  $("pairFetchCodeButton").addEventListener("click", fetchByRcon);
+  $("pairButton").addEventListener("click", () => { pair().catch(report); });
+  $("pairCodeInput").addEventListener("input", syncButton);
   $("pairRestoreButton").addEventListener("click", loadBackup);
   $("projectBackupButton").addEventListener("click", saveBackup);
 
@@ -177,7 +199,10 @@ export function initPairing({ getConnection, onPaired, showToast, getBusy, setBu
       // reaching out to whatever that happens to be is not this program's business.
       if (!addressChosen()) { section.hidden = true; return; }
       await check();
+      syncButton();
     },
+    /** The console password may have arrived since; the button follows what it can do now. */
+    sync: syncButton,
     /** Only the owner holds the signing key, so only the owner can be handed a copy of it. */
     syncOwner() {
       $("projectBackupButton").disabled = !isOwner();

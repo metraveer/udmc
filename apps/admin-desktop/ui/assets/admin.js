@@ -749,6 +749,12 @@ function renderRconStatus() {
   sidebar.textContent = `RCON: ${label.toLowerCase()}`;
   sidebar.className = `sidebar-rcon ${status}`;
   document.getElementById("rconCheckedAt").textContent = rconState.checkedAt ? t("Проверено {0}", new Date(rconState.checkedAt).toLocaleTimeString(getLocale())) : "";
+  // Where the console is, in place of three read-only copies of what the editor holds.
+  const rconHost = elements.rconHostInput.value.trim();
+  document.getElementById("rconSummary").textContent = rconHost
+    ? `${rconHost}:${elements.rconPortInput.value}${elements.rconPasswordInput.value ? "" : ` · ${t("пароль не задан")}`}`
+    : t("Не настроен");
+  pairingUi?.sync();
   protectedSettings?.syncLocks();
   agentUpdates?.render();
 }
