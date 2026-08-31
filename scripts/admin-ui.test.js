@@ -47,6 +47,165 @@ test("a pending server command blocks duplicate commands and language changes", 
   assert.equal(ui.$("commandSubmitButton").disabled, false);
 });
 
+test("a dropdown is drawn by the panel, inside the dialog it belongs to", async t => {
+  const ui = await createAdmin(t);
+  const select = ui.$("powerDelaySelect");
+  let changes = 0;
+  select.addEventListener("change", () => changes++);
+  const press = new ui.w.MouseEvent("mousedown", { bubbles: true, cancelable: true, button: 0 });
+  select.dispatchEvent(press);
+  // Cancelling the press is what keeps the operating system from opening its own list.
+  assert.equal(press.defaultPrevented, true);
+  const menu = ui.w.document.querySelector(".select-menu");
+  assert.ok(menu, "The panel draws the list itself");
+  assert.equal(menu.closest("dialog")?.id, "powerDialog",
+    "A list for a control inside a modal is drawn inside that modal");
+  assert.deepEqual([...menu.children].map(row => row.textContent), [...select.options].map(option => option.textContent));
+
+  const last = menu.children[menu.children.length - 1];
+  last.dispatchEvent(new ui.w.MouseEvent("mousedown", { bubbles: true, cancelable: true, button: 0 }));
+  assert.equal(select.value, select.options[select.options.length - 1].value);
+  assert.equal(changes, 1, "One change event, as a native list would send");
+  assert.equal(ui.w.document.querySelector(".select-menu"), null, "The list closes after a choice");
+  assert.equal(ui.errors.length, 0);
+});
+
+test("an explanation is drawn by the panel and a title is put back afterwards", async t => {
+  const ui = await createAdmin(t);
+  const button = ui.$("refreshButton");
+  const title = button.getAttribute("title");
+  assert.ok(title, "The refresh button explains itself with a title");
+
+  button.dispatchEvent(new ui.w.Event("pointerover", { bubbles: true }));
+  assert.equal(button.hasAttribute("title"), false, "Lifted off, so Windows draws nothing of its own");
+  await until(() => ui.w.document.querySelector(".tooltip-bubble:not([hidden])"));
+  assert.equal(ui.w.document.querySelector(".tooltip-bubble").textContent, title);
+
+  button.dispatchEvent(new ui.w.Event("pointerout", { bubbles: true }));
+  assert.equal(button.getAttribute("title"), title, "And put back on the way out");
+  assert.equal(ui.w.document.querySelector(".tooltip-bubble").hidden, true);
+
+  // The question marks are the same bubble: they used to carry a box of their own in CSS.
+  const hint = ui.w.document.querySelector("#pairSection .hint") || ui.w.document.querySelector(".hint");
+  hint.dispatchEvent(new ui.w.Event("pointerover", { bubbles: true }));
+  await until(() => ui.w.document.querySelector(".tooltip-bubble:not([hidden])"));
+  assert.equal(ui.w.document.querySelector(".tooltip-bubble").textContent, hint.dataset.hint);
+  assert.equal(ui.errors.length, 0);
+});
+
+test("a message to players goes out as one command and its answer stays where it was asked", async t => {
+  const ui = await createAdmin(t, { fetch: ({ url }) => url.pathname === "/admin/server/command"
+    ? response({ output: "Broadcast delivered" }) : undefined });
+  ui.input("broadcastInput", "  restart   in five  ");
+  ui.submit("broadcastForm");
+  await until(() => ui.$("serverReplyText").textContent.includes("Broadcast delivered"));
+  const sent = ui.requests.filter(r => r.url.pathname === "/admin/server/command");
+  assert.equal(sent.length, 1);
+  assert.equal(JSON.parse(sent[0].options.body).command, "say restart in five");
+  assert.equal(ui.$("broadcastInput").value, "", "A sent message clears the field");
+  assert.equal(ui.$("serverReplyCommand").textContent, "> say restart in five");
+  assert.equal(ui.errors.length, 0);
+});
+
+test("the log badge counts what has not been read, not what is stored", async t => {
+  const ui = await createAdmin(t);
+  await until(() => !ui.$("activityCount").hidden);
+  assert.ok(Number(ui.$("activityCount").textContent) > 0);
+
+  ui.w.document.querySelector('[data-view="activity"]').click();
+  assert.equal(ui.$("activityCount").hidden, true, "Opening the log reads it");
+  ui.w.document.querySelector('[data-view="dashboard"]').click();
+  assert.equal(ui.$("activityCount").hidden, true, "Read entries do not come back");
+  assert.ok(ui.$("logOutput").textContent.trim().length > 0, "And the log itself is still there");
+  assert.equal(ui.errors.length, 0);
+});
+
+test("the console turns on with a password and off when it is cleared", async t => {
+  const ui = await createAdmin(t);
+  assert.equal(ui.$("commandTransportLabel").textContent, "UDMC Agent");
+  ui.edit("rcon"); ui.input("edit-rconPasswordInput", "secret"); ui.submit("protectedSettingsForm");
+  await until(() => !ui.$("protectedSettingsDialog").open);
+  assert.equal(ui.$("commandTransportLabel").textContent, "RCON", "Filling it in is the answer; there is no switch");
+  assert.equal(JSON.parse(ui.vault.get("rcon-password")).password, "secret", "Kept without asking whether to keep it");
+
+  ui.edit("rcon"); ui.input("edit-rconPasswordInput", ""); ui.submit("protectedSettingsForm");
+  await until(() => !ui.$("protectedSettingsDialog").open);
+  assert.equal(ui.$("commandTransportLabel").textContent, "UDMC Agent", "Clearing it is how the console is switched off");
+  assert.equal(ui.vault.get("rcon-password"), undefined, "And the password goes with it");
+  assert.equal(ui.$("rconConnectionStatus").textContent, "Не настроен");
+  assert.equal(ui.errors.length, 0);
+});
+
+test("a settled key is connected with, without anyone pressing a button", async t => {
+  const ui = await createAdmin(t);
+  await until(() => ui.requests.some(r => r.url.pathname === "/manifest"));
+  const before = ui.requests.filter(r => r.url.pathname === "/manifest").length;
+  // Connecting is what the panel is for; a key that has just been settled is an instruction
+  // to use it, and there is no longer a button that would have to be found and pressed.
+  ui.edit("token"); ui.input("edit-tokenInput", "another-key"); ui.submit("protectedSettingsForm");
+  await until(() => !ui.$("protectedSettingsDialog").open);
+  await until(() => ui.requests.filter(r => r.url.pathname === "/manifest").length > before);
+  assert.equal(ui.w.document.querySelector("#connectButton"), null, "There is no button left to press");
+  assert.equal(ui.errors.length, 0);
+});
+
+test("a name is shown until the pencil is pressed, and the same button saves it", async t => {
+  const ui = await createAdmin(t, { fetch: ({ url }) => url.pathname === "/admin/settings" ? response({ ok: true }) : undefined });
+  ui.w.document.querySelector('[data-view="overview"]').click();
+  assert.equal(ui.$("packSettingsForm").hidden, true, "A name reads as a name, not as a field to fill in");
+  assert.equal(ui.$("packNameHeading").textContent, "Test pack");
+
+  ui.click("renamePackButton");
+  assert.equal(ui.$("packSettingsForm").hidden, false);
+  ui.input("packNameInput", "Другая сборка");
+  ui.submit("packSettingsForm");
+  await until(() => ui.$("packSettingsForm").hidden === true);
+  assert.equal(ui.$("packNameHeading").textContent, "Другая сборка");
+  assert.equal(JSON.parse(ui.requests.find(r => r.url.pathname === "/admin/settings").options.body).packName, "Другая сборка");
+
+  // The server name in the sidebar works the same way, and locks itself again after saving.
+  ui.click("serverProfileSettingsButton");
+  assert.equal(ui.$("serverProfileName").readOnly, true);
+  ui.click("renameProfileButton");
+  assert.equal(ui.$("serverProfileName").readOnly, false);
+  ui.input("serverProfileName", "Прод");
+  ui.click("renameProfileButton");
+  assert.equal(ui.$("serverProfileName").readOnly, true);
+  assert.equal(ui.$("serverProfileSelect").options[0].textContent, "Прод");
+  assert.equal(ui.errors.length, 0);
+});
+
+test("the game address is opened and saved by the one button inside its field", async t => {
+  const bodies = [];
+  const ui = await createAdmin(t, { fetch: ({ url, options }) => {
+    if (url.pathname === "/admin/status") {
+      return response({ state: "online", agentProtocol: 1, capabilities: { powerActions: true } });
+    }
+    if (url.pathname === "/admin/agents") {
+      return response({ currentVersion: "0.5.0", canUpdate: false, signed: true, client: { version: "0.5.0" },
+        downloadUrl: "http://agent.test/agents/download", requireClient: false, gameAddress: "" });
+    }
+    if (url.pathname === "/admin/agents/settings") {
+      bodies.push(JSON.parse(options.body));
+      return response({ currentVersion: "0.5.0", canUpdate: false, signed: true, client: { version: "0.5.0" },
+        downloadUrl: "http://agent.test/agents/download", ...bodies[bodies.length - 1] });
+    }
+    return undefined;
+  } });
+  ui.click("serverProfileSettingsButton");
+  ui.w.document.querySelector('[data-agent-mode="agents"]').click();
+  await until(() => ui.$("agentPolicySave").disabled === false);
+  assert.equal(ui.$("gameAddressInput").readOnly, true, "Shown, not open for typing");
+
+  ui.click("agentPolicySave");
+  assert.equal(ui.$("gameAddressInput").readOnly, false);
+  ui.input("gameAddressInput", "play.udmc.test:25565");
+  ui.click("agentPolicySave");
+  await until(() => ui.$("gameAddressInput").readOnly === true);
+  assert.deepEqual(bodies[bodies.length - 1], { requireClient: false, gameAddress: "play.udmc.test:25565" });
+  assert.equal(ui.errors.length, 0);
+});
+
 test("a claimed server shows what this panel holds instead of a field for a code", async t => {
   const ui = await createAdmin(t, { storage: { "udmc-control-server-url": "https://agent.test/" },
     fetch: ({ url }) => url.pathname === "/pair"
