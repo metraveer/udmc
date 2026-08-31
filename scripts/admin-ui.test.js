@@ -254,8 +254,8 @@ test("manual NeoForge uploads require an explicit destination", async t => {
 
 test("RCON settings save the exact password but never auto-execute a command", async t => {
   const ui = await createAdmin(t);
-  ui.edit("rcon"); ui.click("edit-rconEnabledInput");
-  ui.input("edit-rconPasswordInput", "  exact password  "); ui.click("edit-rememberRconPasswordInput");
+  ui.edit("rcon");
+  ui.input("edit-rconPasswordInput", "  exact password  ");
   ui.submit("protectedSettingsForm"); await until(() => !ui.$("protectedSettingsDialog").open);
   assert.equal(JSON.parse(ui.vault.get("rcon-password")).password, "  exact password  ");
   assert.equal(ui.$("rconPasswordInput").value, "  exact password  ");
@@ -314,7 +314,7 @@ test("RCON shows checking, confirmed access and failure in the console and sideb
   const ui = await createAdmin(t, { native: (name) => {
     if (name === "rcon_execute") { if (fail) throw { code: "RCON_AUTH_FAILED", args: [], fallback: "The server rejected the RCON password." }; return gate.promise; }
   } });
-  ui.edit("rcon"); ui.click("edit-rconEnabledInput"); ui.input("edit-rconPasswordInput", " secret ");
+  ui.edit("rcon"); ui.input("edit-rconPasswordInput", " secret ");
   ui.submit("protectedSettingsForm"); await until(() => !ui.$("protectedSettingsDialog").open);
   ui.click("testRconButton");
   await until(() => ui.$("rconConsoleStatus").textContent === "Проверка RCON...");

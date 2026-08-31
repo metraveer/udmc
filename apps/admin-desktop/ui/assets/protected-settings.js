@@ -22,7 +22,7 @@ export const protectedGroups = {
   rcon: {
     title: t("Изменить подключение RCON"),
     warning: t("Параметры должны совпадать с server.properties. Изменение адреса направит будущие команды на другой сервер. RCON не шифруется: используйте доверенную сеть или VPN."),
-    fields: [["rconEnabledInput", t("Использовать RCON для консоли")], ["rconHostInput", t("Домен или IP")], ["rconPortInput", t("Порт")], ["rconPasswordInput", t("Пароль RCON")], ["rememberRconPasswordInput", t("Запомнить пароль в Windows")]]
+    fields: [["rconHostInput", t("Домен или IP")], ["rconPortInput", t("Порт")], ["rconPasswordInput", t("Пароль RCON")]]
   }
 };
 
@@ -50,15 +50,14 @@ export function validateProtectedValues(group, input, { serverUrl, templates = [
     values.generatorLoader = template.loader;
     values.generatorLoaderVersion = template.loaderVersion;
   } else if (group === "rcon") {
-    values.rconEnabledInput = values.rconEnabledInput === true;
-    values.rememberRconPasswordInput = values.rememberRconPasswordInput === true;
     values.rconHostInput = String(values.rconHostInput || "").trim();
     values.rconPortInput = validPort(values.rconPortInput);
     values.rconPasswordInput = String(values.rconPasswordInput || "");
-    if (values.rconEnabledInput) {
+    // The password is what decides: with one the console is used, without one it is not, and
+    // clearing it is how it is switched off. An address alone reaches nothing.
+    if (values.rconPasswordInput) {
       const host = values.rconHostInput;
       if (!host || /[\s/\\?#@]/.test(host) || host.includes("://") || (host.includes(":") && !/^\[[\da-f:]+\]$/i.test(host))) throw new Error(t("Введите домен или IP без протокола и порта. Порт задаётся отдельно."));
-      if (!values.rconPasswordInput) throw new Error(t("Введите пароль RCON."));
     }
   }
   return values;
@@ -95,9 +94,6 @@ export function initProtectedSettings({ getBusy, getBinding, getContext, onApply
     if (editing.group === "platform") {
       updatePlatformControls({ loader: field("generatorLoader"), minecraft: field("generatorMinecraft"), version: field("generatorLoaderVersion") }, getContext().templates);
       field("generatorLoaderVersion").disabled = true;
-    }
-    if (editing.group === "rcon") for (const [id, control] of Object.entries(controls)) {
-      if (id !== "rconEnabledInput") control.disabled = !field("rconEnabledInput").checked;
     }
     const changed = fingerprint(read(controls)) !== editing.original;
     $("protectedSettingsApply").disabled = saving || !changed;

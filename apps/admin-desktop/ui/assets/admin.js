@@ -23,10 +23,8 @@ const DEFAULT_RCON_PORT = 25575;
 const STORAGE_KEYS = {
   serverUrl: "udmc-control-server-url",
   token: "udmc-control-token",
-  rconEnabled: "udmc-control-rcon-enabled",
   rconHost: "udmc-control-rcon-host",
   rconPort: "udmc-control-rcon-port",
-  rconRemember: "udmc-control-rcon-remember",
   rconPassword: "udmc-control-rcon-password"
 };
 
@@ -46,8 +44,8 @@ const viewDetails = {
 
 const elements = Object.fromEntries([
   "statusBadge", "statusDot", "serverLabel", "serverUrlInput", "tokenInput", "tokenVisibilityButton",
-  "connectionForm", "rconForm", "rconEnabledInput",
-  "rconHostInput", "rconPortInput", "rconPasswordInput", "rememberRconPasswordInput", "rconFields",
+  "connectionForm", "rconForm",
+  "rconHostInput", "rconPortInput", "rconPasswordInput", "rconFields",
   "testRconButton", "rconDetectedBadge", "publishDialog", "publishForm", "publishOpenButton",
   "publishButtonLabel", "publishVersionInput", "publishChangeSummary", "publishRestartNote",
   "deleteDialog", "deleteForm", "deleteFileName", "deleteDialogText", "fileInput", "dropZone", "dropTitle",
@@ -350,7 +348,6 @@ function bindEvents() {
   document.getElementById("serverProfileName").addEventListener("input", () => { profileNameDirty = true; });
   document.getElementById("serverProfileForm").addEventListener("submit", () => { profileNameDirty = false; });
   elements.rconForm.addEventListener("submit", saveRconSettings);
-  elements.rconEnabledInput.addEventListener("change", updateRconFields);
   [elements.rconHostInput, elements.rconPortInput, elements.rconPasswordInput].forEach((input) => input.addEventListener("input", () => {
     rconState = { status: "idle", checkedAt: null, message: t("Параметры изменены") };
     renderRconStatus();
@@ -604,11 +601,15 @@ async function applyProtectedSettings(group, values) {
   } else if (group === "token") {
     await persistConnection({ url: normalizedServerUrl(), token: values.tokenInput }, oldHttp);
   } else if (group === "rcon") {
+    // The password lives where Windows keeps passwords, for as long as one is set. Asking
+    // whether to remember it was a question with one sensible answer.
     if (window.__TAURI__?.core?.invoke) {
-      const value = values.rememberRconPasswordInput ? JSON.stringify({ host: values.rconHostInput, port: Number(values.rconPortInput), password: values.rconPasswordInput }) : null;
+      const value = values.rconPasswordInput
+        ? JSON.stringify({ host: values.rconHostInput, port: Number(values.rconPortInput), password: values.rconPasswordInput })
+        : null;
       await profileInvoke("credential_write", { name: "rcon-password", value });
     }
-    for (const [key, id] of [["rconEnabled", "rconEnabledInput"], ["rconHost", "rconHostInput"], ["rconPort", "rconPortInput"], ["rconRemember", "rememberRconPasswordInput"]]) localStorage.setItem(STORAGE_KEYS[key], String(values[id]));
+    for (const [key, id] of [["rconHost", "rconHostInput"], ["rconPort", "rconPortInput"]]) localStorage.setItem(STORAGE_KEYS[key], String(values[id]));
     localStorage.removeItem(STORAGE_KEYS.rconPassword);
   } else {
     generatorUi.persistSettings(values);
@@ -618,6 +619,8 @@ async function applyProtectedSettings(group, values) {
     if (field.type === "checkbox") field.checked = value;
     else field.value = value;
   }
+  // Whether the console is used follows from what was just written into those fields.
+  if (group === "rcon") updateRconFields();
   if (group === "connection") {
     if (oldUrl !== values.serverUrlInput) {
       elements.serverUrlInput.dispatchEvent(new Event("input"));
@@ -687,7 +690,7 @@ async function executeServerCommand(command, button) {
   try {
     let output;
     let transport;
-    if (elements.rconEnabledInput.checked) {
+    if (rconConfigured()) {
       output = await invokeRcon(command);
       transport = "RCON";
     } else {
@@ -735,10 +738,20 @@ async function invokeRcon(command) {
   } finally { renderRconStatus(); }
 }
 
+/**
+ * The console is used when it can be: an address, a port and a password are the whole of it.
+ * A switch beside them only asked again what filling them in had already answered.
+ */
+function rconConfigured() {
+  const port = Number(elements.rconPortInput.value);
+  return Boolean(elements.rconHostInput.value.trim() && elements.rconPasswordInput.value
+    && Number.isInteger(port) && port > 0 && port < 65536);
+}
+
 function renderRconStatus() {
-  const enabled = elements.rconEnabledInput.checked;
+  const enabled = rconConfigured();
   const stale = rconState.checkedAt && Date.now() - rconState.checkedAt > 60000;
-  const label = !enabled ? t("Отключён в панели") : rconState.status === "checking" ? t("Проверка RCON...")
+  const label = !enabled ? t("Не настроен") : rconState.status === "checking" ? t("Проверка RCON...")
     : rconState.status === "online" ? stale ? t("Проверка устарела") : t("Доступен") : rconState.status === "error" ? t("Нет доступа") : t("Доступ не проверен");
   const status = !enabled || stale ? "neutral" : rconState.status;
   for (const id of ["rconConnectionStatus", "rconConsoleStatus"]) {
@@ -1930,13 +1943,18 @@ async function restoreSecureCredentials() {
     } else if (elements.tokenInput.value) {
       await saveConnection();
     }
-    const password = await invoke("credential_read", { name: "rcon-password" });
-    if (password && elements.rememberRconPasswordInput.checked) {
-      const saved = JSON.parse(password);
-      if (saved.host === elements.rconHostInput.value.trim() && saved.port === Number(elements.rconPortInput.value)) elements.rconPasswordInput.value = saved.password;
-    } else if (elements.rconPasswordInput.value && elements.rememberRconPasswordInput.checked) {
-      await invoke("credential_write", { name: "rcon-password", value: JSON.stringify({ host: elements.rconHostInput.value.trim(), port: Number(elements.rconPortInput.value), password: elements.rconPasswordInput.value }) });
+    const host = elements.rconHostInput.value.trim(), port = Number(elements.rconPortInput.value);
+    const stored = await invoke("credential_read", { name: "rcon-password" });
+    const legacy = localStorage.getItem(STORAGE_KEYS.rconPassword) || "";
+    if (stored) {
+      const saved = JSON.parse(stored);
+      if (saved.host === host && saved.port === port) elements.rconPasswordInput.value = saved.password;
+    } else if (legacy) {
+      // Older profiles kept it in the browser store; move it where passwords belong.
+      elements.rconPasswordInput.value = legacy;
+      await invoke("credential_write", { name: "rcon-password", value: JSON.stringify({ host, port, password: legacy }) });
     }
+    updateRconFields();
     localStorage.removeItem(STORAGE_KEYS.token);
     localStorage.removeItem("udm-admin-token");
     localStorage.removeItem(STORAGE_KEYS.rconPassword);
@@ -1944,21 +1962,19 @@ async function restoreSecureCredentials() {
 }
 
 function restoreRconSettings() {
-  elements.rconEnabledInput.checked = localStorage.getItem(STORAGE_KEYS.rconEnabled) === "true";
   elements.rconHostInput.value = localStorage.getItem(STORAGE_KEYS.rconHost) || inferredRconHost();
   elements.rconPortInput.value = localStorage.getItem(STORAGE_KEYS.rconPort) || String(DEFAULT_RCON_PORT);
-  elements.rememberRconPasswordInput.checked = localStorage.getItem(STORAGE_KEYS.rconRemember) === "true";
-  elements.rconPasswordInput.value = elements.rememberRconPasswordInput.checked ? localStorage.getItem(STORAGE_KEYS.rconPassword) || "" : "";
+  // The password comes from the credential store; what an older version left here is picked
+  // up by restoreSecureCredentials and moved there. Its two old switches are simply not read
+  // any more: a damaged profile store refuses writes, so this is no place to tidy up.
   updateRconFields();
 }
 
 function updateRconFields() {
-  const enabled = elements.rconEnabledInput.checked;
-  elements.rconFields.classList.toggle("disabled", !enabled);
-  elements.rconFields.querySelectorAll("input").forEach((input) => { input.disabled = !enabled; });
-  elements.testRconButton.disabled = !enabled;
-  elements.commandTransportLabel.textContent = enabled ? "RCON" : "UDMC Agent";
-  elements.commandTransportLabel.classList.toggle("rcon", enabled);
+  const ready = rconConfigured();
+  elements.testRconButton.disabled = !ready;
+  elements.commandTransportLabel.textContent = ready ? "RCON" : "UDMC Agent";
+  elements.commandTransportLabel.classList.toggle("rcon", ready);
   renderRconStatus();
 }
 

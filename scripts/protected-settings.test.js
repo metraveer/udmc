@@ -60,14 +60,17 @@ test("RCON ports must be within range", () => {
 });
 
 test("RCON edits preserve the password and require a separate host and port", () => {
-  const input = { rconEnabledInput: true, rconHostInput: " localhost ", rconPortInput: "25575", rconPasswordInput: " test password ", rememberRconPasswordInput: true };
+  const input = { rconHostInput: " localhost ", rconPortInput: "25575", rconPasswordInput: " test password " };
   assert.deepEqual(validate("rcon", input), { ...input, rconHostInput: "localhost" });
   assert.equal(validate("rcon", { ...input, rconHostInput: "[::1]" }).rconHostInput, "[::1]");
   for (const host of ["", "https://example.com", "example.com:25575", "user@example.com", "example.com/path", "example.com?x", "bad host"]) {
     assert.throws(() => validate("rcon", { ...input, rconHostInput: host }));
   }
-  assert.throws(() => validate("rcon", { ...input, rconPasswordInput: "" }));
-  assert.equal(validate("rcon", { ...input, rconEnabledInput: false, rconPasswordInput: "" }).rconEnabledInput, false);
+  // Clearing the password is how the console is switched off, and that has to be allowed
+  // whatever address is left in the field.
+  assert.deepEqual(validate("rcon", { ...input, rconPasswordInput: "" }),
+    { rconHostInput: "localhost", rconPortInput: "25575", rconPasswordInput: "" });
+  assert.equal(validate("rcon", { ...input, rconHostInput: "bad host", rconPasswordInput: "" }).rconPasswordInput, "");
 });
 
 test("sensitive controls are locked before JavaScript starts and each has an explicit editor", async () => {
