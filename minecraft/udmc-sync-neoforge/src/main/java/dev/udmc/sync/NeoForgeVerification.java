@@ -1,6 +1,7 @@
 package dev.udmc.sync;
 
 import dev.udmc.sync.network.UdmcAnswerPayload;
+import dev.udmc.sync.network.UdmcProjectPayload;
 import dev.udmc.sync.network.UdmcQueryPayload;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.common.ClientboundCustomPayloadPacket;
@@ -41,6 +42,8 @@ final class NeoForgeVerification {
             AgentLoginProtocol.Answer answer = AgentLoginProtocol.answer(payload.query());
             if (answer != null) context.reply(new UdmcAnswerPayload(answer));
         });
+        registrar.configurationToClient(UdmcProjectPayload.TYPE, UdmcProjectPayload.CODEC,
+            (payload, context) -> AgentLoginProtocol.offered(payload.offer()));
         registrar.configurationToServer(UdmcAnswerPayload.TYPE, UdmcAnswerPayload.CODEC, (payload, context) -> {
             AgentLoginProtocol.receive(context.connection(), payload.answer());
             if (context.listener() instanceof ServerConfigurationPacketListener listener) verdict(listener);
@@ -56,6 +59,12 @@ final class NeoForgeVerification {
                 // rather than hold the phase open for a reply that is not coming.
                 if (!listener.hasChannel(UdmcQueryPayload.TYPE)) { verdict(listener); return; }
                 AgentLoginProtocol.asked(listener.getConnection());
+                // Checked separately: sending a payload a client never registered is a hard kick
+                // on NeoForge, and a client from before this channel has the question but not it.
+                var project = AgentLoginProtocol.project();
+                if (project != null && listener.hasChannel(UdmcProjectPayload.TYPE)) {
+                    sender.accept(new ClientboundCustomPayloadPacket(new UdmcProjectPayload(project)));
+                }
                 sender.accept(new ClientboundCustomPayloadPacket(new UdmcQueryPayload(AgentLoginProtocol.query())));
             }
 

@@ -166,6 +166,12 @@ tasks.register("workspaceTest", JavaExec) {
     mainClass = "dev.udmc.sync.WorkspaceTest"
 }
 check.dependsOn workspaceTest
+tasks.register("clientProjectTest", JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = "dev.udmc.sync.ClientProjectTest"
+}
+check.dependsOn clientProjectTest
 tasks.register("identityTest", JavaExec) {
     dependsOn testClasses
     classpath = sourceSets.test.runtimeClasspath

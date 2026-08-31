@@ -159,20 +159,6 @@ public final class UdmcConfig {
                 config.bootstrapId = embedded.bootstrapId;
                 config.save(gameDir);
             }
-            // The question moved to a different phase of the connection, and clients from
-            // before the move cannot hear it. Turning players away on that silence would lock
-            // out the whole server the moment its agent is updated, so the rule stands down
-            // once and the administrator switches it back on after handing out the new client.
-            if (config.verifyProtocol < AgentLoginProtocol.PROTOCOL && "server".equals(config.role)) {
-                if (config.requireClientAgent) {
-                    UdmcSync.LOGGER.warn("UDMC now asks about the client later in the connection, and clients from before this"
-                        + " update cannot answer. Login is no longer restricted: hand out the new client JAR, then switch"
-                        + " \"require the UDMC client\" back on in Control.");
-                }
-                config.requireClientAgent = false;
-                config.verifyProtocol = AgentLoginProtocol.PROTOCOL;
-                config.save(gameDir);
-            }
             // A generated client cannot be downgraded to unsigned mode through an old config.
             config.requireSignedManifest = true;
             return config;

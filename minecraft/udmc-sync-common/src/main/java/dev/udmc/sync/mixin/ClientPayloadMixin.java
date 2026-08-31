@@ -2,6 +2,7 @@ package dev.udmc.sync.mixin;
 
 import dev.udmc.sync.AgentLoginProtocol;
 import dev.udmc.sync.network.UdmcAnswerPayload;
+import dev.udmc.sync.network.UdmcProjectPayload;
 import dev.udmc.sync.network.UdmcQueryPayload;
 import net.minecraft.client.multiplayer.ClientCommonPacketListenerImpl;
 import net.minecraft.network.Connection;
@@ -22,6 +23,13 @@ public abstract class ClientPayloadMixin {
     @Inject(method = "handleCustomPayload(Lnet/minecraft/network/protocol/common/ClientboundCustomPayloadPacket;)V",
         at = @At("HEAD"), cancellable = true)
     private void udmc$question(ClientboundCustomPayloadPacket packet, CallbackInfo callback) {
+        if (packet.payload() instanceof UdmcProjectPayload project) {
+            // Only recorded here. What to do with it needs the game thread and, when it means
+            // adopting a project, the player - neither of which belongs on the network thread.
+            AgentLoginProtocol.offered(project.offer());
+            callback.cancel();
+            return;
+        }
         if (!(packet.payload() instanceof UdmcQueryPayload payload)) return;
         AgentLoginProtocol.Answer answer = AgentLoginProtocol.answer(payload.query());
         // A client of another project answers too, naming that project: silence used to be

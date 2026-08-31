@@ -8,13 +8,23 @@ import java.util.Collections;
 import java.util.WeakHashMap;
 
 public final class AgentLoginProtocol {
-    // 1 asked during login; 2 asks during the configuration phase, where the question is
-    // not contested by other mods. A client on 1 cannot hear a server on 2.
-    public static final int PROTOCOL = 2;
+    /**
+     * What a client reports about itself. 1 answered during login; 2 answered in the configuration
+     * phase carrying a project baked into its JAR; 3 has no project of its own and takes one from
+     * the server. A server on 3 turns a 2 away with an explanation rather than in silence.
+     */
+    public static final int PROTOCOL = 3;
+    /**
+     * The number written into the question, deliberately frozen at 2. Clients from 0.19.0 decode
+     * the question by position, so changing its shape would break them mid-handshake and cost
+     * them the screen that tells them what to install. What is new travels beside it instead.
+     */
+    public static final int QUERY_PROTOCOL = 2;
     /** Ticks the server waits for an answer before deciding without one: about ten seconds. */
     public static final int DEADLINE_TICKS = 200;
     private static volatile Server server;
     private static volatile Answer client;
+    private static volatile ClientProject.Offer OFFER;
     private static final Map<Connection, Decision> WARN = Collections.synchronizedMap(new WeakHashMap<>());
     // Present means the player's client answered; absent means it never did. The two must not
     // read the same: silence is what tells the server the mod is not there at all.
@@ -41,23 +51,40 @@ public final class AgentLoginProtocol {
 
     public static Query query() {
         Server current = server;
-        if (current == null) return new Query(PROTOCOL, "", "", "", false);
+        if (current == null) return new Query(QUERY_PROTOCOL, "", "", "", false);
         try {
             AgentRelease release = current.distribution.release();
             // No published client means there is nothing to compare a player's file against.
             // An empty hash says exactly that; "unavailable" was a value like any other and
             // made every correct client look outdated against a version nobody could name.
             String hash = release == null ? "" : release.verify(current.config, "client").getProperty("sha256", "");
-            return new Query(PROTOCOL, current.config.packId, hash, current.distribution.instructionsUrl(), current.config.requireClientAgent);
+            return new Query(QUERY_PROTOCOL, current.config.packId, hash, current.distribution.instructionsUrl(), current.config.requireClientAgent);
         } catch (IOException error) {
             UdmcSync.LOGGER.error("Cannot read UDMC login policy", error);
-            return new Query(PROTOCOL, current.config.packId, "", current.distribution.instructionsUrl(), current.config.requireClientAgent);
+            return new Query(QUERY_PROTOCOL, current.config.packId, "", current.distribution.instructionsUrl(), current.config.requireClientAgent);
         }
+    }
+
+    /** What this server is, for a client that arrived knowing nothing. */
+    public static ClientProject.Offer project() {
+        Server current = server;
+        if (current == null) return null;
+        return new ClientProject.Offer(current.config.packId, current.config.packName,
+            current.config.serverUrl, current.config.manifestPublicKey);
+    }
+
+    /** Kept until the client is out of the network thread and can act on it. */
+    public static void offered(ClientProject.Offer offer) { OFFER = offer; }
+
+    public static ClientProject.Offer takeOffer() {
+        ClientProject.Offer offer = OFFER;
+        OFFER = null;
+        return offer;
     }
 
     public static Answer answer(Query query) {
         Answer current = client;
-        if (current == null || query.protocol != PROTOCOL) return null;
+        if (current == null || query.protocol != QUERY_PROTOCOL) return null;
         // A client of another project still answers, and names that project: staying silent
         // made the server report the mod as missing - the one thing it cannot know - and an
         // administrator holding a screenshot could not tell the two cases apart. The JAR

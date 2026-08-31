@@ -22,6 +22,7 @@ public final class ServerIdentityTest {
         theProjectHandedOverCarriesNoSigningKey();
         guessingIsThrottled();
         theCommandSaysWhatToDoNext();
+        aProtocolChangeDoesNotLockPlayersOut();
         System.out.println("ServerIdentityTest OK");
     }
 
@@ -208,6 +209,32 @@ public final class ServerIdentityTest {
         String done = UdmcCommand.pairing();
         expect(!done.contains("code:"), "A paired server must not offer a code: " + done);
         expect(done.contains("resetPairing"), "A paired server must say how to pair again: " + done);
+    }
+
+    private static void aProtocolChangeDoesNotLockPlayersOut() throws Exception {
+        // Clients from before a protocol change cannot answer the new question. Turning them
+        // away on that silence would shut the door on every player the moment the server is
+        // updated, so the requirement stands down once and the owner switches it back on.
+        Path gameDir = temp();
+        UdmcConfig config = UdmcConfig.load(gameDir);
+        ServerIdentity.ensure(gameDir, config);
+        config.requireClientAgent = true;
+        config.verifyProtocol = AgentLoginProtocol.PROTOCOL - 1;
+        config.save(gameDir);
+
+        UdmcConfig updated = UdmcConfig.load(gameDir);
+        expect(ServerIdentity.ensure(gameDir, updated), "A protocol change must be recorded");
+        expect(!updated.requireClientAgent, "The requirement must stand down once after a protocol change");
+        expect(updated.verifyProtocol == AgentLoginProtocol.PROTOCOL, "The new protocol must be recorded");
+        expect(!UdmcConfig.load(gameDir).requireClientAgent, "The stand-down must be saved");
+
+        // Once recorded, the owner's decision is theirs again and must not be undone every start.
+        UdmcConfig restored = UdmcConfig.load(gameDir);
+        restored.requireClientAgent = true;
+        restored.save(gameDir);
+        UdmcConfig restarted = UdmcConfig.load(gameDir);
+        ServerIdentity.ensure(gameDir, restarted);
+        expect(restarted.requireClientAgent, "A later start must not switch the requirement off again");
     }
 
     private interface Attempt {

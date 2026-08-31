@@ -3,6 +3,7 @@ package dev.udmc.sync.mixin;
 import dev.udmc.sync.AgentLoginNotice;
 import dev.udmc.sync.AgentLoginProtocol;
 import dev.udmc.sync.UdmcSync;
+import dev.udmc.sync.network.UdmcProjectPayload;
 import dev.udmc.sync.network.UdmcQueryPayload;
 import net.minecraft.network.Connection;
 import net.minecraft.network.protocol.common.ClientboundCustomPayloadPacket;
@@ -41,6 +42,10 @@ public abstract class ServerConfigVerifyMixin extends ServerCommonPacketListener
         if (!AgentLoginProtocol.enabled() || udmc$asked) return;
         udmc$asked = true;
         AgentLoginProtocol.asked(this.connection);
+        // The project first, so a client that has never seen this server knows who is asking
+        // before it answers. Clients from before this channel existed discard it and go on.
+        var project = AgentLoginProtocol.project();
+        if (project != null) send(new ClientboundCustomPayloadPacket(new UdmcProjectPayload(project)));
         send(new ClientboundCustomPayloadPacket(new UdmcQueryPayload(AgentLoginProtocol.query())));
     }
 

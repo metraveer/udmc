@@ -93,7 +93,7 @@ public final class AgentUpdateTest {
                 "The notice must carry both versions so an administrator can compare them");
             // Silence was read as "not installed": a client of another project has to answer.
             AgentLoginProtocol.configureClient(config);
-            var elsewhere = AgentLoginProtocol.answer(new AgentLoginProtocol.Query(AgentLoginProtocol.PROTOCOL, "another-project", "", "", true));
+            var elsewhere = AgentLoginProtocol.answer(new AgentLoginProtocol.Query(AgentLoginProtocol.QUERY_PROTOCOL, "another-project", "", "", true));
             check(elsewhere != null && elsewhere.packId().equals(config.packId) && elsewhere.jarHash().isBlank(),
                 "A client of another project must answer, naming its project and withholding its fingerprint");
             check(!missing.messageFallback().isBlank() && !outdated.messageFallback().isBlank() && !elsewhereDecision.messageFallback().isBlank(), "Login reasons require clean-client fallbacks");
