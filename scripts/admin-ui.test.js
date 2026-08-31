@@ -552,7 +552,7 @@ test("the settings page hosts the language picker and survives a reopened sessio
   ui.w.document.querySelector('[data-view="settings"]').click();
   assert.equal(ui.$("settingsView").classList.contains("active"), true);
   assert.equal(ui.$("viewTitle").textContent, "Настройки");
-  assert.equal(ui.$("refreshButton").hidden, true);
+  assert.ok(ui.$("refreshButton").closest(".connection-card"), "Re-reading belongs to the connection, not to a page header");
   ui.w.dispatchEvent(new ui.w.Event("pagehide"));
   const session = Object.fromEntries(Array.from({ length: ui.w.sessionStorage.length },
     (_, i) => { const key = ui.w.sessionStorage.key(i); return [key, ui.w.sessionStorage.getItem(key)]; }));

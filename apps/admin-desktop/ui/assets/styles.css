@@ -156,7 +156,12 @@ svg {
   background: #16171b;
   box-shadow: var(--bevel-sunken);
 }
+/* Re-reading everything belongs to the connection, not to every page: as a button in each
+   page's header it sat alone in an otherwise empty row and asked to be pressed, while the
+   panel was already re-reading by itself. */
 .connection-head { display: flex; align-items: center; gap: 8px; }
+.connection-head > .sidebar-icon { flex: 0 0 auto; width: 24px; height: 24px; margin-left: auto; }
+.connection-head > .sidebar-icon svg { width: 14px; height: 14px; }
 .connection-head strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #6b707a; box-shadow: 0 0 0 4px rgba(107, 112, 122, 0.14); }
 .status-dot.ok { background: #43cf8d; box-shadow: 0 0 0 4px rgba(67, 207, 141, 0.16), 0 0 10px rgba(67, 207, 141, 0.5); }
@@ -245,8 +250,7 @@ dialog { overscroll-behavior: contain; }
 }
 /* The page's name is already the highlighted item in the sidebar; repeating it here cost a
    row of every screen. What is left is the row of actions, which collapses when empty. */
-.workspace-header { display: flex; align-items: center; justify-content: flex-end; min-height: 0; gap: 16px; padding-top: 6px; }
-.workspace-header:not(:empty) { padding-bottom: 10px; }
+.workspace-header { display: flex; align-items: center; justify-content: flex-end; min-height: 0; gap: 16px; padding: 12px 0; }
 .eyebrow, .section-kicker { margin: 0 0 3px; color: var(--accent); font-size: 10px; font-weight: 780; text-transform: uppercase; letter-spacing: 0.11em; }
 h1, h2, p { margin-top: 0; }
 h1 { margin-bottom: 0; font-family: "Segoe UI Variable Display", "Segoe UI", ui-sans-serif, system-ui, sans-serif; font-size: 20px; font-weight: 750; letter-spacing: -0.01em; line-height: 1.15; }

@@ -407,7 +407,6 @@ function navigateTo(viewName) {
   document.querySelectorAll("[data-view]").forEach((button) => button.classList.toggle("active", button.dataset.view === viewName));
   document.querySelectorAll("[data-view-panel]").forEach((panel) => panel.classList.toggle("active", panel.dataset.viewPanel === viewName));
   elements.publishOpenButton.hidden = viewName !== "overview";
-  elements.refreshButton.hidden = ["activity", "generator", "dependencies", "settings"].includes(viewName);
   document.querySelector(".workspace").scrollTop = 0;
   if (viewName === "devices") accessUi?.onOpen();
   if (viewName === "modrinth") modrinthUi?.onOpen();

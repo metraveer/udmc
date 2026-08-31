@@ -547,7 +547,6 @@
   "Текущий сервер": "Current server",
   "Не подключено": "Not connected",
   "RCON не проверен": "RCON not checked",
-  "Обновить данные": "Refresh data",
   "Состояние сервера": "Server status",
   "Состояние": "Status",
   "Игроки": "Players",
@@ -1236,5 +1235,6 @@
   "Переименовать": "Rename",
   "Новое название": "New name",
   "Сохранить": "Save",
-  "Так проект называется у игроков: клиент показывает это имя, когда предлагает настроиться под сервер. Имя одно на весь проект и с версиями не связано — номер версии панель ставит сама при публикации.": "This is what the project is called for players: the client shows this name when it offers to set the game up for this server. One name covers the whole project and has nothing to do with version numbers — the panel assigns those itself when you publish."
+  "Так проект называется у игроков: клиент показывает это имя, когда предлагает настроиться под сервер. Имя одно на весь проект и с версиями не связано — номер версии панель ставит сама при публикации.": "This is what the project is called for players: the client shows this name when it offers to set the game up for this server. One name covers the whole project and has nothing to do with version numbers — the panel assigns those itself when you publish.",
+  "Перечитать данные с сервера": "Re-read data from the server"
 }

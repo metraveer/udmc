@@ -45,7 +45,7 @@
         <div class="connection-card">
           <div class="server-profile-picker"><label for="serverProfileSelect" data-i18n='Серверы'>Серверы</label><button id="addServerProfileButton" class="sidebar-icon" type="button" title="Добавить сервер" aria-label="Добавить сервер" data-i18n-title='Добавить сервер' data-i18n-aria-label='Добавить сервер'><i data-lucide="plus"></i></button><button id="serverProfileSettingsButton" class="sidebar-icon" type="button" title="Настроить сервер" aria-label="Настроить сервер" data-i18n-title='Настроить сервер' data-i18n-aria-label='Настроить сервер'><i data-lucide="settings-2"></i></button><select id="serverProfileSelect" aria-label="Текущий сервер" data-i18n-aria-label='Текущий сервер'></select></div>
           <div class="connection-status">
-            <div class="connection-head"><span id="statusDot" class="status-dot"></span><strong id="statusBadge" data-i18n='Не подключено'>Не подключено</strong></div>
+            <div class="connection-head"><span id="statusDot" class="status-dot"></span><strong id="statusBadge" data-i18n='Не подключено'>Не подключено</strong><button id="refreshButton" class="sidebar-icon" type="button" title="Перечитать данные с сервера" aria-label="Перечитать данные с сервера" data-i18n-title='Перечитать данные с сервера' data-i18n-aria-label='Перечитать данные с сервера'><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8.1 8.1 0 0 0-15.5-2M4 4v5h5M4 13a8.1 8.1 0 0 0 15.5 2M20 20v-5h-5"/></svg></button></div>
             <span id="serverLabel" class="server-label">127.0.0.1:3077</span>
             <span id="rconSidebarStatus" class="sidebar-rcon" data-i18n='RCON не проверен'>RCON не проверен</span>
           </div>
@@ -57,9 +57,6 @@
         <header class="workspace-header">
           <h1 id="viewTitle" class="sr-only" data-i18n='Сервер'>Сервер</h1>
           <div class="header-actions">
-            <button id="refreshButton" class="icon-button" type="button" title="Обновить данные" aria-label="Обновить данные" data-i18n-title='Обновить данные' data-i18n-aria-label='Обновить данные'>
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8.1 8.1 0 0 0-15.5-2M4 4v5h5M4 13a8.1 8.1 0 0 0 15.5 2M20 20v-5h-5"/></svg>
-            </button>
             <button id="publishOpenButton" class="button primary" type="button" hidden>
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 21h14a2 2 0 0 0 2-2v-4M3 15v4a2 2 0 0 0 2 2"/></svg>
               <span id="publishButtonLabel" data-i18n='Опубликовать'>Опубликовать</span>
