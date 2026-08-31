@@ -977,6 +977,38 @@ input[data-protected-setting][type="number"]::-webkit-inner-spin-button { appear
 .toast button { border: 0; background: transparent; color: #9ba0aa; cursor: pointer; font-size: 17px; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
 
+/* ---- dropdown lists ---------------------------------------------------------
+   The list a native select opens is drawn by the operating system and takes none of the
+   colours below, so it arrived looking like a different program. The closed control is left
+   alone; the list is drawn by the panel. */
+.select-menu {
+  position: fixed; z-index: 70;
+  max-height: 280px; overflow-y: auto;
+  padding: 4px;
+  border: 1px solid var(--line-strong); border-radius: 9px;
+  background: var(--surface); box-shadow: var(--shadow);
+}
+.select-option { border-radius: 6px; padding: 7px 10px; color: var(--ink); font-size: 13px; line-height: 1.35; cursor: pointer; }
+.select-option.active { background: var(--surface-soft); }
+.select-option[aria-selected="true"] { color: var(--accent); font-weight: 650; }
+.select-option[aria-disabled="true"] { color: var(--muted); cursor: default; }
+/* An open list is the control's own state, and reads better than the focus ring alone. */
+select.select-open, select.select-open:focus-visible { outline: none; border-color: var(--accent); }
+
+/* The same explanation the question marks give, for the titles that used to be handed to the
+   operating system to draw. */
+.tooltip-bubble {
+  position: fixed; z-index: 80;
+  max-width: min(320px, calc(100vw - 32px));
+  padding: 8px 11px;
+  border: 1px solid var(--line-strong); border-radius: 8px;
+  background: var(--surface-soft); color: var(--muted-strong);
+  box-shadow: var(--shadow);
+  font-size: 12px; line-height: 1.45;
+  pointer-events: none;
+}
+
+
 @media (max-width: 1050px) {
   .app-shell { grid-template-columns: 190px minmax(0, 1fr); }
   .brand { padding: 0 2px; }

@@ -11,6 +11,8 @@ import { initPairing } from "./pairing-ui.js";
 import { initProtectedSettings } from "./protected-settings.js";
 import { agentJson, formatAgentError, formatAppError, UPLOAD_TIMEOUT } from "./http.js";
 import { createWorkspaceAccess } from "./workspace-access.js";
+import { initSelectMenus } from "./select-menu.js";
+import { initTooltips } from "./tooltip.js";
 import { modSidePolicy } from "./modrinth.js";
 import { initAgentUpdates } from "./agent-updates-ui.js";
 import { profileStorage as localStorage, profileInvoke, initServerProfiles, serverProfiles } from "./server-profiles.js";
@@ -86,6 +88,9 @@ let powerAction = null;
 const profileSession = createProfileSession(window.sessionStorage, serverProfiles.active());
 const rememberedUi = profileSession.read();
 let activityEntries = rememberedUi.activity;
+// The badge counts what has not been read, not what is stored: it used to show the whole log
+// and only went away when the log was emptied.
+let unreadActivity = rememberedUi.unreadActivity || 0;
 let consoleEntries = rememberedUi.console;
 let rconState = { status: "idle", checkedAt: null, message: "" };
 let accessUi = null;
@@ -122,6 +127,8 @@ const workspaceAccess = createWorkspaceAccess({
 });
 
 translateDocument();
+initSelectMenus();
+initTooltips();
 restoreConnection();
 restoreRconSettings();
 if (packNameDirty) {
@@ -404,6 +411,8 @@ function navigateTo(viewName) {
   document.getElementById("serverProfileDialog").close();
   activeView = viewName;
   elements.viewTitle.textContent = viewDetails[viewName] || viewDetails.dashboard;
+  if (viewName === "activity") unreadActivity = 0;
+  updateActivityCount();
   document.querySelectorAll("[data-view]").forEach((button) => button.classList.toggle("active", button.dataset.view === viewName));
   document.querySelectorAll("[data-view-panel]").forEach((panel) => panel.classList.toggle("active", panel.dataset.viewPanel === viewName));
   elements.publishOpenButton.hidden = viewName !== "overview";
@@ -1735,11 +1744,14 @@ function toggleTokenVisibility() {
 
 function clearActivity() {
   activityEntries = [];
+  unreadActivity = 0;
   elements.logOutput.innerHTML = t("<div class=\"empty-activity\">Операций пока нет</div>");
   updateActivityCount();
 }
 
 function addActivity(message, type = "info") {
+  // Something written while the log is on screen has been read as it arrived.
+  if (activeView !== "activity") unreadActivity++;
   activityEntries.unshift({ message: String(message), type, time: Date.now() });
   activityEntries = activityEntries.slice(0, 100);
   renderActivity();
@@ -1767,8 +1779,9 @@ function renderActivity() {
 }
 
 function updateActivityCount() {
-  elements.activityCount.hidden = activityEntries.length === 0;
-  elements.activityCount.textContent = String(activityEntries.length);
+  if (!activityEntries.length) unreadActivity = 0;
+  elements.activityCount.hidden = unreadActivity === 0;
+  elements.activityCount.textContent = String(unreadActivity);
 }
 
 function saveUiSession() {
@@ -1778,7 +1791,7 @@ function saveUiSession() {
       settingsOpen: document.getElementById("serverProfileDialog").open, catalog: modrinthUi?.selected(),
       packName: document.getElementById("packNameInput").value, packNameDirty,
       profileName: document.getElementById("serverProfileName").value, profileNameDirty,
-      activity: activityEntries, console: consoleEntries },
+      activity: activityEntries, unreadActivity, console: consoleEntries },
     [elements.tokenInput.value, elements.rconPasswordInput.value,
       document.getElementById("pairCodeInput").value, document.getElementById("inviteCode").value]);
   } catch { /* Session history is optional; a full store must not block server management. */ }
