@@ -153,6 +153,15 @@ test("English admin boot translates static, dynamic and command-reference text",
   app.edit("rcon");
   assert.equal(app.$("protectedSettingsDialog").querySelector("h2").textContent, "Change RCON connection");
   for (const el of app.w.document.querySelectorAll("[data-i18n]")) assert.doesNotMatch(el.textContent, /[А-Яа-яЁё]/, el.outerHTML);
+  // Attributes too, not only text: the hint bubbles read Russian in the English interface for
+  // as long as translateDocument walked a fixed list that did not mention data-hint.
+  for (const el of app.w.document.querySelectorAll("*")) {
+    for (const attribute of el.attributes) {
+      if (!attribute.name.startsWith("data-i18n-")) continue;
+      const applied = el.getAttribute(attribute.name.slice(10)) || "";
+      assert.doesNotMatch(applied, /[А-Яа-яЁё]/, `${attribute.name}: ${el.id || el.className}`);
+    }
+  }
   assert.equal(app.errors.length, 0);
 });
 

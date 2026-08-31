@@ -30,8 +30,12 @@ export const countText = (key, count) => engine.t(key, { count });
 export function translateDocument(root = document) {
   root.documentElement.lang = language;
   for (const element of root.querySelectorAll("[data-i18n]")) element.textContent = t(element.dataset.i18n);
-  for (const attribute of ["title", "aria-label", "placeholder"]) {
-    for (const element of root.querySelectorAll(`[data-i18n-${attribute}]`)) element.setAttribute(attribute, t(element.getAttribute(`data-i18n-${attribute}`)));
+  // Any data-i18n-<attribute>, rather than a list someone has to remember to extend: the
+  // question marks kept their Russian because "data-hint" was never added to that list.
+  for (const element of root.querySelectorAll("*")) {
+    for (const attribute of [...element.attributes]) {
+      if (attribute.name.startsWith("data-i18n-")) element.setAttribute(attribute.name.slice(10), t(attribute.value));
+    }
   }
 }
 export function initLanguage({ getBusy, hasLocalFiles, showToast, beforeReload = () => {}, reload = () => window.location.reload() }) {
