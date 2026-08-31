@@ -72,7 +72,15 @@
         <section id="dashboardView" class="view active" data-view-panel="dashboard">
           <div class="summary-strip server-summary" aria-label="Состояние сервера" data-i18n-aria-label='Состояние сервера'>
             <div class="summary-item"><span data-i18n='Состояние'>Состояние</span><strong id="serverState">-</strong></div>
-            <div class="summary-item"><span data-i18n='Игроки'>Игроки</span><strong id="serverPlayers">-</strong></div>
+            <div class="summary-item summary-players">
+              <button id="playersSummary" class="summary-trigger" type="button" aria-expanded="false" aria-controls="playersPopover" disabled><span data-i18n='Игроки'>Игроки</span><strong id="serverPlayers">-</strong><i data-lucide="chevron-down"></i></button>
+              <div id="playersPopover" class="players-popover" hidden>
+                <div class="players-popover-head"><strong data-i18n='Кто на сервере'>Кто на сервере</strong><span id="playerCountBadge" class="file-count">0 / 0</span></div>
+                <label class="field players-filter" hidden><span data-i18n='Поиск по нику'>Поиск по нику</span><input id="playerFilter" type="search" autocomplete="off" placeholder="Ник" spellcheck="false" data-i18n-placeholder='Ник'></label>
+                <div id="playerList" class="player-list"><div class="empty-players" data-i18n='Никого нет на сервере'>Никого нет на сервере</div></div>
+                <p id="playerListMore" class="connection-summary" hidden></p>
+              </div>
+            </div>
             <div class="summary-item"><span>TPS</span><strong id="serverTps">-</strong></div>
             <div class="summary-item"><span data-i18n='Работает'>Работает</span><strong id="serverUptime">-</strong></div>
           </div>
@@ -111,16 +119,11 @@
                   <div><dt data-i18n='Проверка состава'>Проверка состава</dt><dd id="dashValidation">-</dd></div>
                 </dl>
               </section>
-              <section class="surface players-surface">
-                <div class="section-heading"><div><span class="section-kicker" data-i18n='Онлайн'>Онлайн</span><h2 data-i18n='Игроки'>Игроки</h2></div><span id="playerCountBadge" class="file-count">0 / 0</span></div>
-                <div id="playerList" class="player-list"><div class="empty-players" data-i18n='Никого нет на сервере'>Никого нет на сервере</div></div>
-              </section>
             </div>
           </div>
 
           <section class="surface server-actions-surface">
             <div class="section-heading"><div><span class="section-kicker" data-i18n='Управление'>Управление</span><h2 data-i18n='Действия сервера'>Действия сервера</h2></div></div>
-            <form id="settingsForm" class="standalone-toggle"><label class="toggle-row"><span><strong data-i18n='Разрешить остановку и перезапуск из панели'>Разрешить остановку и перезапуск из панели</strong><small data-i18n='Открывает кнопки «Перезапустить» и «Остановить» ниже, а также обновление агентов с перезапуском.'>Открывает кнопки «Перезапустить» и «Остановить» ниже, а также обновление агентов с перезапуском.</small></span><input id="powerActionsInput" type="checkbox"><i aria-hidden="true"></i></label></form>
             <div class="server-actions">
               <button class="button subtle" type="button" data-quick-command="save-all flush"><svg viewBox="0 0 24 24"><path d="M15.2 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8.8Z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg><span data-i18n='Сохранить мир'>Сохранить мир</span></button>
               <button class="button subtle" type="button" data-quick-command="list"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg><span data-i18n='Проверить игроков'>Проверить игроков</span></button>

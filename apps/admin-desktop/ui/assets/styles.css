@@ -736,6 +736,40 @@ button.attention-row:hover { border-color: var(--line-strong); color: var(--ink)
 .advanced-settings > summary { cursor: pointer; font-size: 12px; color: var(--muted-strong); }
 .advanced-settings .form-grid { margin-top: 11px; }
 .address-toolbar { display: flex; justify-content: space-between; gap: 12px; align-items: start; flex-wrap: wrap; }
+/* ---- who is on the server ---------------------------------------------------
+   The count is in the summary strip, so the names belong under it rather than in a card
+   competing for the same screen. A full server is a thousand names: the list scrolls, only
+   a screenful is ever built, and past twenty players a filter appears. */
+.summary-players { padding: 0; }
+.summary-trigger {
+  position: relative;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 3px;
+  width: 100%; padding: 11px 16px; border: 0; background: transparent;
+  color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.summary-trigger:disabled { cursor: default; }
+.summary-trigger > span { color: var(--muted); font-size: 10px; font-weight: 720; letter-spacing: .05em; text-transform: uppercase; }
+.summary-trigger > strong { font-size: 17px; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.summary-trigger > svg { position: absolute; top: 13px; right: 12px; width: 14px; height: 14px; color: var(--muted); transition: transform 120ms ease; }
+.summary-trigger[aria-expanded="true"] > svg { transform: rotate(180deg); }
+.summary-trigger:disabled > svg { display: none; }
+.summary-trigger:hover:not(:disabled) { background: var(--surface-soft); }
+
+/* Positioned against the viewport, not the strip: the strip clips its own children to keep
+   its rounded corners, and a popover inside it would be cut off at the first row of names. */
+.players-popover {
+  position: fixed; z-index: 50;
+  width: min(340px, calc(100vw - 48px));
+  padding: 12px 14px 10px;
+  border: 1px solid var(--line-strong); border-radius: 9px;
+  background: var(--surface); box-shadow: var(--shadow);
+}
+.players-popover-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.players-filter { margin-bottom: 10px; }
+.players-popover .player-list { max-height: 300px; overflow-y: auto; }
+.players-popover .connection-summary { margin-top: 8px; }
+@media (prefers-reduced-motion: reduce) { .summary-trigger > svg { transition: none; } }
+
 /* ---- explanations that stay out of the way ---------------------------------
    A page of settings should be readable in one pass. Long explanations used to sit in
    expandables that pushed everything else off the screen once opened; now they live behind

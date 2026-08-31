@@ -24,7 +24,6 @@ public final class UdmcConfig {
     public String loaderType = LoaderPlatform.TYPE;
     public String loaderVersion = PlatformDefaults.get("loaderVersion");
     public String languageLoaderVersion = PlatformDefaults.get("languageLoaderVersion");
-    public volatile boolean allowRemotePowerActions = false;
     /** Public game address (host[:port]) that players should join; empty when the admin has not set one. */
     public volatile String gameAddress = "";
     public String manifestPublicKey = "";

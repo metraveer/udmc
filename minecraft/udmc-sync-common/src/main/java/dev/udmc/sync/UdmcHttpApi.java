@@ -450,7 +450,10 @@ public final class UdmcHttpApi {
             payload.put("capabilities", Map.of(
                 "commands", true,
                 "modValidation", true,
-                "powerActions", config.allowRemotePowerActions
+                // Whether this runtime can be stopped and restarted at all, not whether someone
+                // ticked a box. An administrator who can reach this API can already type "stop"
+                // into the console, so a separate switch withheld the button and nothing else.
+                "powerActions", true
             ));
         } else {
             payload.put("rcon", Map.of("enabled", false, "port", 25575));
@@ -517,10 +520,6 @@ public final class UdmcHttpApi {
     private void handlePowerAction(HttpExchange exchange, boolean restart, byte[] body) throws IOException {
         MinecraftServer current = minecraftServer;
 
-        if (!config.allowRemotePowerActions) {
-            respondError(exchange, 403, "REMOTE_POWER_DISABLED", "Remote power actions are disabled.");
-            return;
-        }
 
         PowerRequest request = parseBody(body, PowerRequest.class);
         if (request != null && Boolean.TRUE.equals(request.cancel)) {
@@ -801,8 +800,7 @@ public final class UdmcHttpApi {
         ManifestModels.Manifest manifest = store.updateSettings(request == null ? new ManifestStore.SettingsUpdate() : request);
         respondJson(exchange, 200, Map.of(
             "pack", manifest.pack,
-            "minecraft", manifest.minecraft,
-            "allowRemotePowerActions", config.allowRemotePowerActions
+            "minecraft", manifest.minecraft
         ));
     }
 

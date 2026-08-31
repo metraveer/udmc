@@ -42,7 +42,7 @@ const viewDetails = {
 
 const elements = Object.fromEntries([
   "statusBadge", "statusDot", "serverLabel", "serverUrlInput", "tokenInput", "tokenVisibilityButton",
-  "connectionForm", "settingsForm", "rconForm", "rconEnabledInput",
+  "connectionForm", "rconForm", "rconEnabledInput",
   "rconHostInput", "rconPortInput", "rconPasswordInput", "rememberRconPasswordInput", "rconFields",
   "testRconButton", "rconDetectedBadge", "publishDialog", "publishForm", "publishOpenButton",
   "publishButtonLabel", "publishVersionInput", "publishChangeSummary", "publishRestartNote",
@@ -51,16 +51,18 @@ const elements = Object.fromEntries([
   "bulkSideInput", "clearSelectedButton", "uploadButton", "refreshButton", "clearLogButton", "draftBar",
   "draftStatusTitle", "draftStatusText", "draftChangeCounts", "resetDraftButton", "resetDraftDialog", "resetDraftForm",
   "filesTable", "fileSearchInput", "fileSideFilter", "visibleFileCount", "logOutput", "activityCount",
-  "viewTitle", "viewEyebrow", "toastRegion", "detectedMinecraft", "detectedLoader", "powerActionsInput",
+  "viewTitle", "viewEyebrow", "toastRegion", "detectedMinecraft", "detectedLoader",
   "serverState", "serverPlayers", "serverTps", "serverUptime", "liveBadge", "serverMotd", "serverGamePort",
   "serverEnvironment", "serverWorlds", "serverTickTime", "serverJava", "serverMemoryText", "serverMemoryBar",
-  "playerCountBadge", "playerList", "restartServerButton", "stopServerButton", "commandTransportLabel",
+  "playerCountBadge", "playerList", "playerFilter", "playerListMore", "playersSummary", "playersPopover",
+  "restartServerButton", "stopServerButton", "commandTransportLabel",
   "clearConsoleButton", "consoleOutput", "commandForm", "commandInput", "commandSubmitButton", "powerDialog",
   "powerForm", "powerDialogTitle", "powerDialogText", "powerConfirmButton"
 ].map((id) => [id, document.querySelector(`#${id}`)]));
 elements.uploadButtonLabel = document.querySelector("#uploadButton span");
 
 let selectedFiles = [];
+let playerNames = [];
 let manifest = null;
 let draftState = null;
 let buildBusy = false;
@@ -86,7 +88,6 @@ let refreshRunning = false;
 let refreshQueued = false;
 let packNameDirty = rememberedUi.packNameDirty;
 let profileNameDirty = rememberedUi.profileNameDirty;
-let powerSettingsDirty = rememberedUi.powerDirty;
 let publishRevision = null;
 let publishConnectionRevision = -1;
 let protectedSettings = null;
@@ -115,7 +116,6 @@ restoreRconSettings();
 if (packNameDirty) {
   document.getElementById("packNameInput").value = rememberedUi.packName;
 }
-if (powerSettingsDirty) elements.powerActionsInput.checked = rememberedUi.powerDraft;
 elements.fileSearchInput.value = rememberedUi.fileSearch;
 document.getElementById("commandSearch").value = rememberedUi.commandSearch;
 sideFilter = rememberedUi.side;
@@ -135,7 +135,7 @@ async function adoptConnection(url, token, allowHttp) {
   elements.serverUrlInput.value = url;
   elements.tokenInput.value = token;
   document.getElementById("allowHttpConnection").checked = allowHttp === true;
-  packNameDirty = false; powerSettingsDirty = false;
+  packNameDirty = false;
   manifest = null; draftState = null; serverStatus = null;
   agentUpdates?.reset();
   resetManifest(); resetServerStatus(); renderFilteredFiles();
@@ -257,6 +257,26 @@ function bindEvents() {
   document.querySelectorAll("[data-view]").forEach((button) => {
     button.addEventListener("click", () => navigateTo(button.dataset.view));
   });
+  elements.playersSummary.addEventListener("click", () => togglePlayers());
+  elements.playerFilter.addEventListener("input", () => renderPlayers(playerNames));
+  // Anywhere outside it, or Escape: a popover that will not go away is worse than a card.
+  document.addEventListener("click", event => {
+    if (elements.playersPopover.hidden) return;
+    if (!event.target.closest(".summary-players")) togglePlayers(false);
+  });
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape" && !elements.playersPopover.hidden) togglePlayers(false);
+  });
+  // Anchored to the viewport, so it has to follow when the viewport changes under it.
+  window.addEventListener("resize", () => { if (!elements.playersPopover.hidden) placePlayers(); });
+  document.addEventListener("scroll", () => {
+    if (elements.playersPopover.hidden) return;
+    // Once the count it belongs to has scrolled away, the list is floating over unrelated
+    // content and pointing at nothing. Follow the anchor while it is visible, close after.
+    const anchor = elements.playersSummary.getBoundingClientRect();
+    if (anchor.bottom < 0 || anchor.top > window.innerHeight) togglePlayers(false);
+    else placePlayers();
+  }, true);
   document.getElementById("openJoinButton").addEventListener("click", () => document.getElementById("joinDialog").showModal());
   document.querySelectorAll("[data-close-dialog]").forEach((button) => {
     button.addEventListener("click", () => document.querySelector(`#${button.dataset.closeDialog}`).close());
@@ -275,7 +295,7 @@ function bindEvents() {
     try { url = normalizedServerUrl(); } catch { /* The address may be incomplete while typing. */ }
     elements.tokenInput.value = knownConnection?.url === url ? knownConnection.token : "";
     accessUi?.reset();
-    packNameDirty = false; powerSettingsDirty = false;
+    packNameDirty = false;
     manifest = null; draftState = null; serverStatus = null;
     resetManifest(); resetServerStatus(); renderFilteredFiles();
     setStatus(t("Адрес изменён"), "warn");
@@ -285,15 +305,13 @@ function bindEvents() {
     connectionRevision++; powerWatch = null; lastKnownPower = null; accessUi?.reset();
     workspaceAccess.reset();
     manifest = null; draftState = null; serverStatus = null;
-    packNameDirty = false; powerSettingsDirty = false;
+    packNameDirty = false;
     resetManifest(); resetServerStatus(); renderFilteredFiles();
     setStatus(t("Ключ изменён"), "warn");
   });
   elements.refreshButton.addEventListener("click", () => activeView === "devices" ? accessUi.onOpen() : activeView === "modrinth" ? modrinthUi.onOpen(true) : refresh());
   elements.clearLogButton.addEventListener("click", clearActivity);
-  elements.settingsForm.addEventListener("submit", saveSettings);
   // The switch is the whole setting: it saves itself instead of waiting for a button.
-  elements.powerActionsInput.addEventListener("change", () => { powerSettingsDirty = true; saveSettings(); });
   document.getElementById("packNameInput").addEventListener("input", () => { packNameDirty = true; });
   document.getElementById("packSettingsForm").addEventListener("submit", savePackName);
   document.getElementById("serverProfileName").addEventListener("input", () => { profileNameDirty = true; });
@@ -511,30 +529,6 @@ async function refreshServerStatus(silent = false) {
   }
 }
 
-async function saveSettings(event) {
-  event?.preventDefault();
-  if (buildBusy || !serverStatus) return;
-  const submitButton = event?.submitter;
-  const enabled = elements.powerActionsInput.checked;
-  setBuildBusy(true);
-  setBusy(submitButton, true);
-
-  try {
-    await adminJson("/admin/settings", {
-      allowRemotePowerActions: enabled
-    });
-    powerSettingsDirty = false;
-    addActivity(t("Разрешение управления сервером сохранено."), "success");
-    showToast(t("Настройки сохранены"));
-    await refresh({ silent: true });
-  } catch (error) {
-    handleError(error);
-  } finally {
-    setBusy(submitButton, false);
-    setBuildBusy(false);
-  }
-}
-
 async function savePackName(event) {
   event.preventDefault();
   if (buildBusy) return;
@@ -588,7 +582,7 @@ async function applyProtectedSettings(group, values) {
       connectionRevision++; powerWatch = null; lastKnownPower = null; accessUi?.reset();
       workspaceAccess.reset(); agentUpdates?.reset();
       manifest = null; draftState = null; serverStatus = null;
-      packNameDirty = false; powerSettingsDirty = false;
+      packNameDirty = false;
       resetManifest(); resetServerStatus(); renderFilteredFiles();
       setStatus(t("Настройки подключения изменены"), "warn");
     }
@@ -1059,15 +1053,17 @@ function renderServerStatus(status) {
   const memoryRatio = Number(performance.memoryMaxBytes) > 0 ? Number(performance.memoryUsedBytes) / Number(performance.memoryMaxBytes) : 0;
   elements.serverMemoryBar.style.width = `${Math.min(100, Math.max(0, memoryRatio * 100))}%`;
   elements.playerCountBadge.textContent = `${players.online || 0} / ${players.max || 0}`;
+  elements.playersSummary.disabled = !(players.names || []).length;
+  if (elements.playersSummary.disabled) togglePlayers(false);
   renderPlayers(players.names || []);
 
+  // A dedicated server can always be stopped and restarted; an integrated one cannot. The
+  // check is about what the runtime can do, and every such action asks for confirmation.
   const powerEnabled = Boolean(status.capabilities?.powerActions);
-  elements.settingsForm.querySelectorAll("input,button").forEach(input => { input.disabled = buildBusy; });
-  if (!powerSettingsDirty) elements.powerActionsInput.checked = powerEnabled;
   elements.restartServerButton.disabled = buildBusy || !powerEnabled;
   elements.stopServerButton.disabled = buildBusy || !powerEnabled;
-  elements.restartServerButton.title = powerEnabled ? t("Перезапустить сервер") : t("Разрешите остановку и перезапуск выше");
-  elements.stopServerButton.title = powerEnabled ? t("Остановить сервер") : t("Разрешите остановку и перезапуск выше");
+  elements.restartServerButton.title = powerEnabled ? t("Перезапустить сервер") : t("Этот сервер нельзя перезапустить из панели");
+  elements.stopServerButton.title = powerEnabled ? t("Остановить сервер") : t("Этот сервер нельзя остановить из панели");
   renderPackRestartNotice();
   renderDashboard();
 
@@ -1091,7 +1087,6 @@ function resetManifest() {
 function resetServerStatus() {
   serverStatus = null;
   serverTools?.reset();
-  elements.settingsForm.querySelectorAll("input,button").forEach(input => { input.disabled = true; });
   document.getElementById("manifestSecurityStatus").textContent = t("Нет данных");
   document.getElementById("apiTransportStatus").textContent = "-";
   [elements.serverState, elements.serverPlayers, elements.serverTps, elements.serverUptime, elements.serverMotd,
@@ -1101,6 +1096,8 @@ function resetServerStatus() {
   elements.liveBadge.className = "state-badge neutral";
   elements.serverMemoryBar.style.width = "0%";
   elements.playerCountBadge.textContent = "0 / 0";
+  elements.playersSummary.disabled = true;
+  togglePlayers(false);
   renderPlayers([]);
   elements.restartServerButton.disabled = true;
   elements.stopServerButton.disabled = true;
@@ -1230,28 +1227,64 @@ function renderDashboard() {
   window.lucide?.createIcons();
 }
 
+/**
+ * Who is on the server, kept behind the count in the summary strip.
+ *
+ * A full server is a thousand names, and building a thousand rows on every five-second refresh
+ * would cost more than the answer is worth. Only a screenful is built; the rest is a number,
+ * and the filter searches all of them.
+ */
+const PLAYER_ROWS = 100;
+
 function renderPlayers(players) {
+  playerNames = Array.isArray(players) ? players : [];
+  const query = elements.playerFilter.value.trim().toLowerCase();
+  const matching = query ? playerNames.filter(name => String(name).toLowerCase().includes(query)) : playerNames;
+  // The filter only earns its place once scrolling stops being enough to find someone.
+  elements.playerFilter.closest(".players-filter").hidden = playerNames.length <= 20;
+
   elements.playerList.replaceChildren();
-  if (!players.length) {
+  if (!matching.length) {
     const empty = document.createElement("div");
     empty.className = "empty-players";
-    empty.textContent = t("Никого нет на сервере");
+    empty.textContent = playerNames.length ? t("Никто не подходит под поиск") : t("Никого нет на сервере");
     elements.playerList.append(empty);
+    elements.playerListMore.hidden = true;
     return;
   }
-  players.forEach((player) => {
+
+  const shown = matching.slice(0, PLAYER_ROWS);
+  const rows = document.createDocumentFragment();
+  shown.forEach((player) => {
     const row = document.createElement("div");
     row.className = "player-row";
     const avatar = document.createElement("span");
     avatar.textContent = String(player).slice(0, 1).toUpperCase();
     const name = document.createElement("strong");
     name.textContent = player;
-    const online = document.createElement("span");
-    online.className = "player-online";
-    online.textContent = t("Онлайн");
-    row.append(avatar, name, online);
-    elements.playerList.append(row);
+    row.append(avatar, name);
+    rows.append(row);
   });
+  elements.playerList.append(rows);
+  elements.playerListMore.hidden = matching.length <= shown.length;
+  elements.playerListMore.textContent = t("Показаны первые {0} из {1}. Уточните поиск, чтобы найти игрока.", shown.length, matching.length);
+}
+
+function placePlayers() {
+  const anchor = elements.playersSummary.getBoundingClientRect();
+  const width = elements.playersPopover.offsetWidth || 340;
+  elements.playersPopover.style.top = `${Math.round(anchor.bottom + 6)}px`;
+  // Kept on screen when the strip's players column sits near the right edge.
+  elements.playersPopover.style.left = `${Math.round(Math.max(12, Math.min(anchor.left, window.innerWidth - width - 12)))}px`;
+}
+
+function togglePlayers(open) {
+  const next = open ?? elements.playersPopover.hidden;
+  elements.playersPopover.hidden = !next;
+  elements.playersSummary.setAttribute("aria-expanded", String(next));
+  if (!next) return;
+  placePlayers();
+  elements.playerFilter.focus();
 }
 
 function renderFilteredFiles() {
@@ -1674,7 +1707,6 @@ function saveUiSession() {
       settingsOpen: document.getElementById("serverProfileDialog").open, catalog: modrinthUi?.selected(),
       packName: document.getElementById("packNameInput").value, packNameDirty,
       profileName: document.getElementById("serverProfileName").value, profileNameDirty,
-      powerDraft: elements.powerActionsInput.checked, powerDirty: powerSettingsDirty,
       activity: activityEntries, console: consoleEntries },
     [elements.tokenInput.value, elements.rconPasswordInput.value,
       document.getElementById("pairCodeInput").value, document.getElementById("inviteCode").value]);
@@ -1888,7 +1920,6 @@ function setBuildBusy(busy) {
   document.querySelectorAll("#generatorForm input, #generatorForm select, #generatorForm button, #recoverIdentityButton, #deviceNameInput, #allowHttpConnection, [data-agent-mode], #joinForm input, #joinForm textarea, #joinForm button, #deviceList button, #packSettingsForm input, #packSettingsForm button").forEach(input => { input.disabled = busy; });
   document.getElementById("agentCreateTab").disabled = busy;
   document.getElementById("inviteDeviceButton").disabled = busy || accessRole !== "owner";
-  elements.settingsForm.querySelectorAll("input,button").forEach(input => { input.disabled = busy || !serverStatus; });
   elements.restartServerButton.disabled = busy || !serverStatus?.capabilities?.powerActions;
   elements.stopServerButton.disabled = busy || !serverStatus?.capabilities?.powerActions;
   elements.uploadButton.setAttribute("aria-busy", String(busy));

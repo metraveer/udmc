@@ -212,7 +212,7 @@ test("offline language reload keeps unsaved pack fields and does not reopen serv
   assert.equal(app.requests.length, 0, "An unconfigured app must not contact any default server");
   assert.equal(app.$("draftStatusTitle").textContent, "Черновик недоступен");
   assert.equal(app.$("publishOpenButton").disabled, true);
-  assert.equal(app.$("powerActionsInput").disabled, true);
+  assert.equal(app.$("restartServerButton").disabled, true);
   app.$("serverProfileDialog").close();
   app.w.document.querySelector('[data-view="overview"]').click();
   app.input("packNameInput", "Мой несохранённый мир");
@@ -226,7 +226,7 @@ test("offline language reload keeps unsaved pack fields and does not reopen serv
   assert.equal(reopened.$("packNameInput").value, "Мой несохранённый мир");
   assert.equal(reopened.$("draftStatusTitle").textContent, "Draft unavailable");
   assert.equal(reopened.$("publishOpenButton").disabled, true);
-  assert.equal(reopened.$("powerActionsInput").disabled, true);
+  assert.equal(reopened.$("restartServerButton").disabled, true);
   assert.equal(reopened.requests.length, 0);
 });
 

@@ -290,10 +290,6 @@ public final class ManifestStore {
             config.packName = published.pack.name;
         }
 
-        if (update.allowRemotePowerActions != null) {
-            config.allowRemotePowerActions = update.allowRemotePowerActions;
-        }
-
         config.save(gameDir);
         savePublished(published);
         saveDraft(draft);
@@ -848,7 +844,6 @@ public final class ManifestStore {
 
     public static final class SettingsUpdate {
         public String packName;
-        public Boolean allowRemotePowerActions;
     }
 
     static final class UploadTooLarge extends IOException {

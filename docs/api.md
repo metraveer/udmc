@@ -180,8 +180,7 @@ packName, adminToken, manifestPublicKey, manifestPrivateKey, fingerprint }`.
 
 ```json
 {
-  "packName": "Main Server Pack",
-  "allowRemotePowerActions": true
+  "packName": "Main Server Pack"
 }
 ```
 
@@ -199,11 +198,11 @@ packName, adminToken, manifestPublicKey, manifestPrivateKey, fingerprint }`.
 
 ### `POST /admin/server/restart`
 
-Создаёт `udmc-sync/restart-requested` и корректно останавливает сервер. Повторный запуск выполняет UDMC wrapper или внешний supervisor. Требуется `allowRemotePowerActions: true`.
+Создаёт `udmc-sync/restart-requested` и корректно останавливает сервер. Повторный запуск выполняет UDMC wrapper или внешний supervisor. Доступно на выделенном сервере: `capabilities.powerActions` в `/admin/status` говорит, умеет ли этот процесс останавливаться.
 
 ### `POST /admin/server/stop`
 
-Удаляет маркер перезапуска и корректно останавливает сервер. Требуется `allowRemotePowerActions: true`.
+Удаляет маркер перезапуска и корректно останавливает сервер. Отдельного разрешения не требует: администратор, дошедший до этого запроса, может набрать `stop` в консоли того же API.
 
 ## Manifest
 
