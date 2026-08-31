@@ -1,1 +1,8 @@
 blank_issues_enabled: false
+contact_links:
+  - name: Вопрос по установке или настройке / Setup and usage question
+    url: https://github.com/metraveer/udmc/discussions/categories/q-a
+    about: Не баг, а вопрос «как сделать» — спросите в обсуждениях, там отвечают быстрее. Not a bug, just a question — ask in Discussions.
+  - name: Идея или предложение / Idea or suggestion
+    url: https://github.com/metraveer/udmc/discussions/categories/ideas
+    about: Обсудите замысел до того, как он станет задачей. Talk an idea through before it becomes an issue.
