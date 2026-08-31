@@ -304,6 +304,7 @@ function bindEvents() {
   window.addEventListener("resize", followAnchors);
   document.addEventListener("scroll", followAnchors, true);
   document.getElementById("openJoinButton").addEventListener("click", () => document.getElementById("joinDialog").showModal());
+  document.getElementById("openBackupButton").addEventListener("click", () => document.getElementById("backupDialog").showModal());
   document.querySelectorAll("[data-close-dialog]").forEach((button) => {
     button.addEventListener("click", () => document.querySelector(`#${button.dataset.closeDialog}`).close());
   });

@@ -1172,9 +1172,7 @@
   "Сохранить файл": "Save the file",
   "Будет восстановлен проект «{0}»": "Project “{0}” will be restored",
   "В файле лежит ключ подписи. Храните его как пароль: тот, у кого он есть, может выдать себя за ваш проект.": "The file holds the signing key. Keep it like a password: whoever has it can pass for your project.",
-  "Восстановить проект из копии": "Restore a project from a backup",
   "Выберите файл резервной копии проекта": "Choose the UDMC project backup",
-  "Ключ, которым сервер подписывает сборку, есть только у него. Если сервер потеряется, без копии проект придётся заводить заново, и всем игрокам — заново доверять новому ключу. Копию можно приложить при привязке нового сервера.": "The key the server signs the modpack with exists only there. If the server is lost, without a backup the project has to be started over, and every player has to trust a new key. A backup can be attached when pairing a new server.",
   "Копия проекта загружена. Введите код привязки нового сервера.": "The project backup is loaded. Enter the new server's pairing code.",
   "Копия проекта сохранена.": "The project backup is saved.",
   "Куда сохранить копию проекта": "Where to save the project backup",
@@ -1182,7 +1180,6 @@
   "Сохранить копию проекта": "Save a project backup",
   "Это не файл резервной копии проекта UDMC.": "This is not a UDMC project backup file.",
   "Если сервер не ваш, владелец выдаёт приглашение в разделе «Устройства», а вы вставляете его здесь. Код привязки для этого не нужен: он тратится один раз, когда сервер впервые берут под управление.": "If the server is not yours, its owner issues an invitation under “Devices” and you paste it here. The pairing code is not for this: it is spent once, when the server is first taken over.",
-  "Ключ, которым сервер подписывает сборку, есть только у него. Если сервер потеряется, без копии проект придётся заводить заново, и всем игрокам — заново доверять новому ключу. В файле лежит ключ подписи: храните его как пароль.": "The key the server signs the modpack with exists only there. If the server is lost, without a backup the project has to be started over and every player has to trust a new key. The file holds that signing key: keep it like a password.",
   "Ключ, которым эта панель входит на сервер. Заполняется сам при привязке или по приглашению; вводить вручную нужно только при переносе на другой компьютер.": "The key this panel signs in to the server with. It fills itself in when you pair or accept an invitation; typing it by hand is only for moving to another computer.",
   "Подсказка": "Hint",
   "Привязан": "Paired",
@@ -1232,5 +1229,12 @@
   "В server.properties этого сервера enable-rcon=false. Пока он выключен, пароль не поможет.": "This server's server.properties has enable-rcon=false. While it is off, no password will help.",
   "Задайте адрес и пароль RCON, чтобы панель выполняла команды в консоли сама.": "Set an RCON address and password to have the panel run console commands itself.",
   "Нажмите, чтобы проверить.": "Press to check.",
-  "Ввести код вручную": "Enter the code by hand"
+  "Ввести код вручную": "Enter the code by hand",
+  "Резервная копия": "Backup",
+  "Сохранить копию": "Save a copy",
+  "Восстановить из копии": "Restore from a copy",
+  "Ввести ключ": "Enter the key",
+  "Ключ, которым эта панель входит на сервер. Заполняется сам при привязке или по приглашению. Вручную он нужен в одном случае: панель на новом компьютере, пригласить вас некому — тогда сюда вставляют ключ восстановления из этой самой копии проекта.": "The key this panel signs in with. It fills itself in on pairing or from an invitation. It is typed by hand in one case: the panel is on a new computer and there is nobody to invite you — then the recovery key from this very project backup goes here.",
+  "Ключ, которым сервер подписывает сборку, есть только у него. Если сервер потеряется, без копии проект придётся заводить заново, и всем игрокам — заново доверять новому ключу. Копию можно приложить при привязке нового сервера.": "The key the server signs the modpack with exists only there. If the server is lost, without a backup the project has to be started over, and every player has to trust a new key. A backup can be attached when pairing a new server.",
+  "Ключ, которым сервер подписывает сборку, есть только у него. Если сервер потеряется, без копии проект придётся заводить заново, и всем игрокам — заново доверять новому ключу. В файле лежит ключ подписи: храните его как пароль. Восстановить копию можно на сервер, который ещё не привязан: проект встанет на него, когда вы введёте код привязки.": "The key the server signs the modpack with exists only there. If the server is lost, without a backup the project has to be started over and every player has to trust a new key. The file holds that signing key: keep it like a password. A copy can be restored onto a server that has not been claimed yet: the project moves onto it when you enter its pairing code."
 }

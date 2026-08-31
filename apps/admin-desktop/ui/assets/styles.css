@@ -666,9 +666,18 @@ button.attention-row:hover { border-color: var(--line-strong); color: var(--ink)
 .field-with-icon input:read-only { background: var(--surface-soft); color: var(--muted-strong); opacity: 1; box-shadow: none; }
 /* The pairing code is the one field here that is typed into, so it keeps the look of an open
    field, and the button that uses it appears inside it once there is something to use. */
-.pair-entry { position: relative; display: block; }
+/* Flex, not block: an input laid out inline leaves the baseline's descender space under it,
+   and those few pixels were enough to knock this column out of line with the one beside it. */
+.pair-entry { position: relative; display: flex; }
+.pair-entry > input { flex: 1 1 auto; min-width: 0; }
 .pair-field > .button { width: 100%; justify-content: center; }
-.pair-field > .group-actions { margin-top: 10px; }
+/* The two status lines under the code are usually empty, and an empty one still took a row —
+   enough to push this column out of line with the console beside it. */
+.pair-field > .connection-summary { margin-top: 8px; }
+.pair-field > .connection-summary:empty { display: none; }
+.dialog-block { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+.compact-dialog .muted-copy { margin: 0 0 14px; max-width: 62ch; }
+.compact-dialog .form-actions { justify-content: flex-start; padding-top: 0; border-top: 0; }
 .pair-field > .text-button { width: fit-content; justify-self: start; margin-left: 0; }
 .pair-apply { color: var(--accent); }
 .pair-apply:hover { color: var(--accent-hover); }
@@ -860,6 +869,9 @@ button.attention-row:hover { border-color: var(--line-strong); color: var(--ink)
 
 .setup-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 14px; align-items: end; }
 .setup-row + .setup-row { margin-top: 14px; }
+/* A row whose columns are read as a pair lines up by its labels: the console has nothing
+   under its box, the pairing code has room for what it reports back. */
+.setup-row.paired-row { align-items: start; }
 .setup-row .profile-name-form { margin: 0; }
 @media (max-width: 720px) { .setup-row { grid-template-columns: 1fr; } }
 

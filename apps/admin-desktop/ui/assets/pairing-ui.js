@@ -55,6 +55,9 @@ export function initPairing({ getConnection, onPaired, showToast, getBusy, setBu
     $("pairButton").hidden = viaRcon || !code;
     $("pairButton").disabled = busy || getBusy();
     $("pairRconButton").disabled = busy || getBusy();
+    // A project is put back onto a server that has not been claimed yet; there is nowhere to
+    // put it once one is.
+    $("pairRestoreButton").disabled = busy || getBusy() || section.hidden;
   };
   const report = (error) => showToast(formatAppError(error), "error");
   /**
@@ -186,6 +189,9 @@ export function initPairing({ getConnection, onPaired, showToast, getBusy, setBu
       }
       restoring = project;
       $("pairRestoreState").textContent = t("Будет восстановлен проект «{0}»", project.packName || project.packId || "UDMC");
+      // The next step is the code of the server this project is going onto, and that is on the
+      // page behind this dialog.
+      $("backupDialog").close();
       showToast(t("Копия проекта загружена. Введите код привязки нового сервера."));
     } catch (error) { report(error); }
   };
