@@ -106,6 +106,13 @@ public final class AgentLoginProtocol {
         return current;
     }
 
+    /** Says out loud what was decided about a joining player, and why. */
+    public static Decision announce(String who, Decision decision) {
+        UdmcSync.LOGGER.info("UDMC login verdict for {}: {}", who,
+            decision.valid() ? "ok" : decision.messageKey() + (decision.reject() ? " (refused)" : " (warned)"));
+        return decision;
+    }
+
     public static Decision validate(Answer answer) {
         Query expected = query();
         String offered = offeredClientVersion();

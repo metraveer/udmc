@@ -64,7 +64,8 @@ public abstract class ServerConfigVerifyMixin extends ServerCommonPacketListener
     @Unique private boolean udmc$verdict() {
         udmc$decided = true;
         AgentLoginProtocol.pending(this.connection);
-        AgentLoginProtocol.Decision decision = AgentLoginProtocol.validate(AgentLoginProtocol.takeAnswer(this.connection));
+        AgentLoginProtocol.Decision decision = AgentLoginProtocol.announce(String.valueOf(this.connection.getRemoteAddress()),
+            AgentLoginProtocol.validate(AgentLoginProtocol.takeAnswer(this.connection)));
         if (decision.valid()) return false;
         if (!decision.reject()) {
             // The notice reaches the player once they are in, where they can read and act on it.

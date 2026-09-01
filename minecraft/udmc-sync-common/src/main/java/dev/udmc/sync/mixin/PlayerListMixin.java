@@ -21,7 +21,8 @@ public abstract class PlayerListMixin {
         // A client that answered nothing finishes configuration faster than the deadline, so
         // the verdict lands here instead. Both points show the player the same screen.
         if (!AgentLoginProtocol.enabled() || !AgentLoginProtocol.pending(connection)) return;
-        var decision = AgentLoginProtocol.validate(AgentLoginProtocol.takeAnswer(connection));
+        var decision = AgentLoginProtocol.announce(player.getName().getString(),
+            AgentLoginProtocol.validate(AgentLoginProtocol.takeAnswer(connection)));
         if (decision.valid()) return;
         if (decision.reject()) player.connection.disconnect(AgentLoginNotice.component(decision));
         else player.sendSystemMessage(AgentLoginNotice.component(decision));

@@ -89,7 +89,7 @@ Eight checks. Items 1–3 are the ones that cost a release cycle if wrong.
 
 8. **Fabric API for 26.1.2 does not exist on this machine.** Fetch `fabric-api 0.155.2+26.1.2`, unpack `META-INF/jars/fabric-networking-api-v1-6.3.1+554860db4c.jar`, and re-run two greps: that `CustomPayloadStreamCodecMixin` still ends in `original.call(fallback, id)`, and that `ServerCommonPacketListenerImplMixin.handleCustomPayloadReceivedAsync` still cancels **conditionally**. 26.1.2 is the only line where nothing has ever been executed.
 
-While you are in there, confirm the two known-stale facts: `scripts/runtime-agent-check.js:106` asserts `/agents/install` while `AgentDistribution.instructionsUrl()` returns `serverUrl + "/udmc"` (it cannot pass), and `package.json`'s `npm test` does not run that script at all — so the protocol E2E has been silently absent from CI.
+(Both stale facts named here have since been fixed: the harness speaks the configuration-phase channel, takes the protocol from the agent's own source through `scripts/test-support/mod-protocol.js`, and runs in CI through `npm run e2e:login`.)
 
 ---
 
@@ -221,6 +221,6 @@ Also assert on rows 1–3 that the verdict appears in the server log **before** 
 
 **Configuration has no phase timeout, and that cuts both ways.** Our 200-tick deadline covers our own task; it cannot rescue a player stuck behind *another* mod's configuration task that never finishes. Serial task execution is a shared-fate property of the phase. Document it.
 
-**Two things already broken in the tree, unrelated to this change but in its blast radius:** `runtime-agent-check.js` cannot pass (`/agents/install` vs `/udmc`) and is not in `npm test`; and `AgentLoginProtocol.server` is never cleared when `api.start()` throws, so a dead HTTP API keeps the check armed with a dead download URL. Fix both in this pass.
+**Two things that were broken in the tree when this was written:** `runtime-agent-check.js` could not pass (`/agents/install` vs `/udmc`) and ran nowhere; and `AgentLoginProtocol.server` was never cleared when `api.start()` threw. Both are fixed — the harness now walks nine scenarios against a real server on every push.
 
 **One judgement where I disagree with a critique, stated so the maintainer can overrule me:** the "reconfiguration silently bypasses the check" finding. `handleConfigurationAcknowledged` indeed does not call `startConfiguration`, but reconfiguration is reachable only from the play phase, which is reachable only through the gate on the same `Connection` — so there is nothing to bypass, and `takeWarning`'s `remove` semantics prevent a duplicate notice. I recommend arming only at `startConfiguration` HEAD and adding a DEBUG log if the finish gate ever fires on a connection we never asked, rather than adding a second ask point on `returnToWorld`.

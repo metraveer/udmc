@@ -1,19 +1,21 @@
-// SUPERSEDED. This harness speaks the login-phase question UDMC no longer asks: the check
-// moved to the configuration phase (docs/client-verification.md). It is not wired into
-// `npm test` and has not run in some time. The end-to-end stand covers this ground with a
-// real client against a real server: docs/end-to-end-stand.md.
+// Walks the real handshake against a real running server: a protocol client joins, answers
+// the question the way a given client would, and the verdict is read off the wire.
+//
+// It speaks the configuration-phase channel the agent actually uses, and it does not write
+// the format down: channel names, protocol numbers and the field order all come from the
+// agent's own source through test-support/mod-protocol.js. That is deliberate. The previous
+// version of this file hard-coded the login-phase channel and protocol 1; the check moved
+// phases and this harness kept asserting against a channel that no longer existed. It did
+// not fail - it stopped meaning anything, and was counted as coverage for two releases.
 import assert from "node:assert/strict";
 import { createHash, randomUUID } from "node:crypto";
-import { readFile, realpath, writeFile } from "node:fs/promises";
+import { readdir, readFile, realpath, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { createRequire } from "node:module";
 import { setTimeout as delay } from "node:timers/promises";
 import minecraft from "minecraft-protocol";
 import { unzipSync } from "fflate";
 import { parse as parseToml } from "smol-toml";
-
-const require = createRequire(import.meta.url);
-const { ProtoDef } = require("protodef");
+import { loginProtocol } from "./test-support/mod-protocol.js";
 const root = await realpath(path.resolve(process.argv[2] || "."));
 const qa = await realpath(new URL("../.qa", import.meta.url));
 assert.ok(root.startsWith(qa + path.sep), "Only an isolated .qa runtime fixture is allowed");
@@ -38,20 +40,53 @@ async function request(endpoint, { method = "GET", body, public: isPublic = fals
   return response.headers.get("content-type")?.includes("json") ? response.json() : Buffer.from(await response.arrayBuffer());
 }
 
-function loginProtocol() {
+const wire = await loginProtocol();
+
+function requireProtocolSupport() {
   assert.ok(minecraft.supportedVersions.includes(fixture.minecraft),
     `Protocol test library does not support ${fixture.minecraft}; use API-only actions and the real Minecraft client`);
-  const proto = new ProtoDef();
-  proto.addTypes(require("minecraft-data")(fixture.minecraft).protocol.types);
-  proto.addType("udmcQuery", ["container", [
-  { name: "protocol", type: "varint" }, { name: "pack", type: "string" },
-  { name: "hash", type: "string" }, { name: "url", type: "string" }, { name: "required", type: "bool" },
-]]);
-  proto.addType("udmcAnswer", ["container", [
-  { name: "protocol", type: "varint" }, { name: "pack", type: "string" },
-  { name: "version", type: "string" }, { name: "hash", type: "string" },
-  ]]);
-  return proto;
+}
+
+// The wire, built from the field list the agent's payload classes declare. A field added to
+// the question is picked up here instead of silently shifting every value after it.
+const varint = value => {
+  const out = [];
+  let rest = value;
+  do { let byte = rest & 0x7f; rest >>>= 7; if (rest) byte |= 0x80; out.push(byte); } while (rest);
+  return Buffer.from(out);
+};
+const encode = (fields, values) => Buffer.concat(fields.map((field, index) => {
+  if (field === "varint") return varint(values[index]);
+  if (field === "bool") return Buffer.from([values[index] ? 1 : 0]);
+  const text = Buffer.from(String(values[index]), "utf8");
+  return Buffer.concat([varint(text.length), text]);
+}));
+const decode = (fields, buffer) => {
+  let offset = 0;
+  const readVarint = () => {
+    let result = 0, shift = 0, byte;
+    do { byte = buffer[offset++]; result |= (byte & 0x7f) << shift; shift += 7; } while (byte & 0x80);
+    return result;
+  };
+  return fields.map(field => {
+    if (field === "varint") return readVarint();
+    if (field === "bool") return buffer[offset++] === 1;
+    const length = readVarint();
+    const text = buffer.toString("utf8", offset, offset + length);
+    offset += length;
+    return text;
+  });
+};
+
+/**
+ * The agent jar this fixture is running, found rather than assumed. Its name has changed
+ * three times; a hard-coded one stops pointing at anything and takes the check with it.
+ */
+async function installedAgent() {
+  const mods = path.join(root, "server/mods");
+  const found = (await readdir(mods)).filter(name => name.startsWith("udmc") && name.endsWith(".jar"));
+  assert.equal(found.length, 1, `Exactly one UDMC agent must be installed: ${found.join(", ") || "none"}`);
+  return path.join(mods, found[0]);
 }
 
 function agentVersion(bytes) {
@@ -61,75 +96,211 @@ function agentVersion(bytes) {
     : parseToml(Buffer.from(entries["META-INF/neoforge.mods.toml"]).toString()).mods[0].version;
 }
 
+/**
+ * One join, played by a client of a given kind. Every value the client answers with is taken
+ * from the question the server just asked, so the only thing a mode changes is the one field
+ * it is about.
+ */
+const ANSWER = {
+  current: (query, version) => [wire.protocol, query.packId, version, query.clientHash],
+  // The state every new player starts in: installed, belonging to no project yet. Answering
+  // with the default id instead of an empty one would let it pass for a member of any server
+  // that also kept the default - installed, with nothing synced.
+  unclaimed: (query, version) => [wire.protocol, "", version, ""],
+  other: (query, version) => [wire.protocol, "another-project", version, ""],
+  outdated: query => [wire.protocol, query.packId, "0.0.1", "0".repeat(64)],
+  // Same version, different file: a regenerated jar keeps its number.
+  rebuilt: (query, version) => [wire.protocol, query.packId, version, "0".repeat(64)],
+  incompatible: (query, version) => [wire.protocol + 1, query.packId, version, query.clientHash],
+  silent: () => null,
+};
+
+/** What the player must be told, beyond being let in or turned away. */
+const NOTICE = {
+  current: null,
+  unclaimed: { key: "udmc_sync.login.unclaimed", url: false },
+  other: { key: "udmc_sync.login.foreign", url: true },
+  outdated: { key: "udmc_sync.login.outdated", url: false },
+  rebuilt: { key: "udmc_sync.login.rebuilt", url: false },
+  incompatible: { key: "udmc_sync.login.incompatible", url: true },
+  silent: { key: "udmc_sync.login.missing", url: true },
+};
+
+// The version the server hands out, which is what "same version, different file" is measured
+// against. Read from the server rather than from a file this fixture might not have.
+let offeredVersion = "";
+
+/**
+ * What the server wrote about the joins since the last time we looked. The console reaches the
+ * file through a pipe, so a verdict decided a moment ago may not be on disk yet: wanted means
+ * "wait for at least one line", and draining between joins does not wait at all.
+ */
+const consolePath = path.join(root, "server-console.log");
+let consoleRead = 0;
+async function verdicts(wanted = false) {
+  const deadline = Date.now() + (wanted ? 5000 : 0);
+  do {
+    let text = "";
+    try { text = await readFile(consolePath, "utf8"); } catch { return null; }
+    // The player is named by address in the configuration phase, and an address has colons in
+    // it: the value is found by its own shape rather than by counting separators.
+    const found = [...text.slice(consoleRead).matchAll(/UDMC login verdict for .+?: (udmc_sync\.\S+|ok)/g)].map(match => match[1]);
+    if (found.length || Date.now() >= deadline) { consoleRead = text.length; return found; }
+    await delay(100);
+  } while (true);
+}
+
+/**
+ * The verdict lands on a server tick while the player is still in the configuration phase, or
+ * - if the client finished that phase inside one tick - at the door, where they are placed and
+ * disconnected at once. A real client is never that fast; a bot on loopback is, and when the
+ * refusal falls into the protocol switch the library can close the socket with the packet
+ * still undecoded. So what the player was told is read from the server's own log, and the
+ * packet is checked only when the library did surface it.
+ */
 async function login(mode, reject, warning = false) {
-  const proto = loginProtocol();
-  const events = { query: false, joined: false, warning: false, kicked: "" };
+  requireProtocolSupport();
+  await verdicts();
+  const version = offeredVersion;
+  assert.ok(version, "The offered client version must be known before a client can imitate one");
+  const events = { project: false, query: false, order: [], joined: false, warning: false, kicked: "" };
+  let settle, finish = () => {};
   const client = minecraft.createClient({ host: "127.0.0.1", port: fixture.gamePort,
-    username: `UDMC_${mode}`, version: fixture.minecraft, auth: "offline", profilesFolder: path.join(root, "bot") });
-  client.removeAllListeners("login_plugin_request");
+    // Minecraft names stop at 16 characters, and a longer one fails the handshake with a
+    // decoder error that reads like a protocol fault rather than a name that is too long.
+    username: `UDMC_${mode}`.slice(0, 16), version: fixture.minecraft, auth: "offline", profilesFolder: path.join(root, "bot") });
   client.on("ping", packet => client.write("pong", { id: packet.id }));
-  if (process.env.UDMC_PROTOCOL_TRACE) client.on("packet", (packet, metadata) => console.log(metadata.state, metadata.name, packet.channel || ""));
+  client.on("packet", (packet, metadata) => {
+    if (process.env.UDMC_PROTOCOL_TRACE) console.log(metadata.state, metadata.name, packet.channel || "");
+    // Read by packet name rather than by event, and in every phase: the refusal can arrive in
+    // the configuration phase or at the door, and the two are not named the same way by every
+    // protocol library. Listening for one of them left the other looking like a silent close.
+    if (metadata.name === "disconnect" || metadata.name === "kick_disconnect") {
+      events.kicked = JSON.stringify(packet);
+      events.kickedIn = metadata.state;
+      finish();
+      return;
+    }
+    // Entering the world is the play state beginning, not the login handshake succeeding.
+    // The verdict is reached in the configuration phase, which comes after login success:
+    // taking that for arrival made every rejected client look as though it had got in.
+    if (metadata.state === "play" && !events.joined) {
+      events.joined = true;
+      settle = setTimeout(() => finish(), 1500);
+    }
+  });
   await new Promise((resolve, fail) => {
-    let completed = false, settle;
-    const finish = error => {
+    let completed = false;
+    finish = error => {
       if (completed) return;
       completed = true; clearTimeout(timeout); clearTimeout(settle);
       client.end("UDMC isolated test finished");
       error ? fail(error) : resolve();
     };
-    const timeout = setTimeout(() => finish(new Error(`Login timed out: ${mode} ${JSON.stringify(events)}`)), 20000);
+    // The server decides without an answer after about ten seconds, and "silent" waits for it.
+    const timeout = setTimeout(() => finish(new Error(`Login timed out: ${mode} ${JSON.stringify(events)}`)), 25000);
     client.on("error", finish);
-    client.on("login_plugin_request", packet => {
-      if (packet.channel !== "udmc_sync:login") { client.write("login_plugin_response", { messageId: packet.messageId }); return; }
+    client.on("custom_payload", packet => {
+      const channel = packet.channel;
+      if (channel !== wire.channels.query && channel !== wire.channels.project) return;
+      events.order.push(channel);
+      const data = Buffer.from(packet.data);
+      if (channel === wire.channels.project) {
+        const [, packId, , apiUrl] = decode(wire.fields.project, data);
+        assert.ok(packId && apiUrl, `The offered project must name itself and where it lives: ${packId} ${apiUrl}`);
+        events.project = true;
+        return;
+      }
+      const [protocol, packId, clientHash, url, required] = decode(wire.fields.query, data);
       events.query = true;
-      const query = proto.parsePacketBuffer("udmcQuery", packet.data).data;
-      assert.equal(query.protocol, 1);
-      assert.ok(query.url.endsWith("/udmc"));
-      if (mode === "silent") return;
-      const data = mode === "missing" ? undefined : proto.createPacketBuffer("udmcAnswer", {
-        protocol: 1, pack: mode === "other" ? "other-project" : query.pack,
-        version: "0.3.0", hash: mode === "outdated" ? "0".repeat(64) : query.hash,
-      });
-      client.write("login_plugin_response", { messageId: packet.messageId, data });
+      assert.equal(protocol, wire.queryProtocol, "The question must keep the frozen protocol number");
+      assert.ok(url.endsWith("/udmc"), `The question must carry an address a player can retype: ${url}`);
+      assert.equal(typeof required, "boolean");
+      const answer = ANSWER[mode]({ packId, clientHash }, version);
+      if (answer) client.write("custom_payload", { channel: wire.channels.answer, data: encode(wire.fields.answer, answer) });
     });
-    const disconnected = packet => { events.kicked = JSON.stringify(packet.reason); finish(); };
-    client.on("disconnect", disconnected);
-    client.on("kick_disconnect", disconnected);
-    client.on("login", () => { events.joined = true; settle = setTimeout(() => finish(), 1200); });
+    // Recognised by the notice's own key, not by the address inside it: the reason given to a
+    // client that only has to accept a project carries no address at all any more.
     client.on("system_chat", packet => {
       const content = JSON.stringify(packet);
-      if (content.includes("/udmc")) {
-        events.warning = true;
-        assert.ok(content.includes("open_url"), "The optional-agent notice must have a clickable installation link");
-      }
+      if (!content.includes("udmc_sync.login.")) return;
+      events.warning = true;
+      events.notice = content;
     });
     client.on("end", () => { if (!completed) finish(); });
   });
-  assert.equal(events.query, true, `UDMC login query was not received: ${mode}`);
-  assert.equal(events.joined, !reject, JSON.stringify(events));
-  if (reject) assert.ok(events.kicked.includes("/agents/install"), JSON.stringify(events));
-  else assert.equal(events.warning, warning, JSON.stringify(events));
-  console.log(`PASS login ${mode}: ${reject ? "rejected before world entry" : warning ? "joined with clickable instructions" : "joined without warning"}`);
+
+  // The offer has to arrive before the question. A client that has never seen this server
+  // needs to know who is asking before it answers, and the player who is then turned away
+  // has to find that offer waiting for them.
+  assert.equal(events.project, true, `The project was never offered: ${mode} ${JSON.stringify(events)}`);
+  assert.equal(events.order[0], wire.channels.project, `The offer must precede the question: ${events.order.join(", ")}`);
+  assert.equal(events.query, true, `The question was never asked: ${mode}`);
+  const notice = NOTICE[mode];
+  // The server's own record of what it decided. The protocol library can lose the refusal on
+  // the configuration-to-play switch; this line cannot be lost, and it is what an owner reads
+  // when a player sends them a screenshot.
+  const decided = await verdicts(true);
+  if (decided !== null) {
+    const expected = reject || warning ? notice.key : "ok";
+    assert.ok(decided.includes(expected),
+      `The server must record its verdict as ${expected}, not ${decided.join(", ") || "nothing"}`);
+  }
+  // Refused is the guarantee; which of the two gates refuses is a race this harness cannot
+  // fix. The agent decides on a server tick while the player is still in the configuration
+  // phase, and a client that finishes that phase faster than one tick is caught at the door
+  // instead - placed, then disconnected (PlayerListMixin, by design). A real client is slow
+  // enough that the first gate wins; a bot on loopback is not, so asserting "before the
+  // world" here would make the suite flap. What must never differ is the verdict itself.
+  if (!reject) assert.equal(events.joined, true, `A correct client must reach the world: ${JSON.stringify(events)}`);
+  if (reject) {
+    if (events.kicked) {
+      assert.ok(events.kicked.includes(notice.key), `The refusal must name why: expected ${notice.key} in ${events.kicked}`);
+      // A player whose file is already the right one is not sent to download it again.
+      assert.equal(events.kicked.includes("/udmc"), notice.url,
+        `${notice.key} ${notice.url ? "must" : "must not"} send the player to the install page: ${events.kicked}`);
+    }
+  } else {
+    assert.equal(events.warning, warning, JSON.stringify(events));
+    if (warning) {
+      assert.ok(events.notice.includes(notice.key), `The notice in chat must say the same thing the refusal would: ${events.notice}`);
+      // Where a player is sent to fetch a file, the address has to be clickable: on this
+      // screen retyping it is the alternative.
+      if (notice.url) assert.ok(events.notice.includes("open_url"), "An address shown in chat must be clickable");
+    }
+  }
+  console.log(`PASS login ${mode}: ${reject ? `turned away with ${notice.key}${events.kickedIn ? ` in the ${events.kickedIn} phase` : " (refusal seen in the server log)"}`
+    : warning ? `joined and told why (${notice.key})` : "joined without a notice"}`);
+  return true;
 }
 
 try {
   if (action === "login" || action === "delivery") {
-    if (action === "login") loginProtocol();
-    const initial = await request("/admin/agents");
-    assert.equal(initial.canUpdate, true, JSON.stringify(initial));
-    const bytes = await readFile(path.join(root, "delivery.jar"));
-    await request("/admin/agents/client", { method: "POST", body: bytes, expected: 201 });
-    assert.equal(hash(await request("/agents/download", { public: true })), hash(bytes));
-    console.log("PASS automatic delivery package: authenticated upload, public exact-byte download");
+    if (action === "delivery") {
+      const initial = await request("/admin/agents");
+      assert.equal(initial.canUpdate, true, JSON.stringify(initial));
+      const bytes = await readFile(path.join(root, "delivery.jar"));
+      await request("/admin/agents/client", { method: "POST", body: bytes, expected: 201 });
+      assert.equal(hash(await request("/agents/download", { public: true })), hash(bytes));
+      console.log("PASS automatic delivery package: authenticated upload, public exact-byte download");
+    }
     await request("/admin/agents/settings", { method: "POST", body: { requireClient: true } });
     if (action === "login") {
-      await login("missing", true);
-      await login("other", true);
-      await login("outdated", true);
-      await login("silent", true);
+      requireProtocolSupport();
+      // A server publishes the file it runs, so there is nothing to upload first: what
+      // players download is what the server started with, and the question is asked about it.
+      const agents = await request("/admin/agents");
+      assert.ok(agents.client?.sha256, `The server must publish its own file before it can ask about one: ${JSON.stringify(agents)}`);
+      offeredVersion = agents.client.version;
+      // Every verdict a player can receive, walked over the wire against a running server.
+      for (const mode of ["unclaimed", "other", "outdated", "rebuilt", "incompatible", "silent"]) await login(mode, true);
       await login("current", false);
+      // With the rule off nothing is turned away: the same wrong client gets in and is told
+      // what to do there, which is the only reason it ever reaches the instructions.
       await request("/admin/agents/settings", { method: "POST", body: { requireClient: false } });
-      await login("missing", false, true);
+      await login("unclaimed", false, true);
+      await login("silent", false, true);
+      await request("/admin/agents/settings", { method: "POST", body: { requireClient: true } });
     }
   } else if (action === "required" || action === "optional") {
     const state = await request("/admin/agents/settings", { method: "POST", body: { requireClient: action === "required" } });
@@ -137,7 +308,7 @@ try {
     console.log(`PASS saved client policy: ${action}`);
   } else if (action === "update") {
     const config = await readFile(path.join(root, "server/config/udmc-sync.json"));
-    const installed = path.join(root, "server/mods/udmc-sync-server.jar");
+    const installed = await installedAgent();
     const oldHash = hash(await readFile(installed));
     const bundle = await readFile(path.join(root, "update.zip"));
     const entries = unzipSync(bundle);
@@ -175,7 +346,7 @@ try {
     assert.equal(state.canUpdate, true);
     assert.equal(state.currentVersion, before.version);
     assert.equal(state.client.sha256, before.clientHash);
-    assert.equal(hash(await readFile(path.join(root, "server/mods/udmc-sync-server.jar"))), before.serverHash);
+    assert.equal(hash(await readFile(await installedAgent())), before.serverHash);
     assert.equal(hash(await readFile(path.join(root, "server/config/udmc-sync.json"))), before.configHash);
     await request("/admin/agents/settings", { method: "POST", body: { requireClient: true } });
     if (action === "restart") await login("current", false);

@@ -55,6 +55,37 @@ jobs:
           name: udmc-sync-agent
           path: apps/admin-desktop/src-tauri/agent-templates/
 
+  login:
+    name: Player login against a real server
+    runs-on: ubuntu-latest
+    # The handshake is where the bugs that stop people playing live, and no unit test reaches
+    # it. minecraft-protocol knows 1.21.1 and not 26.x, so this walks 1.21.1; the payload
+    # codecs the other versions use are held to it by consistency.test.js.
+    timeout-minutes: 25
+    env:
+      GRADLE_OPTS: -Dorg.gradle.java.installations.fromEnv=JAVA_HOME_21_X64,JAVA_HOME_25_X64
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: |
+            21
+            25
+      - uses: gradle/actions/setup-gradle@v4
+      - run: npm ci
+      - run: npm run minecraft:build
+      - run: npm run e2e:login -- 1.21.1
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: login-server-console
+          path: .qa/fabric-1.21.1-e2e/server-console.log
+
   windows:
     name: UDMC Control
     needs: agents
