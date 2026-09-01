@@ -98,9 +98,21 @@ public final class AgentUpdateTest {
             distribution.setRequired(true);
             var missing = AgentLoginProtocol.validate(null);
             check(missing.reject() && missing.messageKey().equals("udmc_sync.login.missing"), "Required agent denies and identifies a missing client");
-            var outdated = AgentLoginProtocol.validate(new AgentLoginProtocol.Answer(AgentLoginProtocol.PROTOCOL, config.packId, "test", Hashes.sha256(client)));
+            // Older than what the server hands out, by version. The bytes are no longer part
+            // of the verdict: one file serves everyone, so the same version really is the same
+            // file, and demanding an exact match locked out anyone whose launcher had updated
+            // the mod ahead of the server.
+            var outdated = AgentLoginProtocol.validate(new AgentLoginProtocol.Answer(AgentLoginProtocol.PROTOCOL, config.packId, "0.0.1", ""));
             check(outdated.reject() && outdated.messageKey().equals("udmc_sync.login.outdated"), "Old agent is rejected with a typed reason");
-            check(AgentLoginProtocol.validate(new AgentLoginProtocol.Answer(AgentLoginProtocol.PROTOCOL, config.packId, "test", Hashes.sha256(newer))).valid(), "Matching agent is accepted");
+            check(AgentLoginProtocol.validate(new AgentLoginProtocol.Answer(AgentLoginProtocol.PROTOCOL, config.packId, PlatformDefaults.get("agentVersion"), "")).valid(),
+                "The version the server hands out is accepted, whatever the file's hash");
+            // Ahead is not a problem: the question is frozen, so a newer client and an older
+            // server understand each other. A launcher that updates first must not lock anyone out.
+            check(AgentLoginProtocol.validate(new AgentLoginProtocol.Answer(AgentLoginProtocol.PROTOCOL, config.packId, "99.0.0", "")).valid(),
+                "A client ahead of the server must be let in, not turned away");
+            // A version nobody can parse is not evidence of anything.
+            check(AgentLoginProtocol.validate(new AgentLoginProtocol.Answer(AgentLoginProtocol.PROTOCOL, config.packId, "not-a-version", "")).valid(),
+                "An unreadable version must not turn a player away");
             var elsewhereDecision = AgentLoginProtocol.validate(new AgentLoginProtocol.Answer(AgentLoginProtocol.PROTOCOL, "foreign", "test", Hashes.sha256(newer)));
             check(elsewhereDecision.reject() && elsewhereDecision.messageKey().equals("udmc_sync.login.foreign"), "Another project is named as another project, not as a missing mod");
             check(elsewhereDecision.args().equals(java.util.List.of(config.packId)), "The reason must name the project this server needs");
@@ -123,12 +135,11 @@ public final class AgentUpdateTest {
             var incompatible = AgentLoginProtocol.validate(new AgentLoginProtocol.Answer(AgentLoginProtocol.PROTOCOL + 1, config.packId, "9.9.9", Hashes.sha256(newer)));
             check(incompatible.reject() && incompatible.messageKey().equals("udmc_sync.login.incompatible"),
                 "A client speaking another protocol is named as such, not as missing");
-            // Same version, different file: a regenerated client keeps its version, and
-            // "outdated: 0.3.0 against 0.3.0" would explain nothing to the player reading it.
-            var rebuilt = AgentLoginProtocol.validate(new AgentLoginProtocol.Answer(AgentLoginProtocol.PROTOCOL,
-                config.packId, PlatformDefaults.get("agentVersion"), Hashes.sha256(client)));
-            check(rebuilt.reject() && rebuilt.messageKey().equals("udmc_sync.login.rebuilt"),
-                "A different file of the same version is named as rebuilt, not as outdated");
+            // The same version built from different bytes is the same version. There was a
+            // verdict for this once, from the days when every project had its own jar.
+            check(AgentLoginProtocol.validate(new AgentLoginProtocol.Answer(AgentLoginProtocol.PROTOCOL,
+                config.packId, PlatformDefaults.get("agentVersion"), Hashes.sha256(client))).valid(),
+                "Bytes are not part of the verdict any more");
 
             // Turning a player away is the server's rule, not the verdict's. With the rule off
             // every one of these still fails - and every one of them lets the player in, which
@@ -138,6 +149,7 @@ public final class AgentUpdateTest {
                 null,
                 new AgentLoginProtocol.Answer(AgentLoginProtocol.PROTOCOL, "", "0.21.0", ""),
                 new AgentLoginProtocol.Answer(AgentLoginProtocol.PROTOCOL, "foreign", "test", Hashes.sha256(newer)),
+                new AgentLoginProtocol.Answer(AgentLoginProtocol.PROTOCOL, config.packId, "0.0.1", ""),
                 new AgentLoginProtocol.Answer(AgentLoginProtocol.PROTOCOL + 1, config.packId, "9.9.9", ""),
             }) {
                 var decision = AgentLoginProtocol.validate(answer);

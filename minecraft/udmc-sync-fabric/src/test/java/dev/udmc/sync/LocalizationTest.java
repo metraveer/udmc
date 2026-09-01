@@ -43,7 +43,7 @@ public final class LocalizationTest {
         check(login.getContents() instanceof TranslatableContents contents && contents.getKey().equals("udmc_sync.login.notice"), "Login notice must use a Minecraft translation with a clean-client fallback");
         // A client that belongs to this project repairs itself at the next launch: telling
         // that player to download a file sends them to do by hand what already happens.
-        for (var healing : List.of("udmc_sync.login.outdated", "udmc_sync.login.rebuilt")) {
+        for (var healing : List.of("udmc_sync.login.outdated")) {
             var advice = AgentLoginNotice.component(new AgentLoginProtocol.Decision(false, true, healing,
                 en.get(healing), List.of("0.17.1", "0.17.0"), "https://127.0.0.1/udmc", "0.17.1", "0.17.1", "udmc-main", "0.17.0", "udmc-main"));
             check(((TranslatableContents) advice.getContents()).getKey().equals("udmc_sync.login.restart"),

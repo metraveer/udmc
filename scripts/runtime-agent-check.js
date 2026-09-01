@@ -109,8 +109,12 @@ const ANSWER = {
   unclaimed: (query, version) => [wire.protocol, "", version, ""],
   other: (query, version) => [wire.protocol, "another-project", version, ""],
   outdated: query => [wire.protocol, query.packId, "0.0.1", "0".repeat(64)],
-  // Same version, different file: a regenerated jar keeps its number.
-  rebuilt: (query, version) => [wire.protocol, query.packId, version, "0".repeat(64)],
+  // A launcher that installed a newer build than the server hands out. The question is frozen,
+  // so this client understands the server perfectly - and used to be turned away for it.
+  ahead: query => [wire.protocol, query.packId, "99.0.0", "0".repeat(64)],
+  // The version the server hands out, from a file with different bytes. Bytes are not part of
+  // the verdict any more: one file serves everyone, so the same version is the same file.
+  otherBuild: (query, version) => [wire.protocol, query.packId, version, "0".repeat(64)],
   incompatible: (query, version) => [wire.protocol + 1, query.packId, version, query.clientHash],
   silent: () => null,
 };
@@ -121,7 +125,8 @@ const NOTICE = {
   unclaimed: { key: "udmc_sync.login.unclaimed", url: false },
   other: { key: "udmc_sync.login.foreign", url: true },
   outdated: { key: "udmc_sync.login.outdated", url: false },
-  rebuilt: { key: "udmc_sync.login.rebuilt", url: false },
+  ahead: null,
+  otherBuild: null,
   incompatible: { key: "udmc_sync.login.incompatible", url: true },
   silent: { key: "udmc_sync.login.missing", url: true },
 };
@@ -293,8 +298,12 @@ try {
       assert.ok(agents.client?.sha256, `The server must publish its own file before it can ask about one: ${JSON.stringify(agents)}`);
       offeredVersion = agents.client.version;
       // Every verdict a player can receive, walked over the wire against a running server.
-      for (const mode of ["unclaimed", "other", "outdated", "rebuilt", "incompatible", "silent"]) await login(mode, true);
+      for (const mode of ["unclaimed", "other", "outdated", "incompatible", "silent"]) await login(mode, true);
       await login("current", false);
+      // Neither of these may be turned away: one is ahead of the server, the other is the
+      // same version from a different build. Both used to be refused on an exact hash.
+      await login("ahead", false);
+      await login("otherBuild", false);
       // With the rule off nothing is turned away: the same wrong client gets in and is told
       // what to do there, which is the only reason it ever reaches the instructions.
       await request("/admin/agents/settings", { method: "POST", body: { requireClient: false } });

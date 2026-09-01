@@ -125,14 +125,29 @@ public final class AgentLoginProtocol {
         if (!expected.packId.equals(answer.packId)) {
             return invalid(expected, offered, answer.version, answer.packId, "udmc_sync.login.foreign", expected.packId);
         }
-        if (!expected.clientHash.isBlank() && !expected.clientHash.equals(answer.jarHash)) {
-            // Regenerating the client JAR - a changed address, project name or network - keeps
-            // the agent version. Calling that "outdated: 0.17.1 against 0.17.1" explains nothing.
-            return offered.equals(answer.version)
-                ? invalid(expected, offered, answer.version, answer.packId, "udmc_sync.login.rebuilt", offered)
-                : invalid(expected, offered, answer.version, answer.packId, "udmc_sync.login.outdated", offered, answer.version);
+        // Not older than what this server hands out - the version, not the bytes.
+        //
+        // Byte-identity is a leftover from the days when every project had its own jar. One
+        // file serves everyone now, so the same version from the server and from a mod site is
+        // the same file, and demanding an exact match locked out anyone whose launcher had
+        // updated the mod ahead of the server. It never was a security boundary either: the
+        // client is the player's machine and can report whatever hash it likes.
+        //
+        // Ahead is fine: the question this check rides on is frozen, so a newer client and an
+        // older server understand each other. Only behind is a problem, and only then is there
+        // something for the player to do.
+        if (!offered.isBlank() && behind(answer.version, offered)) {
+            return invalid(expected, offered, answer.version, answer.packId, "udmc_sync.login.outdated", offered, answer.version);
         }
         return new Decision(true, false, "", "", List.of(), expected.downloadUrl, agentVersion(), offered, expected.packId, answer.version, answer.packId);
+    }
+
+    /** Whether the reported version is older than the one this server hands out. */
+    private static boolean behind(String reported, String offered) {
+        try { return AgentPackages.compareVersions(reported, offered) < 0; }
+        // A version this build cannot read is not evidence of anything: let them in rather
+        // than turn a player away over a number nobody can compare.
+        catch (IOException | RuntimeException error) { return false; }
     }
 
     /** The version of the client JAR this server hands out, or "" when none is published. */

@@ -10,6 +10,15 @@
 - **Ссылки:** исходники, трекер и вики — https://github.com/metraveer/udmc
 - **Иконка:** `apps/admin-desktop/src-tauri/icons/icon-256.png`
 
+## Что должно быть сделано до публикации
+
+- [x] **Проверка входа сравнивает версии, а не байты.** Пока сервер требовал побайтового
+  совпадения, лаунчер, обновивший мод с Modrinth раньше сервера, запирал игрока снаружи, а наше
+  самообновление и лаунчер по очереди возвращали каждый свой файл. Разбор — в
+  [client-verification.md](client-verification.md).
+- [ ] Пройти матрицу конфигураций на 26.1.2, 26.2 и NeoForge: автоматический сквозной вход
+  умеет только 1.21.1.
+
 ## Краткое описание (summary)
 
 Your server's modpack, installed by the server itself. One file for the server and for every

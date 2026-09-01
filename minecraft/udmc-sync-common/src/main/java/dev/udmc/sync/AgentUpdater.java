@@ -197,7 +197,12 @@ final class AgentUpdater {
         long seen = Files.exists(sequenceFile) ? Long.parseLong(AgentUpdateHelper.read(sequenceFile).getProperty("sequence", "0")) : 0;
         if (sequence < seen) throw Messages.error("udmc_sync.error.replay");
         Path current = installed(gameDir);
-        if (Hashes.sha256(current).equals(descriptor.getProperty("sha256"))) {
+        // Only when this client is behind. It used to fire on any difference in bytes, which
+        // meant a player whose launcher had already installed a newer build got it overwritten
+        // with an older one - and the launcher put its own back, and round it went. Being ahead
+        // is allowed at the door too, so there is nothing to correct.
+        String running = PlatformDefaults.get("agentVersion"), published = descriptor.getProperty("version", "");
+        if (published.isBlank() || AgentPackages.compareVersions(running, published) >= 0) {
             rememberSequence(sequenceFile, sequence);
             return false;
         }

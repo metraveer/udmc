@@ -41,7 +41,7 @@ public final class AgentLoginNotice {
      * that belongs to another project and cannot verify this server's signature.
      */
     private static boolean selfHealing(String messageKey) {
-        return "udmc_sync.login.outdated".equals(messageKey) || "udmc_sync.login.rebuilt".equals(messageKey);
+        return "udmc_sync.login.outdated".equals(messageKey);
     }
 
     /**

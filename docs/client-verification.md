@@ -187,6 +187,28 @@ So `ServerConfigVerifyMixin` only asks and records; `PlayerListMixin` decides. T
 a refused player is placed for the part of a tick it takes to disconnect them, so the log and
 the chat show them joining and leaving. That is the price of being told why, and it is worth it.
 
+### The verdict compares versions, not bytes (2026-09-01)
+
+The check used to demand that the player's file be byte-identical to the one the server hands
+out, and had a verdict of its own for a mismatch at the same version (`rebuilt`). That belonged
+to the days when every project had its own jar with its own settings baked in. One file serves
+every server and every player now, so the same version really is the same file — and the exact
+match had two costs and no benefit:
+
+- it locked out anyone whose launcher had installed a newer build than the server ran, which is
+  the ordinary state of affairs the moment the mod is published on a mod site;
+- as a defence it was never anything: the client is the player's machine and reports whatever
+  hash it likes.
+
+So the rule is now **not older than the version this server hands out**. Ahead is fine — the
+question is frozen, so a newer client and an older server understand each other. A version the
+server cannot parse lets the player in: an unreadable number is not evidence of anything. The
+client's own self-update follows the same rule and fires only when it is behind, so it no longer
+overwrites what a launcher installed and no longer trades places with it.
+
+The query still carries `clientHash`: the question's shape is frozen and clients read it by
+position. It is simply no longer part of the verdict.
+
 ### Why the consent cannot be given inside the join (measured 2026-09-01)
 
 The obvious improvement is to ask during the join instead of after a refusal: the server offers
@@ -236,7 +258,6 @@ hurts: every previous attempt at this transport worked in exactly one configurat
 |---|---|---|
 | `current` | correct answer | joins, no notice |
 | `outdated` | different version + hash | rejected, `login.restart` wording, **no** URL in the message |
-| `rebuilt` | same version, different hash | rejected, `login.restart`, no URL |
 | `other` | different packId, blank hash | rejected, message names this server's packId |
 | `vanilla` | never registers, never answers | rejected **fast** (well under 1 s, via the finish trigger), message contains `/udmc` |
 | `silent` | registers, then never answers and never finishes | rejected at ~10 s via the deadline |
@@ -252,7 +273,7 @@ hurts: every previous attempt at this transport worked in exactly one configurat
 | 3 | ″ | stock **vanilla** client, no loader | rejected, readable text, client log clean |
 | 4 | Fabric 1.21.1, **no** Fabric API anywhere | correct client | joins clean — **the case 0.18.0 gets right; must not regress** |
 | 5 | API on server only, then client only | correct client | joins clean both ways (asymmetric, never tested before) |
-| 6 | any | UDMC of another project / stale hash / regenerated jar | `foreign` / `outdated` / `rebuilt`, both version lines present |
+| 6 | any | UDMC of another project / an older version / a newer one | `foreign` / `outdated` / joins, both version lines present |
 | 7 | Fabric **26.2** | rows 1–4 | same |
 | 8 | Fabric **26.1.2** | rows 1–4 | same — nothing has ever run on this line |
 | 9 | NeoForge 21.1.248 | Neo client with / without UDMC | same verdicts, **our** notice not NeoForge's; check for `getCodec` WARN lines (there should be none, since we register properly) |
