@@ -111,6 +111,54 @@ public final class AgentUpdateTest {
             var elsewhere = AgentLoginProtocol.answer(new AgentLoginProtocol.Query(AgentLoginProtocol.QUERY_PROTOCOL, "another-project", "", "", true));
             check(elsewhere != null && elsewhere.packId().equals(config.packId) && elsewhere.jarHash().isBlank(),
                 "A client of another project must answer, naming its project and withholding its fingerprint");
+            // Every verdict a player can receive, checked in the one place where a published
+            // client exists to compare against. Two of them were never covered, and both are
+            // states real people arrive in: a client that belongs to no project yet is where
+            // every new player starts, and a client from another protocol has to be named as
+            // such instead of being read as absent.
+            var unclaimed = AgentLoginProtocol.validate(new AgentLoginProtocol.Answer(AgentLoginProtocol.PROTOCOL, "", "0.21.0", ""));
+            check(unclaimed.reject() && unclaimed.messageKey().equals("udmc_sync.login.unclaimed"),
+                "A client that belongs to no project yet must be asked to accept one, not to reinstall");
+            check(unclaimed.args().equals(java.util.List.of(config.packId)), "The reason must name the project being offered");
+            var incompatible = AgentLoginProtocol.validate(new AgentLoginProtocol.Answer(AgentLoginProtocol.PROTOCOL + 1, config.packId, "9.9.9", Hashes.sha256(newer)));
+            check(incompatible.reject() && incompatible.messageKey().equals("udmc_sync.login.incompatible"),
+                "A client speaking another protocol is named as such, not as missing");
+            // Same version, different file: a regenerated client keeps its version, and
+            // "outdated: 0.3.0 against 0.3.0" would explain nothing to the player reading it.
+            var rebuilt = AgentLoginProtocol.validate(new AgentLoginProtocol.Answer(AgentLoginProtocol.PROTOCOL,
+                config.packId, PlatformDefaults.get("agentVersion"), Hashes.sha256(client)));
+            check(rebuilt.reject() && rebuilt.messageKey().equals("udmc_sync.login.rebuilt"),
+                "A different file of the same version is named as rebuilt, not as outdated");
+
+            // Turning a player away is the server's rule, not the verdict's. With the rule off
+            // every one of these still fails - and every one of them lets the player in, which
+            // is how they get far enough to be told what to do.
+            distribution.setRequired(false);
+            for (var answer : new AgentLoginProtocol.Answer[] {
+                null,
+                new AgentLoginProtocol.Answer(AgentLoginProtocol.PROTOCOL, "", "0.21.0", ""),
+                new AgentLoginProtocol.Answer(AgentLoginProtocol.PROTOCOL, "foreign", "test", Hashes.sha256(newer)),
+                new AgentLoginProtocol.Answer(AgentLoginProtocol.PROTOCOL + 1, config.packId, "9.9.9", ""),
+            }) {
+                var decision = AgentLoginProtocol.validate(answer);
+                check(!decision.valid() && !decision.reject(), "Without the rule nothing is turned away: " + decision.messageKey());
+            }
+            distribution.setRequired(true);
+
+            // The client half of the same state: installed, belonging to nothing, and saying so.
+            // Answering with the default project id instead would let it pass for a member of
+            // any server that happens to use the default too - installed, with nothing synced.
+            AgentLoginProtocol.configureClient(new UdmcConfig());
+            var freshAnswer = AgentLoginProtocol.answer(new AgentLoginProtocol.Query(AgentLoginProtocol.QUERY_PROTOCOL, config.packId, "", "", true));
+            check(freshAnswer != null && freshAnswer.packId().isEmpty(), "An unclaimed client answers, and names no project");
+            check(AgentLoginProtocol.validate(freshAnswer).messageKey().equals("udmc_sync.login.unclaimed"),
+                "The server has to read that answer as unclaimed - this is the first join of every player");
+            // A question from a protocol this client cannot read goes unanswered on purpose:
+            // a malformed answer would be read as a wrong client rather than as an old one.
+            check(AgentLoginProtocol.answer(new AgentLoginProtocol.Query(AgentLoginProtocol.QUERY_PROTOCOL + 1, config.packId, "", "", true)) == null,
+                "A question this client cannot read must go unanswered");
+            AgentLoginProtocol.configureClient(config);
+
             check(!missing.messageFallback().isBlank() && !outdated.messageFallback().isBlank() && !elsewhereDecision.messageFallback().isBlank(), "Login reasons require clean-client fallbacks");
             check(AgentLoginProtocol.query().downloadUrl().endsWith("/udmc"), "Login points to instructions a player can retype");
             // Before anything is published there is nothing to compare against: a correct
