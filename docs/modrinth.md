@@ -87,6 +87,20 @@ The app, the guide and the source: **https://github.com/metraveer/udmc**
 **Minecraft 1.21.1** (Java 21), **26.1.2** and **26.2** (Java 25). Fabric on all three, NeoForge
 on 1.21.1. MIT licence.
 
+### How this is built
+
+Most of the code here is written with Claude, from the author's direction: what to build, what to
+refuse, and what to test. That is why this project carries Modrinth's AI-generated content label —
+the label is on the code and on this page's text.
+
+What that does not mean is untested. Every release is walked by hand on real servers and real
+clients — the player's first join, on Fabric 1.21.1, 26.1.2 and 26.2 and on NeoForge — and an
+automated stand joins a running server as nine different kinds of client on every change, from
+"no mod at all" to "a version newer than the server's".
+
+No image here came out of a generator: the icon is Lucide's `package` glyph (ISC) on a plain
+background, and the screenshots are of the running program.
+
 ---
 
 ## Сборка модпака едет с сервера сама
@@ -145,3 +159,17 @@ on 1.21.1. MIT licence.
 
 **Minecraft 1.21.1** (Java 21), **26.1.2** и **26.2** (Java 25). Fabric — все три, NeoForge —
 1.21.1. Лицензия MIT.
+
+### Как это сделано
+
+Большая часть кода здесь написана с помощью Claude, по направлению автора: что делать, чего не
+делать и что проверять. Поэтому у проекта стоит метка Modrinth об AI-контенте — она про код и
+про текст этой страницы.
+
+Что она не означает — так это «не проверено». Каждый выпуск проходят руками на настоящих
+серверах и настоящих клиентах: первый вход игрока на Fabric 1.21.1, 26.1.2 и 26.2 и на NeoForge.
+Плюс на каждое изменение автоматический стенд заходит на работающий сервер девятью разными
+клиентами — от «мода нет вовсе» до «версия новее, чем у сервера».
+
+Ни одна картинка здесь не вышла из генератора: иконка — глиф `package` из набора Lucide (ISC) на
+однотонном фоне, скриншоты — снимки работающей программы.
