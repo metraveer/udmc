@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "productName": "UDMC Control",
-  "version": "0.21.0",
+  "version": "0.21.1",
   "identifier": "dev.udmc.control",
   "build": {
     "beforeDevCommand": "",
