@@ -3,9 +3,15 @@
   "id": "udmc_sync",
   "version": "${version}",
   "name": "UDMC",
-  "description": "Distributes managed modpack files from a Minecraft server to Fabric clients.",
+  "description": "Keeps a server's modpack in sync with its players. The same file goes on the server and in every player's mods folder, and nothing inside it is configured for one project.",
   "authors": ["UDMC contributors"],
-  "license": "All-Rights-Reserved",
+  "contact": {
+    "homepage": "https://github.com/metraveer/udmc",
+    "sources": "https://github.com/metraveer/udmc",
+    "issues": "https://github.com/metraveer/udmc/issues"
+  },
+  "license": "MIT",
+  "icon": "assets/udmc_sync/icon.png",
   "environment": "*",
   "entrypoints": {
     "main": [
