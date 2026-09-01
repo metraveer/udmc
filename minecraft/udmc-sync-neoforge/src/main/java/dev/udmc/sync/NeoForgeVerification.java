@@ -75,8 +75,11 @@ final class NeoForgeVerification {
     /** Reached while the player is still configuring, where a disconnect reason still reads. */
     private static void verdict(ServerConfigurationPacketListener listener) {
         AgentLoginProtocol.pending(listener.getConnection());
-        AgentLoginProtocol.Decision decision =
-            AgentLoginProtocol.validate(AgentLoginProtocol.takeAnswer(listener.getConnection()));
+        // Named in the log like every other verdict: an owner holding a player's screenshot has
+        // to find the matching line, and this branch is the one NeoForge servers take.
+        AgentLoginProtocol.Decision decision = AgentLoginProtocol.announce(
+            String.valueOf(listener.getConnection().getRemoteAddress()),
+            AgentLoginProtocol.validate(AgentLoginProtocol.takeAnswer(listener.getConnection())));
         if (decision.reject()) {
             listener.disconnect(AgentLoginNotice.component(decision));
             return;

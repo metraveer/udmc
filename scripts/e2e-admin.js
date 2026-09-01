@@ -8,7 +8,8 @@ import path from "node:path";
 // The stand's game version, not a constant: hard-coding one made every command silently
 // address a stand that might not be the one running. Pass it after the action.
 const VERSION = process.argv.slice(2).find(argument => /^\d/.test(argument)) || "26.2";
-const ROOT = path.resolve(".qa", `fabric-${VERSION}-e2e`);
+const LOADER = process.argv.includes("neoforge") ? "neoforge" : "fabric";
+const ROOT = path.resolve(".qa", `${LOADER}-${VERSION}-e2e`);
 const FIXTURE = path.join(ROOT, "fixture.json");
 const fixture = JSON.parse(readFileSync(FIXTURE, "utf8"));
 const session = randomUUID();
@@ -52,7 +53,7 @@ async function pair() {
 
 // One process holds one session, so the workspace lease travels with it and is released
 // at the end - the way Control behaves, instead of parking a 90-second lock per command.
-for (const action of process.argv.slice(2).filter(a => a !== "status" && a !== VERSION)) {
+for (const action of process.argv.slice(2).filter(a => a !== "status" && a !== VERSION && a !== LOADER)) {
   if (action === "pair") {
     await pair();
   } else if (action.startsWith("require")) {

@@ -9,9 +9,12 @@ import { randomBytes } from "node:crypto";
 import path from "node:path";
 
 const VERSION = process.argv[2] || "26.2";
-const ROOT = path.resolve(".qa", `fabric-${VERSION}-e2e`);
-const TEMPLATE = path.resolve("minecraft/udmc-sync-fabric/build", VERSION, "libs",
-  `udmc-sync-fabric-${VERSION}-${JSON.parse(readFileSync("package.json", "utf8")).version}.jar`);
+// NeoForge has a verification path of its own - a configuration task rather than a tick - so a
+// stand that can only raise Fabric leaves the loader with the different mechanism untested.
+const LOADER = process.argv[3] === "neoforge" ? "neoforge" : "fabric";
+const ROOT = path.resolve(".qa", `${LOADER}-${VERSION}-e2e`);
+const TEMPLATE = path.resolve(`minecraft/udmc-sync-${LOADER}/build`, VERSION, "libs",
+  `udmc-sync-${LOADER}-${VERSION}-${JSON.parse(readFileSync("package.json", "utf8")).version}.jar`);
 const API_PORT = 43077, GAME_PORT = 43565, RCON_PORT = 43575;
 
 rmSync(ROOT, { recursive: true, force: true });
@@ -30,7 +33,7 @@ writeFileSync(path.join(ROOT, "server/config/udmc-sync.json"),
 
 const rconPassword = randomBytes(16).toString("hex");
 writeFileSync(path.join(ROOT, "fixture.json"), JSON.stringify({
-  isolatedRuntimeFixture: true, template: `fabric-${VERSION}`, minecraft: VERSION,
+  isolatedRuntimeFixture: true, template: `${LOADER}-${VERSION}`, minecraft: VERSION, loader: LOADER,
   gamePort: GAME_PORT, url: `http://127.0.0.1:${API_PORT}`,
   rcon: { host: "127.0.0.1", port: RCON_PORT, password: rconPassword },
 }, null, 2) + "\n");
@@ -49,7 +52,7 @@ writeFileSync(path.join(ROOT, "server/server.properties"),
 writeFileSync(path.join(ROOT, "client/options.txt"),
   ["skipMultiplayerWarning:true", "onboardAccessibility:false", "tutorialStep:none", "lang:ru_ru", "guiScale:2"].join("\n") + "\n");
 
-console.log("стенд:", ROOT);
+console.log("стенд:", ROOT, `(${LOADER})`);
 console.log("API:", API_PORT, "| игра:", GAME_PORT, "| RCON:", RCON_PORT);
 console.log("мод:", path.basename(TEMPLATE), "— один и тот же файл на сервере и у клиента");
 console.log("после запуска сервера: npm run e2e:admin -- pair");
