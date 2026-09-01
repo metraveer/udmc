@@ -9,6 +9,8 @@
 - **Лицензия:** MIT
 - **Ссылки:** исходники, трекер и вики — https://github.com/metraveer/udmc
 - **Иконка:** `apps/admin-desktop/src-tauri/icons/icon-256.png`
+- **Галерея:** экран согласия в самой игре (его видит игрок при первом входе) и обзорная
+  страница панели `docs/images/01-server.png` — для владельцев серверов
 
 ## Что должно быть сделано до публикации
 
@@ -54,6 +56,11 @@ Minecraft profile — the mod says so plainly instead of mixing them.
 The Fabric modules it needs travel inside the jar. Fabric API does not have to be installed
 separately, though it does no harm if it already is.
 
+**Installed through a launcher?** That works. The mod keeps itself current against the server
+you play on, and it only ever updates itself when it is *behind* what that server hands out — so
+it does not fight your launcher over the file. A server accepts any version that is not older
+than its own, so being ahead is fine too.
+
 ### For server owners
 
 This mod is one half. The other is **UDMC Control**, a free Windows app: you assemble the pack
@@ -73,6 +80,8 @@ The app, the guide and the source: **https://github.com/metraveer/udmc**
 - Never installs anything before you accept a server, and never overwrites a file you edited.
 - Talks to no service of ours. No account, no telemetry, no central server — only the Minecraft
   server you joined.
+- Says nothing when there is nothing to say: a launch where your pack is already correct goes
+  straight to the game.
 - Does nothing on its own: the server has to be running UDMC too.
 
 **Minecraft 1.21.1** (Java 21), **26.1.2** and **26.2** (Java 25). Fabric on all three, NeoForge
@@ -107,6 +116,11 @@ on 1.21.1. MIT licence.
 
 Нужные модули Fabric едут внутри JAR — отдельно ставить Fabric API не требуется.
 
+**Ставите через лаунчер?** Это работает. Мод держит себя в актуальном состоянии относительно
+того сервера, на котором вы играете, и обновляет себя, только когда **отстал** от него, — с
+лаунчером за файл он не спорит. Сервер принимает любую версию не старше своей, так что быть
+впереди тоже можно.
+
 ### Владельцу сервера
 
 Мод — половина дела. Вторая половина — **UDMC Control**, бесплатное приложение для Windows: в
@@ -126,6 +140,7 @@ on 1.21.1. MIT licence.
 - Ничего не ставит до вашего согласия и не переписывает файл, который вы правили.
 - Не ходит ни в какие наши сервисы. Нет аккаунта, нет телеметрии, нет центрального сервера —
   только тот сервер Minecraft, куда вы зашли.
+- Молчит, когда сказать нечего: запуск игры с актуальной сборкой ничем не прерывается.
 - Сам по себе не делает ничего: на сервере тоже должен работать UDMC.
 
 **Minecraft 1.21.1** (Java 21), **26.1.2** и **26.2** (Java 25). Fabric — все три, NeoForge —
