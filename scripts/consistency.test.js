@@ -71,11 +71,14 @@ test("the mod is called the same thing wherever the name is produced", async () 
   // it called the shared file a client's and carried no version at all.
   const parts = ["loader", "game version", "mod version"];
   const generator = await read("apps/admin-desktop/src-tauri/src/generator.rs");
-  const name = /format!\("udmc-\{\}-\{\}-\{\}\.jar",\s*(.+?)\)\n/.exec(generator);
-  assert.ok(name, `The panel must save the mod as udmc-<${parts.join(">-<")}>.jar`);
-  assert.deepEqual(name[1].split(",").map(part => part.trim()),
-    ["template.loader", "template.minecraft", "env!(\"CARGO_PKG_VERSION\")"],
-    "The panel's file name must be built from the loader, the game version and this release's version, in that order");
+  // Read as a body rather than as one line: rustfmt decides where the arguments go, and a
+  // test that decides that too fails on formatting instead of on meaning.
+  const body = /fn file_name\(template: &Template\) -> String \{([\s\S]*?)\n\}/.exec(generator);
+  assert.ok(body, "The panel no longer builds the file name in file_name()");
+  assert.match(body[1], /"udmc-\{\}-\{\}-\{\}\.jar"/, `The panel must save the mod as udmc-<${parts.join(">-<")}>.jar`);
+  assert.deepEqual([...body[1].matchAll(/template\.loader|template\.minecraft|env!\("CARGO_PKG_VERSION"\)/g)].map(match => match[0]),
+    ["template.loader", "template.minecraft", 'env!("CARGO_PKG_VERSION")'],
+    "The name must be built from the loader, the game version and this release's version, in that order");
 
   const distribution = await read("minecraft/udmc-sync-common/src/main/java/dev/udmc/sync/AgentDistribution.java");
   assert.match(distribution, /"udmc-" \+ config\.loaderType \+ "-" \+ config\.minecraftVersion \+ "-" \+ version \+ "\.jar"/,
