@@ -187,9 +187,26 @@ So `ServerConfigVerifyMixin` only asks and records; `PlayerListMixin` decides. T
 a refused player is placed for the part of a tick it takes to disconnect them, so the log and
 the chat show them joining and leaving. That is the price of being told why, and it is worth it.
 
-A refusal screen of our own — sent as a payload before the disconnect and drawn by the client
-like the project offer — would cost neither the explanation nor the placement. It is the right
-next step here, and it is additive: a new channel, which the frozen question explicitly allows.
+### Why not a configuration task, or a refusal payload
+
+Both were considered here and neither is free.
+
+**A configuration task** — which is what NeoForge already does — holds the phase open until the
+verdict, so the player is never placed and the disconnect goes out on an idle channel. The catch
+is the case that matters most: a player without the mod never answers, so the task waits out its
+whole deadline before saying anything. Today that player is refused the moment they arrive. Ten
+seconds of nothing, for the commonest refusal there is, is a worse trade than two lines in the
+log. NeoForge can afford the task because it can ask `hasChannel` first; Fabric cannot.
+
+**A refusal payload** drawn by our own screen would keep both — no placement and a full
+explanation. It is additive, so the frozen question allows it. But it is sent at the same moment
+as the disconnect that is currently lost, into the same registry burst, so it has to be measured
+before it can be believed: if the payload does not survive either, the screen never appears and
+the player is left with less than they have now. That measurement is the next step, not the
+change itself.
+
+Whatever replaces this must be walked across the whole matrix below, not just the row that
+hurts: every previous attempt at this transport worked in exactly one configuration.
 
 ## 5. TEST PLAN ON THE REAL STAND
 
