@@ -92,11 +92,21 @@ public final class UdmcClientUi {
     private static Component text(String key, Object... args) { return component(Messages.of(key, args)); }
 
     public static void tick() {
-        // Only here: a project decision belongs between sessions, not on top of a game the
-        // player is in the middle of. The offer waits in the protocol until they come back.
-        if (!(ClientPlatform.screen() instanceof TitleScreen)) return;
+        // A project decision belongs between sessions, not on top of a game the player is in
+        // the middle of. The offer waits in the protocol until they come back.
+        //
+        // The server list counts as between sessions, and it has to. A player turned away by
+        // the login rule lands on the disconnect screen, whose first button is the server
+        // list; waiting for the title screen left them rejoining and being turned away for
+        // ever, told to leave the server once - which is exactly what they had just done.
+        boolean title = ClientPlatform.screen() instanceof TitleScreen;
+        if (!title && !(ClientPlatform.screen() instanceof JoinMultiplayerScreen)) return;
         if (config != null) consider(AgentLoginProtocol.takeOffer());
-        if (state == null || dismissed) return;
+        State pending = state;
+        if (pending == null || dismissed) return;
+        // Only the question follows the player to the list. Anything else waits for the title
+        // screen rather than taking the list away from someone choosing a server.
+        if (!title && pending.offer() == null) return;
         ClientPlatform.open(new StatusScreen());
     }
 

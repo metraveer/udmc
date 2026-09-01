@@ -44,12 +44,22 @@ public final class AgentLoginNotice {
         return "udmc_sync.login.outdated".equals(messageKey) || "udmc_sync.login.rebuilt".equals(messageKey);
     }
 
+    /**
+     * A client that is installed and simply belongs to no project yet already holds the right
+     * file: what it needs is to accept this server, not to fetch the same jar a second time.
+     * Its own reason says where that question appears, so nothing is wrapped around it.
+     */
+    private static boolean unclaimed(String messageKey) {
+        return "udmc_sync.login.unclaimed".equals(messageKey);
+    }
+
     public static Component component(AgentLoginProtocol.Decision decision) {
         String reasonFallback = "udmc_sync.login.missing".equals(decision.messageKey())
             ? MISSING_FALLBACK : decision.messageFallback();
         var reason = Component.translatableWithFallback(decision.messageKey(), reasonFallback, decision.args().toArray());
         MutableComponent notice = selfHealing(decision.messageKey())
             ? Component.translatableWithFallback("udmc_sync.login.restart", RESTART_FALLBACK, reason)
+            : unclaimed(decision.messageKey()) ? reason
             : Component.translatableWithFallback("udmc_sync.login.notice", CLEAN_CLIENT_FALLBACK,
                 reason, AgentNotice.link(decision.downloadUrl()));
         // The numbers an administrator asks for first: without them the only way to tell a

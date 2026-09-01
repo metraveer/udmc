@@ -54,6 +54,25 @@ public final class LocalizationTest {
                     healing + " states what happened; the advice line says what to do, and they must not contradict");
             }
         }
+        // Installed, current, and simply not set up for anything yet: this player already holds
+        // the right file. Wrapping the download steps around this reason sent them to fetch the
+        // jar they had, and the question they actually needed waited on a screen they had no
+        // reason to open - so re-joining turned them away again, for ever.
+        var unclaimed = AgentLoginNotice.component(new AgentLoginProtocol.Decision(false, true, "udmc_sync.login.unclaimed",
+            en.get("udmc_sync.login.unclaimed"), List.of("udmc-main"), "https://127.0.0.1/udmc", "0.17.1", "0.17.1", "udmc-main", "0.17.1", ""));
+        check(((TranslatableContents) unclaimed.getContents()).getKey().equals("udmc_sync.login.unclaimed"),
+            "An unclaimed client needs its own advice, not the download steps");
+        check(!unclaimed.getString().contains("https://127.0.0.1/udmc"),
+            "An unclaimed client already has the file and must not be sent to download it");
+        for (var word : List.of("Скачайте", "Download", "download")) {
+            check(!en.get("udmc_sync.login.unclaimed").contains(word) && !ru.get("udmc_sync.login.unclaimed").contains(word),
+                "Nothing has to be downloaded to accept a project");
+        }
+        // Where the question appears is the whole instruction, and it must name the screen the
+        // player actually reaches: the disconnect screen's own first button is the server list.
+        check(en.get("udmc_sync.login.unclaimed").contains("server list") && ru.get("udmc_sync.login.unclaimed").contains("списку серверов"),
+            "The reason must say where UDMC asks");
+
         for (var manual : List.of("udmc_sync.login.missing", "udmc_sync.login.foreign")) {
             var advice = AgentLoginNotice.component(new AgentLoginProtocol.Decision(false, true, manual,
                 en.get(manual), List.of("udmc-main"), "https://127.0.0.1/udmc", "0.17.1", "0.17.1", "udmc-main", "", ""));
