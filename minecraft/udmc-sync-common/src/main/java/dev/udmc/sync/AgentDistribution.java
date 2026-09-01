@@ -81,6 +81,20 @@ final class AgentDistribution {
         return file;
     }
 
+    /**
+     * The name players see when they take the file from the server: the same shape the panel
+     * saves it under, so one file does not arrive under two names. It was "udmc-sync-client"
+     * for a while - a name that called the shared file a client's and gave no version at all.
+     */
+    String fileName() throws IOException {
+        var release = release();
+        String version = release == null ? PlatformDefaults.get("agentVersion") : release.verify(config, "client").getProperty("version");
+        return safe("udmc-" + config.loaderType + "-" + config.minecraftVersion + "-" + version + ".jar");
+    }
+
+    /** A header value, so nothing but the characters a version and a loader are made of. */
+    private static String safe(String name) { return name.replaceAll("[^A-Za-z0-9._-]", ""); }
+
     Path latestFile() throws IOException {
         var release = release();
         if (release == null) throw new java.nio.file.NoSuchFileException("Client agent has not been uploaded by Control yet");

@@ -696,7 +696,7 @@ public final class UdmcHttpApi {
             else { respondError(exchange, 404, "NOT_FOUND", "API endpoint not found."); return; }
         } catch (java.nio.file.NoSuchFileException error) { respondError(exchange, 404, "CLIENT_AGENT_NOT_READY", "Client agent is not ready."); return; }
         exchange.getResponseHeaders().set("content-type", "application/java-archive");
-        exchange.getResponseHeaders().set("content-disposition", "attachment; filename=\"udmc-sync-client.jar\"");
+        exchange.getResponseHeaders().set("content-disposition", "attachment; filename=\"" + agents.fileName() + "\"");
         exchange.getResponseHeaders().set("x-content-type-options", "nosniff");
         exchange.getResponseHeaders().set("cache-control", path.equals("/agents/download") ? "no-store" : "public, max-age=31536000, immutable");
         try (var input = Files.newInputStream(file)) {
@@ -903,6 +903,11 @@ public final class UdmcHttpApi {
         try { var release = agents.release(); if (release != null) offered = release.verify(config, "client").getProperty("version", ""); }
         catch (IOException | RuntimeException error) { offered = ""; }
         String versions = escapeHtml("UDMC " + (offered.isBlank() ? "-" : offered) + " · " + config.packId);
+        // The name the player will see in their downloads folder, so the page can name it too
+        // instead of describing some other file.
+        String file = "";
+        try { file = agents.fileName(); } catch (IOException | RuntimeException error) { file = ""; }
+        String named = escapeHtml(file.isBlank() ? "udmc.jar" : file);
         String loader = escapeHtml(config.loaderType.substring(0, 1).toUpperCase(Locale.ROOT) + config.loaderType.substring(1));
         String environment = escapeHtml("Minecraft " + config.minecraftVersion + " · " + loader + " " + config.loaderVersion);
         return "<!doctype html><html lang=\"ru\"><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
@@ -917,17 +922,17 @@ public final class UdmcHttpApi {
             + ".en{color:#9aa0ab;font-size:14px}.note{margin-top:28px;padding-top:16px;border-top:1px solid #2b2f39;color:#9aa0ab;font-size:14px}"
             + "</style><body><main>"
             + "<h1>UDMC</h1><p class=\"sub\">" + pack + " &middot; " + environment + "<br>" + versions + "</p>"
-            + "<p><a class=\"get\" href=\"" + url + "\" download=\"udmc-sync-client.jar\">Скачать мод (udmc-sync-client.jar)</a></p>"
+            + "<p><a class=\"get\" href=\"" + url + "\" download=\"" + named + "\">Скачать мод (" + named + ")</a></p>"
             + "<h2>Что делать дальше</h2><ol>"
             + "<li>Закройте Minecraft, если он запущен.</li>"
             + "<li>Откройте папку <code>mods</code> вашего игрового профиля. В стандартном лаунчере это <code>%appdata%\\.minecraft\\mods</code>, в сторонних - папка выбранной сборки.</li>"
-            + "<li>Положите туда скачанный файл. Если там уже лежит старый <code>udmc-sync-client.jar</code>, замените его - двух файлов быть не должно.</li>"
+            + "<li>Положите туда скачанный файл. Если там уже лежит другой файл UDMC, замените его - двух быть не должно.</li>"
             + "<li>Профиль должен быть на " + environment + ". Запустите игру и зайдите на сервер: остальные моды UDMC докачает сам.</li>"
             + "</ol>"
             + "<h2 lang=\"en\">In English</h2><ol class=\"en\" lang=\"en\">"
             + "<li>Close Minecraft.</li>"
             + "<li>Open the <code>mods</code> folder of your game profile.</li>"
-            + "<li>Put the downloaded file there, replacing any older <code>udmc-sync-client.jar</code>.</li>"
+            + "<li>Put the downloaded file there, replacing any older UDMC file.</li>"
             + "<li>The profile must run " + environment + ". Start the game and join: UDMC downloads the rest of the pack itself.</li>"
             + "</ol>"
             + "<p class=\"note\">Устанавливайте моды только с серверов, которым доверяете. / Install mods only from servers you trust.</p>"

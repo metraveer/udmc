@@ -236,7 +236,15 @@ public final class AgentUpdateTest {
             check(uploaded.statusCode() == 201, "Client delivery must succeed: " + uploaded.body());
             var download = http.send(java.net.http.HttpRequest.newBuilder(java.net.URI.create(base + "/agents/download")).GET().build(), java.net.http.HttpResponse.BodyHandlers.ofByteArray());
             check(download.statusCode() == 200 && Hashes.sha256(download.body()).equals(Hashes.sha256(client)), "Public download must contain only the uploaded client");
-            check(download.headers().firstValue("content-disposition").orElse("").contains("udmc-sync-client.jar"), "Download has a useful filename");
+            // One file, one name. The player takes it from here and the owner takes the same
+            // file from the panel: both must arrive as udmc-<loader>-<game>-<mod version>.jar.
+            // "udmc-sync-client.jar" called the shared file a client's and carried no version,
+            // so two copies in one mods folder could not be told apart by the person holding them.
+            String disposition = download.headers().firstValue("content-disposition").orElse("");
+            check(disposition.contains("udmc-" + config.loaderType + "-" + config.minecraftVersion + "-"),
+                "Download must be named for the loader and game version this server runs: " + disposition);
+            check(disposition.matches(".*udmc-[a-z]+-[0-9][^ ]*-[0-9][^ ]*[.]jar.*"),
+                "Download must carry the mod version: " + disposition);
             var descriptor = http.send(java.net.http.HttpRequest.newBuilder(java.net.URI.create(base + "/agents/client")).GET().build(), java.net.http.HttpResponse.BodyHandlers.ofString());
             GSON.fromJson(descriptor.body(), AgentRelease.class).verify(config, "client");
             var page = http.send(java.net.http.HttpRequest.newBuilder(java.net.URI.create(base + "/agents/install")).GET().build(), java.net.http.HttpResponse.BodyHandlers.ofString());
@@ -245,7 +253,10 @@ public final class AgentUpdateTest {
             // page has to name the file and the environment they are expected to match.
             var shortPage = http.send(java.net.http.HttpRequest.newBuilder(java.net.URI.create(base + "/udmc")).GET().build(), java.net.http.HttpResponse.BodyHandlers.ofString());
             check(shortPage.statusCode() == 200 && shortPage.body().equals(page.body()), "The short install address must serve the instructions");
-            check(shortPage.body().contains("udmc-sync-client.jar") && shortPage.body().contains(config.minecraftVersion)
+            // The page names the file the player will actually find in their downloads folder,
+            // which is the same name the panel saves and the same one the download header gives.
+            check(shortPage.body().contains("udmc-" + config.loaderType + "-" + config.minecraftVersion + "-")
+                && shortPage.body().contains(config.minecraftVersion)
                 && !shortPage.body().contains(config.adminToken), "Instructions must name the file and the required environment, never a credential");
             var freshForAddress = http.send(java.net.http.HttpRequest.newBuilder(java.net.URI.create(base + "/admin/files")).header("x-udmc-token", config.adminToken).GET().build(), java.net.http.HttpResponse.BodyHandlers.ofString());
             var badAddress = http.send(java.net.http.HttpRequest.newBuilder(java.net.URI.create(base + "/admin/agents/settings"))

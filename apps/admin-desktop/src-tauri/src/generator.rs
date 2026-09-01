@@ -95,8 +95,12 @@ pub async fn prepare_agent_package(request: AgentRequest, update: bool) -> Nativ
     package(template, update).map_err(agent_error)
 }
 
+/// The mod version belongs in the name. A mods folder holding two UDMC files and no version
+/// in either name cannot be sorted out by the person looking at it, and "which file do you
+/// have?" is the first question every support conversation starts with. The server hands the
+/// same file to players under the same name; `consistency.test.js` holds the two together.
 fn file_name(template: &Template) -> String {
-    format!("udmc-{}-{}.jar", template.loader, template.minecraft)
+    format!("udmc-{}-{}-{}.jar", template.loader, template.minecraft, env!("CARGO_PKG_VERSION"))
 }
 
 fn export(parent: &Path, template: &'static Template) -> Result<Value, String> {
