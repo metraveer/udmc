@@ -187,6 +187,26 @@ So `ServerConfigVerifyMixin` only asks and records; `PlayerListMixin` decides. T
 a refused player is placed for the part of a tick it takes to disconnect them, so the log and
 the chat show them joining and leaving. That is the price of being told why, and it is worth it.
 
+### Why the consent cannot be given inside the join (measured 2026-09-01)
+
+The obvious improvement is to ask during the join instead of after a refusal: the server offers
+its project before it asks anything, so the client can hold its answer, put the question on
+screen, and answer once the player has decided — and the join simply carries on. It was built
+and tried on the stand, Fabric 1.21.1: a client mixin held `handleConfigurationFinished` while
+the question was up, and the answer was sent on the player's decision.
+
+It works, and it dies of a clock. **The server drops the connection about fifteen seconds into
+the wait** — offer at 15:19:54, `lost connection: Timed out` at 15:20:10 — because nothing flows
+from a client that is holding the phase. Fifteen seconds is not enough time to read a signing
+key fingerprint and decide whether to trust a server, which is the entire point of that screen.
+A player who takes the question seriously loses the connection and is shown a timeout instead of
+an answer: worse than the round trip it was meant to remove.
+
+Keeping the connection warm with traffic of our own would buy the time, and it is the wrong
+trade: an idle connection kept alive by a mod is indistinguishable, to the owner watching, from
+a stuck one. The round trip stays. The question waits on the player's screen with no clock
+running, which is the property that matters.
+
 ### Why not a configuration task, or a refusal payload
 
 Both were considered here and neither is free.
