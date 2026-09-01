@@ -96,6 +96,10 @@ public final class ClientProject {
         config.manifestPrivateKey = "";
         config.adminToken = "";
         config.save(gameDir);
+        // From this moment the client belongs to a project, and the answer it gives a server
+        // has to say so at once. Left until the next launch, the player accepted, rejoined and
+        // was turned away as unclaimed all over again - with nothing telling them to restart.
+        AgentLoginProtocol.configureClient(config);
         UdmcSync.LOGGER.info("UDMC set up for project {} at {} (key {})", config.packId, config.serverUrl, offer.fingerprint());
     }
 

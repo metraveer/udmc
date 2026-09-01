@@ -26,6 +26,14 @@ export function initPairing({ getConnection, onPaired, showToast, getBusy, setBu
   // just failed: the way in must not disappear with the thing that did not work.
   let manualEntry = false;
   let paired = false;
+  /** Read in groups of four, the way the game shows it, so the two can be compared by eye. */
+  function showFingerprint(value) {
+    const text = String(value || "").replace(/(.{4})(?=.)/g, "$1 ");
+    $("pairFingerprint").textContent = text;
+    $("pairResult").hidden = !text;
+    if (!text) $("pairResultSummary").textContent = "";
+  }
+
   const invoke = (name, args) => {
     const call = window.__TAURI__?.core?.invoke;
     if (!call) throw new Error(t("Эта операция доступна в Windows-приложении UDMC Control."));
@@ -101,6 +109,10 @@ export function initPairing({ getConnection, onPaired, showToast, getBusy, setBu
         $("pairedSummary").value = [state.packName || "UDMC",
           state.minecraftVersion ? `Minecraft ${state.minecraftVersion}` : "", state.loaderType]
           .filter(Boolean).join(" · ");
+        // Shown for as long as the server is paired, not only in the moment it was claimed.
+        // The player's setup screen says the owner can show them the same key, and until now
+        // there was nowhere for the owner to look it up.
+        showFingerprint(state.fingerprint);
       } else {
         badge(t("Ждёт привязки"), "warning attention",
           t("Сервер «{0}» (Minecraft {1}, {2}) ещё никем не занят. Введите его код, чтобы взять под управление.",
@@ -180,8 +192,7 @@ export function initPairing({ getConnection, onPaired, showToast, getBusy, setBu
       badge(t("Привязан"), "online");
       restoring = null;
       $("pairRestoreState").textContent = "";
-      $("pairFingerprint").textContent = project.fingerprint || "";
-      $("pairResult").hidden = false;
+      showFingerprint(project.fingerprint);
       $("pairResultSummary").textContent = t("Привязан проект «{0}», Minecraft {1}, {2}.",
         project.packName || project.packId || "UDMC", project.minecraftVersion || "?", project.loaderType || "?");
       await onPaired(project);

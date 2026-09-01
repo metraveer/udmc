@@ -1,8 +1,6 @@
 package dev.udmc.sync.mixin;
 
-import dev.udmc.sync.AgentLoginNotice;
 import dev.udmc.sync.AgentLoginProtocol;
-import dev.udmc.sync.UdmcSync;
 import dev.udmc.sync.network.UdmcProjectPayload;
 import dev.udmc.sync.network.UdmcQueryPayload;
 import net.minecraft.network.Connection;
@@ -18,11 +16,24 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Asks the joining player about their UDMC client and reaches a verdict before they enter the
- * world. This lives in the configuration phase on purpose: the login phase has no room for a
- * question like this - the game disconnects on an unexpected one - so Fabric API claims that
- * channel whole, and a check placed there is decided by mixin ordering rather than by code.
- * Here nothing is cancelled and nothing is raced; the question is one payload among many.
+ * Asks the joining player about their UDMC client. This lives in the configuration phase on
+ * purpose: the login phase has no room for a question like this - the game disconnects on an
+ * unexpected one - so Fabric API claims that channel whole, and a check placed there is decided
+ * by mixin ordering rather than by code. Here nothing is cancelled and nothing is raced; the
+ * question is one payload among many.
+ *
+ * <p><b>Asking happens here; refusing does not.</b> The verdict used to be reached on a tick
+ * while the player was still in this phase, and on a real client that lost the explanation: the
+ * disconnect is sent in the middle of the registry burst that follows the question, the client
+ * never processes it, and the player is left looking at a bare "Disconnected". Measured on the
+ * stand, both ways, on Minecraft 1.21.1 - the same refusal shown from the play phase arrives
+ * whole, in the player's own language, with the installation buttons on it.
+ *
+ * <p>So the answer is only recorded here and {@link dev.udmc.sync.mixin.PlayerListMixin} decides.
+ * The cost is honest and small: a refused player is placed for the part of a tick it takes to
+ * disconnect them, so the server log and the chat show them joining and leaving. Being told why
+ * is worth more than being spared two lines. A refusal screen of our own, sent as a payload
+ * before the disconnect, would cost neither - see docs/client-verification.md.
  *
  * <p>Declared as a subclass of the listener's own parent so that send, disconnect, server and
  * connection are inherited: {@code @Shadow} cannot reach a member the target only inherits.
@@ -34,8 +45,6 @@ public abstract class ServerConfigVerifyMixin extends ServerCommonPacketListener
     }
 
     @Unique private volatile boolean udmc$asked;
-    @Unique private volatile boolean udmc$decided;
-    @Unique private int udmc$waited;
 
     @Inject(method = "startConfiguration", at = @At("HEAD"))
     private void udmc$ask(CallbackInfo callback) {
@@ -47,32 +56,5 @@ public abstract class ServerConfigVerifyMixin extends ServerCommonPacketListener
         var project = AgentLoginProtocol.project();
         if (project != null) send(new ClientboundCustomPayloadPacket(new UdmcProjectPayload(project)));
         send(new ClientboundCustomPayloadPacket(new UdmcQueryPayload(AgentLoginProtocol.query())));
-    }
-
-    // Two moments are safe to speak at, and this is the first: while the player is still in
-    // the configuration phase, where a disconnect packet is encoded the way they decode it.
-    // Deciding when they announce the phase is over is not - by then they have switched to
-    // the play protocol and the reason arrives unreadable, leaving a bare "Disconnected".
-    @Inject(method = "tick", at = @At("HEAD"))
-    private void udmc$check(CallbackInfo callback) {
-        if (!udmc$asked || udmc$decided) return;
-        boolean late = ++udmc$waited >= AgentLoginProtocol.DEADLINE_TICKS;
-        if (AgentLoginProtocol.answered(this.connection) || late) udmc$verdict();
-    }
-
-    /** Returns whether the player was turned away. */
-    @Unique private boolean udmc$verdict() {
-        udmc$decided = true;
-        AgentLoginProtocol.pending(this.connection);
-        AgentLoginProtocol.Decision decision = AgentLoginProtocol.announce(String.valueOf(this.connection.getRemoteAddress()),
-            AgentLoginProtocol.validate(AgentLoginProtocol.takeAnswer(this.connection)));
-        if (decision.valid()) return false;
-        if (!decision.reject()) {
-            // The notice reaches the player once they are in, where they can read and act on it.
-            AgentLoginProtocol.warn(this.connection, decision);
-            return false;
-        }
-        disconnect(AgentLoginNotice.component(decision));
-        return true;
     }
 }

@@ -20,8 +20,6 @@ public final class AgentLoginProtocol {
      * them the screen that tells them what to install. What is new travels beside it instead.
      */
     public static final int QUERY_PROTOCOL = 2;
-    /** Ticks the server waits for an answer before deciding without one: about ten seconds. */
-    public static final int DEADLINE_TICKS = 200;
     private static volatile Server server;
     private static volatile Answer client;
     private static volatile ClientProject.Offer OFFER;
@@ -47,10 +45,10 @@ public final class AgentLoginProtocol {
         try { hash = Hashes.sha256(LoaderPlatform.agentPath()); }
         catch (Exception error) { UdmcSync.LOGGER.warn("Cannot identify the client agent for login verification", error); }
         // A client that belongs to no project yet says so with an empty name. Reporting the
-            // default project id instead would let it pass for a member of a server that happens
-            // to use the default too - installed, but with none of the pack downloaded.
-            String project = ClientProject.configured(config) ? config.packId : "";
-            client = new Answer(PROTOCOL, project, PlatformDefaults.get("agentVersion"), hash);
+        // default project id instead would let it pass for a member of a server that happens
+        // to use the default too - installed, but with none of the pack downloaded.
+        String project = ClientProject.configured(config) ? config.packId : "";
+        client = new Answer(PROTOCOL, project, PlatformDefaults.get("agentVersion"), hash);
     }
 
     public static Query query() {

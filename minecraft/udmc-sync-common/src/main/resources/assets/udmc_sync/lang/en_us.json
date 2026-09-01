@@ -96,5 +96,5 @@
   "udmc_sync.message.other_project": "This game folder is set up for “%1$s”, and this server hands out “%2$s”. Two modpacks cannot share one mods folder. Use a separate game profile for the other server.",
   "udmc_sync.title.key_changed": "The server's key has changed",
   "udmc_sync.message.key_changed": "“%1$s” now signs with a different key than the one this client trusts:\n%2$s\n\nEither the owner rebuilt the project, or this is not the server you think it is. Ask the owner to confirm the key before doing anything else. Nothing has been changed.",
-  "udmc_sync.login.unclaimed": "The UDMC client is installed but not set up for any modpack yet. Go back to the server list: UDMC asks there whether to set this game up for “%1$s”. Accept, and join again."
+  "udmc_sync.login.unclaimed": "The UDMC client is installed but not set up for any modpack yet. Leave this screen and UDMC will ask at once whether to set this game up for “%1$s”. Accept, let it finish, and join again."
 }

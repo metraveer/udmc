@@ -18,8 +18,11 @@ public abstract class PlayerListMixin {
     private void udmc$warn(Connection connection, ServerPlayer player, CommonListenerCookie cookie, CallbackInfo callback) {
         var warning = AgentLoginProtocol.takeWarning(connection);
         if (warning != null) { player.sendSystemMessage(AgentLoginNotice.component(warning)); return; }
-        // A client that answered nothing finishes configuration faster than the deadline, so
-        // the verdict lands here instead. Both points show the player the same screen.
+        // Every verdict is reached here, and only here. Refusing while the player was still in
+        // the configuration phase cost them the explanation: that disconnect is sent into the
+        // middle of the registry burst and a real client never processes it, leaving a bare
+        // "Disconnected". From the play phase the same refusal arrives whole, translated, with
+        // the installation buttons on it. Measured on the stand both ways.
         if (!AgentLoginProtocol.enabled() || !AgentLoginProtocol.pending(connection)) return;
         var decision = AgentLoginProtocol.announce(player.getName().getString(),
             AgentLoginProtocol.validate(AgentLoginProtocol.takeAnswer(connection)));

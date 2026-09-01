@@ -68,10 +68,14 @@ public final class LocalizationTest {
             check(!en.get("udmc_sync.login.unclaimed").contains(word) && !ru.get("udmc_sync.login.unclaimed").contains(word),
                 "Nothing has to be downloaded to accept a project");
         }
-        // Where the question appears is the whole instruction, and it must name the screen the
-        // player actually reaches: the disconnect screen's own first button is the server list.
-        check(en.get("udmc_sync.login.unclaimed").contains("server list") && ru.get("udmc_sync.login.unclaimed").contains("списку серверов"),
-            "The reason must say where UDMC asks");
+        // The instruction has to name the pack being offered and stop there. It once named the
+        // button to press - and the button led somewhere else, because the question replaces
+        // the screen it was supposed to appear on. A reason that describes the interface is a
+        // reason that goes stale the next time the interface moves.
+        for (var language : List.of(en, ru)) {
+            check(language.get("udmc_sync.login.unclaimed").contains("%1$s"),
+                "The reason must name the pack the player is being offered");
+        }
 
         for (var manual : List.of("udmc_sync.login.missing", "udmc_sync.login.foreign")) {
             var advice = AgentLoginNotice.component(new AgentLoginProtocol.Decision(false, true, manual,

@@ -181,7 +181,10 @@ public final class UdmcHttpApi {
                     "unpaired", ServerIdentity.unpaired(config),
                     "packName", config.packName,
                     "minecraftVersion", config.minecraftVersion,
-                    "loaderType", config.loaderType
+                    "loaderType", config.loaderType,
+                    // A hash of the key every joining client is given anyway. The owner has to
+                    // be able to show it: the client's setup screen tells the player to ask.
+                    "fingerprint", ServerIdentity.fingerprint(config.manifestPublicKey)
                 ));
                 return;
             }

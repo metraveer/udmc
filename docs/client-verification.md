@@ -168,6 +168,29 @@ The Fabric-only classes stay in the jar on NeoForge, unapplied — same as `Serv
 
 ---
 
+## 4b. WHERE THE REFUSAL IS SPOKEN (measured 2026-09-01, Minecraft 1.21.1)
+
+The question is asked in the configuration phase. **The refusal is not.**
+
+Refusing from the configuration phase costs the player the explanation. The disconnect goes out
+immediately after the answer arrives — which is in the middle of the registry burst the server
+is streaming — and a real client never processes it. What it shows is the vanilla
+`disconnect.disconnected`: a bare "Отключение", with no reason, no versions and no buttons.
+Both were captured on the stand, side by side, on the same build:
+
+| Where the verdict was reached | What the player saw |
+| --- | --- |
+| configuration phase (tick) | `Отключение` and nothing else |
+| play phase (`PlayerListMixin`) | the whole notice, translated, with both installation buttons |
+
+So `ServerConfigVerifyMixin` only asks and records; `PlayerListMixin` decides. The cost is that
+a refused player is placed for the part of a tick it takes to disconnect them, so the log and
+the chat show them joining and leaving. That is the price of being told why, and it is worth it.
+
+A refusal screen of our own — sent as a payload before the disconnect and drawn by the client
+like the project offer — would cost neither the explanation nor the placement. It is the right
+next step here, and it is additive: a new channel, which the frozen question explicitly allows.
+
 ## 5. TEST PLAN ON THE REAL STAND
 
 **Automated** (`scripts/runtime-agent-check.js`, 1.21.1 only — `minecraft-protocol@1.66.2` still has no 26.x support, per `docs/development.md:165`). Keep `assert.equal(events.joined, !reject)`; the configuration gate preserves "rejected before world entry". Scenarios:

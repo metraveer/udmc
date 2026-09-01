@@ -16,6 +16,7 @@ public final class ClientProjectTest {
         aSecondProjectIsRefused();
         nonsenseOffersAreRefused();
         theQuestionFollowsThePlayerToTheServerList();
+        acceptingIsAnsweredForImmediately();
         unencryptedTransportIsThePlayersChoice();
         System.out.println("ClientProjectTest OK");
     }
@@ -29,6 +30,26 @@ public final class ClientProjectTest {
         // Judging is not adopting: nothing may be written before the player has agreed.
         expect(config.manifestPublicKey.isBlank(), "Judging an offer must not adopt it");
         expect(UdmcConfig.load(gameDir).manifestPublicKey.isBlank(), "Judging an offer must not touch the file");
+    }
+
+    /**
+     * What the client answers a server after the player has just accepted. The answer used to be
+     * decided once, at launch: accepting wrote the file and changed nothing else, so the very
+     * next join was refused as unclaimed again and the only cure was restarting the game -
+     * which no screen mentioned. Reported by a player on a first run.
+     */
+    private static void acceptingIsAnsweredForImmediately() throws Exception {
+        Path gameDir = temp();
+        UdmcConfig config = UdmcConfig.load(gameDir);
+        AgentLoginProtocol.configureClient(config);
+        var query = new AgentLoginProtocol.Query(AgentLoginProtocol.QUERY_PROTOCOL, "udmc-main", "", "", true);
+        var before = AgentLoginProtocol.answer(query);
+        expect(before != null && before.packId().isEmpty(), "A fresh client answers, naming no project");
+
+        ClientProject.accept(gameDir, config, offer("udmc-main", key()));
+        var after = AgentLoginProtocol.answer(query);
+        expect(after != null && after.packId().equals("udmc-main"),
+            "Accepting must be answered for at once, without waiting for the game to restart");
     }
 
     /**
