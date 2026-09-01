@@ -15,6 +15,7 @@ public final class ClientProjectTest {
         aChangedKeyIsNeverAcceptedQuietly();
         aSecondProjectIsRefused();
         nonsenseOffersAreRefused();
+        theQuestionFollowsThePlayerToTheServerList();
         unencryptedTransportIsThePlayersChoice();
         System.out.println("ClientProjectTest OK");
     }
@@ -28,6 +29,22 @@ public final class ClientProjectTest {
         // Judging is not adopting: nothing may be written before the player has agreed.
         expect(config.manifestPublicKey.isBlank(), "Judging an offer must not adopt it");
         expect(UdmcConfig.load(gameDir).manifestPublicKey.isBlank(), "Judging an offer must not touch the file");
+    }
+
+    /**
+     * Where a waiting screen may appear. A player turned away by the login rule lands on the
+     * disconnect screen, whose first button is the server list: while the question waited for
+     * the title screen they rejoined and were turned away for ever, told to leave the server
+     * once - which is exactly what they had just done.
+     */
+    private static void theQuestionFollowsThePlayerToTheServerList() {
+        expect(UdmcClientUi.presentable(true, false, true), "The title screen takes the question");
+        expect(UdmcClientUi.presentable(true, false, false), "The title screen takes anything else too");
+        expect(UdmcClientUi.presentable(false, true, true), "The server list must take the question");
+        expect(!UdmcClientUi.presentable(false, true, false),
+            "Nothing but the question may take the list away from someone choosing a server");
+        expect(!UdmcClientUi.presentable(false, false, true), "In a world, nothing interrupts");
+        expect(!UdmcClientUi.presentable(false, false, false), "In a world, nothing interrupts");
     }
 
     private static void acceptingKeepsNoSecretsAndSignsEverything() throws Exception {

@@ -100,14 +100,26 @@ public final class UdmcClientUi {
         // list; waiting for the title screen left them rejoining and being turned away for
         // ever, told to leave the server once - which is exactly what they had just done.
         boolean title = ClientPlatform.screen() instanceof TitleScreen;
-        if (!title && !(ClientPlatform.screen() instanceof JoinMultiplayerScreen)) return;
+        boolean list = ClientPlatform.screen() instanceof JoinMultiplayerScreen;
+        if (!title && !list) return;
         if (config != null) consider(AgentLoginProtocol.takeOffer());
         State pending = state;
         if (pending == null || dismissed) return;
-        // Only the question follows the player to the list. Anything else waits for the title
-        // screen rather than taking the list away from someone choosing a server.
-        if (!title && pending.offer() == null) return;
+        if (!presentable(title, list, pending.offer() != null)) return;
         ClientPlatform.open(new StatusScreen());
+    }
+
+    /**
+     * Whether something waiting to be shown may take over the screen the player is on.
+     *
+     * <p>The title screen takes anything. The server list takes only the question about a
+     * project - a player turned away by the login rule arrives there and must find it, while
+     * someone merely choosing a server must not have the list pulled out from under them by
+     * a finished synchronisation.
+     */
+    static boolean presentable(boolean title, boolean serverList, boolean question) {
+        if (!title && !serverList) return false;
+        return title || question;
     }
 
     /** Turns what the last server said about itself into something the player can answer. */

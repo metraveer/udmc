@@ -20,11 +20,10 @@ test("game navigation retains Minecraft multiplayer permission and warning check
   assert.match(source, /if \(!minecraft\.options\.skipMultiplayerWarning\) \{\s*ClientPlatform\.open\(new SafetyScreen\(parent\)\);\s*return;\s*\}/);
   assert.match(source, /Tooltip\.create\(Component\.translatable\("title\.multiplayer\.disabled"\)\)/);
   assert.doesNotMatch(source, /skipMultiplayerWarning\s*=(?!=)/);
-  // The offer has to be picked up on the server list, not only on the title screen. A player
-  // turned away by the login rule lands on the disconnect screen, whose first button is the
-  // list: waiting for the title screen left them rejoining and being turned away for ever.
-  assert.match(source, /ClientPlatform\.screen\(\) instanceof JoinMultiplayerScreen/);
-  assert.match(source, /if \(!title && pending\.offer\(\) == null\) return;/);
+  // Which screens the question may appear on is a rule with a truth table, checked by
+  // ClientProjectTest against UdmcClientUi.presentable. What is guarded here is only that
+  // tick() still asks it instead of deciding for itself.
+  assert.match(source, /if \(!presentable\(title, list, pending\.offer\(\) != null\)\) return;/);
 });
 
 test("agent diagnostics accept only known codes and preserve literal parameters", () => {
