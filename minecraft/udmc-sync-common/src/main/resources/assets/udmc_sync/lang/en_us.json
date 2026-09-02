@@ -15,6 +15,7 @@
   "udmc_sync.message.ready": "Pack files have changed. Close and restart Minecraft before joining the server.",
   "udmc_sync.message.verified": "Your files are up to date. You can join the server.",
   "udmc_sync.message.conflict_backup": "Only the named file will be disabled. A backup will remain in udmc-sync/backups. Restart Minecraft afterwards.",
+  "udmc_sync.message.conflict_blocking": "Until this is sorted the pack is not applied: the server's mods are not downloaded.",
   "udmc_sync.message.admin_conflict": "The pack administrator needs to resolve this conflict. No local file will be removed.",
   "udmc_sync.message.disabled": "%1$s\nBackup: %2$s\nRestart Minecraft to check the remaining mods.",
   "udmc_sync.message.confirm_disable": "%1$s\nA backup will be created. Other files will not be removed.",

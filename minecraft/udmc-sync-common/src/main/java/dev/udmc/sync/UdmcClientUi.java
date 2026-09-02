@@ -211,7 +211,11 @@ public final class UdmcClientUi {
             var file = conflict ? displayed.conflicts.get(index) : null;
             Component message = displayed.message;
             if (conflict) {
-                var details = Component.literal((index + 1) + " / " + displayed.conflicts.size() + "\n" + file.path());
+                // What the player is actually waiting for. Without this line the screen reads as a
+                // warning, and the question it leaves behind - "so why are the server's mods not
+                // arriving?" - has to be asked out loud before anyone answers it.
+                var details = Component.empty().append(text("udmc_sync.message.conflict_blocking")).append("\n\n")
+                    .append(Component.literal((index + 1) + " / " + displayed.conflicts.size() + "\n" + file.path()));
                 for (var reason : file.reasons()) details.append("\n").append(component(reason));
                 details.append("\n").append(file.path().isBlank() ? text("udmc_sync.message.admin_conflict") : text("udmc_sync.message.conflict_backup"));
                 message = details;
