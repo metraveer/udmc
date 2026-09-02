@@ -73,5 +73,15 @@ public final class AgentLoginNotice {
         return notice;
     }
 
+    /**
+     * Said by the client, to itself, when a server's mods start talking on a channel it only
+     * claimed to have (see {@link AgentLoginProtocol#standInFor}). This client has the mod and
+     * so has the translation; the fallback is for the log.
+     */
+    public static Component standIn() {
+        Messages.Message message = Messages.of("udmc_sync.login.stand_in");
+        return Component.translatableWithFallback(message.key(), message.fallback());
+    }
+
     private static String version(String value) { return value == null || value.isBlank() ? "-" : value; }
 }

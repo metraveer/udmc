@@ -5,7 +5,9 @@ import net.minecraft.network.Connection;
 import java.util.List;
 import java.util.Map;
 import java.util.Collections;
+import java.util.Set;
 import java.util.WeakHashMap;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class AgentLoginProtocol {
     /**
@@ -20,6 +22,13 @@ public final class AgentLoginProtocol {
      * them the screen that tells them what to install. What is new travels beside it instead.
      */
     public static final int QUERY_PROTOCOL = 2;
+    /**
+     * The mark on the ping that closes the question. The game answers a ping in every phase and
+     * every version, and TCP keeps order: when this comes back, a client that had something to
+     * say has already said it, and a client that stayed silent has no UDMC to say it with. So
+     * the wait is one round trip rather than a timeout every player without the mod pays for.
+     */
+    public static final int PING = 0x55444D43;
     private static volatile Server server;
     private static volatile Answer client;
     private static volatile ClientProject.Offer OFFER;
@@ -28,6 +37,20 @@ public final class AgentLoginProtocol {
     // read the same: silence is what tells the server the mod is not there at all.
     private static final Map<Connection, Answer> ANSWERS = Collections.synchronizedMap(new WeakHashMap<>());
     private static final Map<Connection, Boolean> PENDING = Collections.synchronizedMap(new WeakHashMap<>());
+    // The verdict of a connection that has been asked and is being waited on. Present means
+    // the configuration phase is held open for it and nothing else has been sent yet.
+    private static final Map<Connection, Runnable> AWAITING = Collections.synchronizedMap(new WeakHashMap<>());
+    /**
+     * The channel Fabric API's registry synchronisation arrives on, in the two spellings the
+     * supported game versions use: {@code registry/sync/direct} up to 1.21.x, {@code
+     * registry/sync} from 26.x. Both are claimed; the one a server does not use costs nothing.
+     * Read out of the library's own payload classes - this is the one fact of another mod's
+     * this mod carries by name, and it is checked on the stand, not derived.
+     */
+    static final List<String> REGISTRY_SYNC_CHANNELS = List.of("fabric:registry/sync/direct", "fabric:registry/sync");
+    // Whether this client has told a server it can receive those without being able to - which
+    // standIn() does only for a client that belongs to no project yet.
+    private static final Set<String> CLAIMED = ConcurrentHashMap.newKeySet();
 
     private AgentLoginProtocol() {}
 
@@ -49,7 +72,37 @@ public final class AgentLoginProtocol {
         // to use the default too - installed, but with none of the pack downloaded.
         String project = ClientProject.configured(config) ? config.packId : "";
         client = new Answer(PROTOCOL, project, PlatformDefaults.get("agentVersion"), hash);
+        CLAIMED.clear();
     }
+
+    /**
+     * The channels this client will tell a server it can receive, when the server announces its
+     * own - or none.
+     *
+     * <p>This is for the client that carries nothing but this mod, which is what the
+     * installation guide asks of a new player. A server whose mods add registry entries checks,
+     * before any configuration task runs, whether the client registered the channel its
+     * registry sync goes over; a client with no networking library registers nothing, and is
+     * refused with "this server requires Fabric API" - by the library, before UDMC has spoken,
+     * and so before the player could accept the project that would have installed that very
+     * library. Claiming the channel puts the server's sync task in the queue behind ours, so
+     * the first thing the player meets is our question.
+     *
+     * <p>Only for a client that belongs to no project yet. One that has accepted a project has
+     * the project's files, and if those do not include what the server's mods need, the
+     * library's refusal is the truthful one and stays.
+     */
+    public static List<String> standIn() {
+        Answer current = client;
+        if (current == null || !current.packId.isBlank()) return List.of();
+        CLAIMED.addAll(REGISTRY_SYNC_CHANNELS);
+        UdmcSync.LOGGER.info("UDMC told the server this client can receive {}: it belongs to no project yet and has no library of its own to answer with",
+            String.join(", ", REGISTRY_SYNC_CHANNELS));
+        return REGISTRY_SYNC_CHANNELS;
+    }
+
+    /** Whether a channel is one this client only claimed - so a payload on it cannot be handled. */
+    public static boolean claimed(String channel) { return CLAIMED.contains(channel); }
 
     public static Query query() {
         Server current = server;
@@ -167,6 +220,19 @@ public final class AgentLoginProtocol {
             expected.downloadUrl, agentVersion(), offered, expected.packId, reported, reportedProject);
     }
 
+    /** Holds a verdict until the client has had its round trip to answer. */
+    public static void await(Connection connection, Runnable verdict) { AWAITING.put(connection, verdict); }
+    public static boolean awaiting(Connection connection) { return AWAITING.containsKey(connection); }
+
+    /**
+     * Reaches the verdict once. The pong and the patience deadline race each other by design;
+     * removing before running is what makes the loser of that race do nothing.
+     */
+    public static void settle(Connection connection) {
+        Runnable verdict = AWAITING.remove(connection);
+        if (verdict != null) verdict.run();
+    }
+
     public static void receive(Connection connection, Answer answer) { ANSWERS.put(connection, answer); }
     public static boolean answered(Connection connection) { return ANSWERS.containsKey(connection); }
     // Marked when the question goes out and cleared by the verdict: it tells the join hook
@@ -174,7 +240,9 @@ public final class AgentLoginProtocol {
     public static void asked(Connection connection) { PENDING.put(connection, Boolean.TRUE); }
     public static boolean pending(Connection connection) { return PENDING.remove(connection) != null; }
     public static Answer takeAnswer(Connection connection) { return ANSWERS.remove(connection); }
-    public static void forget(Connection connection) { ANSWERS.remove(connection); WARN.remove(connection); PENDING.remove(connection); }
+    public static void forget(Connection connection) {
+        ANSWERS.remove(connection); WARN.remove(connection); PENDING.remove(connection); AWAITING.remove(connection);
+    }
 
     public static void warn(Connection connection, Decision decision) { WARN.put(connection, decision); }
     public static Decision takeWarning(Connection connection) { return WARN.remove(connection); }

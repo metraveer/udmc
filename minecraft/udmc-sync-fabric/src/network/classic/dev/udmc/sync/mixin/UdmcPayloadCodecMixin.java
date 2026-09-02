@@ -3,6 +3,7 @@ package dev.udmc.sync.mixin;
 import dev.udmc.sync.network.UdmcAnswerPayload;
 import dev.udmc.sync.network.UdmcProjectPayload;
 import dev.udmc.sync.network.UdmcQueryPayload;
+import dev.udmc.sync.network.UdmcRegisterPayload;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.DiscardedPayload;
 import net.minecraft.resources.ResourceLocation;
@@ -24,5 +25,9 @@ public abstract class UdmcPayloadCodecMixin {
         if (UdmcQueryPayload.ID.equals(id)) callback.setReturnValue(UdmcQueryPayload.CODEC);
         else if (UdmcAnswerPayload.ID.equals(id)) callback.setReturnValue(UdmcAnswerPayload.CODEC);
         else if (UdmcProjectPayload.ID.equals(id)) callback.setReturnValue(UdmcProjectPayload.CODEC);
+        // The game's own channel registration, for the one client that has nobody else to read
+        // it: with a networking library installed, the library's codec is found before this
+        // fallback is asked, so this line is reached only where that library is absent.
+        else if (UdmcRegisterPayload.ID.equals(id)) callback.setReturnValue(UdmcRegisterPayload.CODEC);
     }
 }

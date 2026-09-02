@@ -22,8 +22,11 @@ test("game navigation retains Minecraft multiplayer permission and warning check
   assert.doesNotMatch(source, /skipMultiplayerWarning\s*=(?!=)/);
   // Which screens the question may appear on is a rule with a truth table, checked by
   // ClientProjectTest against UdmcClientUi.presentable. What is guarded here is only that
-  // tick() still asks it instead of deciding for itself.
-  assert.match(source, /if \(!presentable\(title, list, pending\.offer\(\) != null\)\) return;/);
+  // tick() still asks it instead of deciding for itself - and that the screen a player was
+  // turned away on counts as a place to wait, not as the title screen: only the question
+  // may take it over, and only when the refusal on it is ours.
+  assert.match(source, /if \(!presentable\(title, list \|\| turnedAway, pending\.offer\(\) != null\)\) return;/);
+  assert.match(source, /turnedAway = screen instanceof DisconnectedScreen\s*&& screen\.getNarrationMessage\(\)\.getString\(\)\.contains\("UDMC"\)/);
 });
 
 test("agent diagnostics accept only known codes and preserve literal parameters", () => {

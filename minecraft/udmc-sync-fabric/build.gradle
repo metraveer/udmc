@@ -59,9 +59,21 @@ base {
     archivesName = "${project.archives_base_name}-${project.minecraft_version}"
 }
 
+// The whole of Fabric API, for a stand that has to run with it - the configuration this mod's
+// login check has broken in more than once, and one a production jar cannot provide here: the
+// loader remaps it on the way in and that remap fails on the way. Never part of the build; the
+// stand asks for it by property, and only for the side that should have it.
+def fullFabricApi = ['1.21.1': '0.116.15+1.21.1', '26.2': '0.159.0+26.2'][project.minecraft_version]
+if (project.hasProperty('udmc_full_fabric_api') && fullFabricApi == null) {
+    throw new GradleException("No full Fabric API version recorded for ${project.minecraft_version}")
+}
+
 dependencies {
     resourceModules.each { module, moduleVersion ->
         add(legacyMinecraft ? 'modImplementation' : 'implementation', include("net.fabricmc.fabric-api:${module}:${moduleVersion}"))
+    }
+    if (project.hasProperty('udmc_full_fabric_api')) {
+        add(legacyMinecraft ? 'modRuntimeOnly' : 'runtimeOnly', "net.fabricmc.fabric-api:fabric-api:${fullFabricApi}")
     }
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
     if (legacyMinecraft) {

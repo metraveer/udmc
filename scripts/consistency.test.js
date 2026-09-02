@@ -44,7 +44,11 @@ test("the login protocol is spoken the same way by everything that speaks it", a
   assert.equal(typeof login.protocol, "number");
   assert.ok(login.protocol >= 3 && login.queryProtocol === 2,
     "QUERY_PROTOCOL is frozen at 2: clients from 0.19.0 decode the question by position");
-  assert.deepEqual(Object.keys(login.channels).sort(), ["answer", "project", "query"]);
+  assert.deepEqual(Object.keys(login.channels).sort(), ["answer", "project", "query", "register"]);
+  // The registration a fresh client answers for itself goes over the game's own channel, in
+  // the shape the networking libraries write - it is read by them, not by us.
+  assert.equal(login.channels.register, "minecraft:register");
+  assert.deepEqual(login.fields.register, ["bytes"]);
 
   // Two source sets carry these payloads - one for the loaders that still take a
   // ResourceLocation, one for the rest. They must put the same fields on the wire in the

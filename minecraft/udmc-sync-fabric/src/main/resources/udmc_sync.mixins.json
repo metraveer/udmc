@@ -6,6 +6,7 @@
     "CommandsMixin",
     "DedicatedServerMixin",
     "MinecraftServerMixin",
+    "ConfigurationTaskAccess",
     "ServerConfigVerifyMixin",
     "ServerPayloadMixin",
     "PlayerListMixin",

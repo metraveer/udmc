@@ -168,7 +168,7 @@ async function login(mode, reject, warning = false) {
   await verdicts();
   const version = offeredVersion;
   assert.ok(version, "The offered client version must be known before a client can imitate one");
-  const events = { project: false, query: false, order: [], joined: false, warning: false, kicked: "" };
+  const events = { project: false, query: false, order: [], joined: false, warning: false, kicked: "", configured: false };
   let settle, finish = () => {};
   const client = minecraft.createClient({ host: "127.0.0.1", port: fixture.gamePort,
     // Minecraft names stop at 16 characters, and a longer one fails the handshake with a
@@ -176,7 +176,8 @@ async function login(mode, reject, warning = false) {
     username: `UDMC_${mode}`.slice(0, 16), version: fixture.minecraft, auth: "offline", profilesFolder: path.join(root, "bot") });
   client.on("ping", packet => client.write("pong", { id: packet.id }));
   client.on("packet", (packet, metadata) => {
-    if (process.env.UDMC_PROTOCOL_TRACE) console.log(metadata.state, metadata.name, packet.channel || "");
+    // Some packets arrive with no body at all, and reading a field off one used to end the run.
+    if (process.env.UDMC_PROTOCOL_TRACE) console.log(metadata.state, metadata.name, packet?.channel || "");
     // Read by packet name rather than by event, and in every phase: the refusal can arrive in
     // the configuration phase or at the door, and the two are not named the same way by every
     // protocol library. Listening for one of them left the other looking like a silent close.
@@ -186,6 +187,16 @@ async function login(mode, reject, warning = false) {
       finish();
       return;
     }
+    // The game's own configuration work, and the thing a refusal must come before. A player
+    // who does not have the server's mods yet is thrown out by the registry check with a
+    // message of the game's own - so if any of this has been sent by the time UDMC refuses
+    // someone, then on a server with mods UDMC would never get to say anything at all, and
+    // the player could never accept the project that would have given them those mods.
+    if (metadata.name === "registry_data" || metadata.name === "select_known_packs") events.configured = true;
+    // Fabric API synchronises registries in a task of its own, ahead of the game's, on a
+    // channel of its own - and that is the check whose "unknown registry entries" a new
+    // player used to meet instead of UDMC's question. It counts as configuration too.
+    if (metadata.name === "custom_payload" && /registry/.test(String(packet?.channel))) events.configured = true;
     // Entering the world is the play state beginning, not the login handshake succeeding.
     // The verdict is reached in the configuration phase, which comes after login success:
     // taking that for arrival made every rejected client look as though it had got in.
@@ -202,7 +213,8 @@ async function login(mode, reject, warning = false) {
       client.end("UDMC isolated test finished");
       error ? fail(error) : resolve();
     };
-    // The server decides without an answer after about ten seconds, and "silent" waits for it.
+    // A verdict costs one round trip now, including for a client that never answers: the
+    // question is followed by a ping, and the ping comes back whether UDMC is there or not.
     const timeout = setTimeout(() => finish(new Error(`Login timed out: ${mode} ${JSON.stringify(events)}`)), 25000);
     client.on("error", finish);
     client.on("custom_payload", packet => {
@@ -251,20 +263,21 @@ async function login(mode, reject, warning = false) {
     assert.ok(decided.includes(expected),
       `The server must record its verdict as ${expected}, not ${decided.join(", ") || "nothing"}`);
   }
-  // Refused is the guarantee; which of the two gates refuses is a race this harness cannot
-  // fix. The agent decides on a server tick while the player is still in the configuration
-  // phase, and a client that finishes that phase faster than one tick is caught at the door
-  // instead - placed, then disconnected (PlayerListMixin, by design). A real client is slow
-  // enough that the first gate wins; a bot on loopback is not, so asserting "before the
-  // world" here would make the suite flap. What must never differ is the verdict itself.
   if (!reject) assert.equal(events.joined, true, `A correct client must reach the world: ${JSON.stringify(events)}`);
   if (reject) {
-    if (events.kicked) {
-      assert.ok(events.kicked.includes(notice.key), `The refusal must name why: expected ${notice.key} in ${events.kicked}`);
-      // A player whose file is already the right one is not sent to download it again.
-      assert.equal(events.kicked.includes("/udmc"), notice.url,
-        `${notice.key} ${notice.url ? "must" : "must not"} send the player to the install page: ${events.kicked}`);
-    }
+    // Where the refusal happens is not a detail: the check holds the configuration phase open
+    // and nothing else has been sent yet, so the refusal is the next thing the client reads.
+    // Sent any later it competes with the game's own reasons for ending the connection - and
+    // on a server whose mods the player does not have yet, it loses that race every time.
+    assert.equal(events.configured, false,
+      `UDMC must refuse before the game configures anything: ${JSON.stringify(events)}`);
+    assert.equal(events.joined, false, `A refused client must never reach the world: ${JSON.stringify(events)}`);
+    assert.equal(events.kickedIn, "configuration",
+      `The refusal must arrive in the configuration phase, not ${events.kickedIn || "nowhere"}`);
+    assert.ok(events.kicked.includes(notice.key), `The refusal must name why: expected ${notice.key} in ${events.kicked}`);
+    // A player whose file is already the right one is not sent to download it again.
+    assert.equal(events.kicked.includes("/udmc"), notice.url,
+      `${notice.key} ${notice.url ? "must" : "must not"} send the player to the install page: ${events.kicked}`);
   } else {
     assert.equal(events.warning, warning, JSON.stringify(events));
     if (warning) {
@@ -274,7 +287,7 @@ async function login(mode, reject, warning = false) {
       if (notice.url) assert.ok(events.notice.includes("open_url"), "An address shown in chat must be clickable");
     }
   }
-  console.log(`PASS login ${mode}: ${reject ? `turned away with ${notice.key}${events.kickedIn ? ` in the ${events.kickedIn} phase` : " (refusal seen in the server log)"}`
+  console.log(`PASS login ${mode}: ${reject ? `turned away with ${notice.key} in the ${events.kickedIn} phase, before the game configured anything`
     : warning ? `joined and told why (${notice.key})` : "joined without a notice"}`);
   return true;
 }

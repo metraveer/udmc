@@ -141,6 +141,45 @@ public final class AgentUpdateTest {
                 config.packId, PlatformDefaults.get("agentVersion"), Hashes.sha256(client))).valid(),
                 "Bytes are not part of the verdict any more");
 
+            // What the check sends, and in what order, before it lets the game do anything.
+            // This is the guarantee the whole design rests on: the offer, then the question,
+            // then a ping - and the phase held open until that ping comes back. Sent in any
+            // other order, or not held at all, a player who does not yet have the server's
+            // mods is thrown out by the game's own registry check before UDMC has spoken, and
+            // can then never accept the project that would have given them those mods.
+            //
+            // Checked here rather than only on the stand because the stand runs on 1.21.1
+            // alone: this is the only place the same guarantee is checked on 26.1.2 and 26.2.
+            //
+            // Fabric only, and said out loud: NeoForge never runs this class - its check is a
+            // configuration task of NeoForge's own (NeoForgeVerification) - and constructing a
+            // real payload packet there needs the game bootstrapped, which a unit test is not.
+            if ("fabric".equals(PlatformDefaults.get("loader"))) {
+                // A payload packet's class pulls the built-in registries in behind it on 1.21.1,
+                // and those refuse to exist until the game is bootstrapped - as in any vanilla
+                // unit test. On 26.x it is not needed and costs a second; the same code either way.
+                net.minecraft.SharedConstants.tryDetectVersion();
+                net.minecraft.server.Bootstrap.bootStrap();
+                var connection = new net.minecraft.network.Connection(net.minecraft.network.protocol.PacketFlow.SERVERBOUND);
+                var sent = new java.util.ArrayList<net.minecraft.network.protocol.Packet<?>>();
+                new AgentLoginVerification(null, connection).start(sent::add);
+                check(sent.size() == 3, "The check must send the offer, the question and the ping, and nothing else: " + sent.size());
+                check(sent.get(0) instanceof net.minecraft.network.protocol.common.ClientboundCustomPayloadPacket first
+                    && first.payload() instanceof dev.udmc.sync.network.UdmcProjectPayload,
+                    "The project must be offered first, so a client that has never seen this server knows who is asking");
+                check(sent.get(1) instanceof net.minecraft.network.protocol.common.ClientboundCustomPayloadPacket second
+                    && second.payload() instanceof dev.udmc.sync.network.UdmcQueryPayload,
+                    "The question must follow the offer");
+                check(sent.get(2) instanceof net.minecraft.network.protocol.common.ClientboundPingPacket ping
+                    && ping.getId() == AgentLoginProtocol.PING,
+                    "The question must be followed by our own ping: it is what ends the wait for every client, answering or not");
+                check(AgentLoginProtocol.awaiting(connection), "The phase must be held open until the verdict");
+                AgentLoginProtocol.forget(connection);
+                check(!AgentLoginProtocol.awaiting(connection), "A connection that went away must not be waited on");
+            } else {
+                System.out.println("Login task ordering not checked on " + PlatformDefaults.get("loader") + ": that loader verifies through its own configuration task");
+            }
+
             // Turning a player away is the server's rule, not the verdict's. With the rule off
             // every one of these still fails - and every one of them lets the player in, which
             // is how they get far enough to be told what to do.

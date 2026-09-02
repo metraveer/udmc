@@ -1,9 +1,11 @@
 package dev.udmc.sync.mixin;
 
+import dev.udmc.sync.AgentLoginNotice;
 import dev.udmc.sync.AgentLoginProtocol;
 import dev.udmc.sync.network.UdmcAnswerPayload;
 import dev.udmc.sync.network.UdmcProjectPayload;
 import dev.udmc.sync.network.UdmcQueryPayload;
+import dev.udmc.sync.network.UdmcRegisterPayload;
 import net.minecraft.client.multiplayer.ClientCommonPacketListenerImpl;
 import net.minecraft.network.Connection;
 import net.minecraft.network.protocol.common.ClientboundCustomPayloadPacket;
@@ -23,6 +25,27 @@ public abstract class ClientPayloadMixin {
     @Inject(method = "handleCustomPayload(Lnet/minecraft/network/protocol/common/ClientboundCustomPayloadPacket;)V",
         at = @At("HEAD"), cancellable = true)
     private void udmc$question(ClientboundCustomPayloadPacket packet, CallbackInfo callback) {
+        if (packet.payload() instanceof UdmcRegisterPayload) {
+            // Reaching this handler at all means nobody else on this client speaks for it: a
+            // client with Fabric API has its own reader for this channel, and that reader is
+            // found before the game's fallback - where our codec lives - is ever asked.
+            // Answered from here, on the network thread, so that the answer is on the wire
+            // ahead of the pong the server is waiting for before it decides anything.
+            var claimed = AgentLoginProtocol.standIn();
+            if (!claimed.isEmpty()) connection.send(new ServerboundCustomPayloadPacket(new UdmcRegisterPayload(claimed)));
+            callback.cancel();
+            return;
+        }
+        if (AgentLoginProtocol.claimed(packet.payload().type().id().toString())) {
+            // A server's mod has started talking on a channel this client only claimed to
+            // have: the server let the connection go on, and its mods now expect an answer
+            // nobody here can give. Left alone, both sides wait on each other until the
+            // keep-alive gives up and the player reads "timed out". Say what it is instead,
+            // in words that lead to the question waiting behind this screen.
+            connection.disconnect(AgentLoginNotice.standIn());
+            callback.cancel();
+            return;
+        }
         if (packet.payload() instanceof UdmcProjectPayload project) {
             // Only recorded here. What to do with it needs the game thread and, when it means
             // adopting a project, the player - neither of which belongs on the network thread.

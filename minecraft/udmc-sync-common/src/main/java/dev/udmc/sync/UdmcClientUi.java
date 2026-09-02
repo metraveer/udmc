@@ -5,6 +5,7 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.MultiLineTextWidget;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.ConnectScreen;
+import net.minecraft.client.gui.screens.DisconnectedScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen;
@@ -113,15 +114,20 @@ public final class UdmcClientUi {
 
     public static void tick() {
         // A project decision belongs between sessions, not on top of a game the player is in
-        // the middle of. The offer waits in the protocol until they come back.
-        //
-        // The server list counts as between sessions, and it has to. A player turned away by
-        // the login rule lands on the disconnect screen, whose first button is the server
-        // list; waiting for the title screen left them rejoining and being turned away for
-        // ever, told to leave the server once - which is exactly what they had just done.
-        boolean title = ClientPlatform.screen() instanceof TitleScreen;
-        boolean list = ClientPlatform.screen() instanceof JoinMultiplayerScreen;
-        if (!title && !list) return;
+        // the middle of. The offer waits in the protocol until they come back - and being
+        // turned away counts as coming back, or the player is sent to look for a question
+        // that is waiting on a screen they have to guess their way to.
+        Screen screen = ClientPlatform.screen();
+        boolean title = screen instanceof TitleScreen;
+        boolean list = screen instanceof JoinMultiplayerScreen;
+        // A player the server has just turned away is reading our own reason for it. The
+        // question that answers that reason belongs on that screen and not one click later:
+        // being told to leave a screen in order to be asked something is two screens for one
+        // decision. Somebody else's disconnect is left alone - it is checked by our own name
+        // in the message, the same way the buttons on that screen are.
+        boolean turnedAway = screen instanceof DisconnectedScreen
+            && screen.getNarrationMessage().getString().contains("UDMC");
+        if (!title && !list && !turnedAway) return;
         // On the game thread, where touching the saved server list is safe.
         if (!offerServer.isEmpty()) {
             String address = offerServer;
@@ -131,20 +137,20 @@ public final class UdmcClientUi {
         if (config != null) consider(AgentLoginProtocol.takeOffer());
         State pending = state;
         if (pending == null || dismissed) return;
-        if (!presentable(title, list, pending.offer() != null)) return;
+        if (!presentable(title, list || turnedAway, pending.offer() != null)) return;
         ClientPlatform.open(new StatusScreen());
     }
 
     /**
      * Whether something waiting to be shown may take over the screen the player is on.
      *
-     * <p>The title screen takes anything. The server list takes only the question about a
-     * project - a player turned away by the login rule arrives there and must find it, while
-     * someone merely choosing a server must not have the list pulled out from under them by
-     * a finished synchronisation.
+     * <p>The title screen takes anything. The screen a player was turned away on, and the
+     * server list they land on next, take only the question about a project - it is the answer
+     * to why they are there. Someone merely choosing a server must not have the list pulled
+     * out from under them by a synchronisation that happened to finish.
      */
-    static boolean presentable(boolean title, boolean serverList, boolean question) {
-        if (!title && !serverList) return false;
+    static boolean presentable(boolean title, boolean waiting, boolean question) {
+        if (!title && !waiting) return false;
         return title || question;
     }
 

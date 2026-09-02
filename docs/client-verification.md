@@ -168,24 +168,139 @@ The Fabric-only classes stay in the jar on NeoForge, unapplied — same as `Serv
 
 ---
 
-## 4b. WHERE THE REFUSAL IS SPOKEN (measured 2026-09-01, Minecraft 1.21.1)
+## 4b. WHERE THE REFUSAL IS SPOKEN (measured 2026-09-01, revised 2026-09-03)
 
-The question is asked in the configuration phase. **The refusal is not.**
+**The question is asked first, before anything else on the connection, and the refusal is
+spoken there too.** UDMC's check is a configuration task queued ahead of the game's own, so the
+phase is held open for it: nothing has been sent when the verdict is reached, and the refusal is
+the next thing the client reads.
 
-Refusing from the configuration phase costs the player the explanation. The disconnect goes out
-immediately after the answer arrives — which is in the middle of the registry burst the server
-is streaming — and a real client never processes it. What it shows is the vanilla
-`disconnect.disconnected`: a bare "Отключение", with no reason, no versions and no buttons.
-Both were captured on the stand, side by side, on the same build:
+This replaces an earlier arrangement in which the question was asked in the configuration phase
+and the verdict was reached in the play phase, after the player had been placed. That
+arrangement was built on a real measurement and a conclusion drawn too widely from it.
+
+**The measurement (2026-09-01, Minecraft 1.21.1).** A disconnect sent from the configuration
+phase *while the server was streaming registries* is never processed by a real client; what it
+shows is a bare `Отключение` with no reason, no versions and no buttons. The same refusal sent
+from the play phase arrives whole. Both captured on the stand, side by side, same build.
 
 | Where the verdict was reached | What the player saw |
 | --- | --- |
-| configuration phase (tick) | `Отключение` and nothing else |
+| configuration phase, into the registry burst | `Отключение` and nothing else |
 | play phase (`PlayerListMixin`) | the whole notice, translated, with both installation buttons |
 
-So `ServerConfigVerifyMixin` only asks and records; `PlayerListMixin` decides. The cost is that
-a refused player is placed for the part of a tick it takes to disconnect them, so the log and
-the chat show them joining and leaving. That is the price of being told why, and it is worth it.
+**What was wrong was the conclusion**, not the measurement. The refusal was not lost because it
+came from the configuration phase; it was lost because it came *second*, into a burst of packets
+the client was already choking on. Sent first, on an idle channel, it arrives — which is what
+NeoForge has been doing from its own configuration task all along, and what the stand now
+confirms on Fabric.
+
+**And the arrangement it justified had a much worse cost than two lines in the log.** Deciding
+after the player is placed means deciding after the game has run *its* checks, and the game's
+registry check throws out any client that lacks the server's mods. On a server with any content
+mod, a new player was disconnected by the game before UDMC had said anything: they could not
+accept the project, so the pack never arrived, so they still lacked the mods — for ever. The mod
+was unusable on exactly the servers it exists for. Reported from a live server, 2026-09-03.
+
+So the order is now the guarantee, and it is asserted rather than described:
+`scripts/runtime-agent-check.js` fails if a refused client has received `registry_data` or
+`select_known_packs`, if it reaches the play phase, or if the refusal arrives anywhere but the
+configuration phase.
+
+### The wait costs one round trip, not a deadline
+
+The objection that kept this out of Fabric for two releases was real: a configuration task holds
+the phase until *something* ends the wait, and a player with no UDMC never answers — so the
+commonest refusal there is would have been the slowest, paid for by everyone.
+
+The way out is that the game answers a ping in every phase and every version, and TCP delivers in
+order. The task sends the project, the question, and then `ClientboundPingPacket` carrying a mark
+of ours. When the pong comes back, a client that had something to say has already said it, and a
+client that stayed silent has nothing to say. Every player is judged at the same moment, one
+round trip after being asked, whether they have the mod or not. NeoForge reaches the same point
+by asking `hasChannel` first, which Fabric cannot do; the ping is Fabric's answer and costs
+nothing on either.
+
+A five-second deadline remains as a backstop for something that is not a Minecraft client at
+all. It is not the mechanism, and it never fires for anything that speaks the protocol.
+
+### Where the task is queued, and how it finishes (measured 2026-09-03, Minecraft 1.21.1)
+
+**Queued in the listener's constructor, not at the head of `startConfiguration`.** Fabric API
+hooks that head too (`ServerConfigurationNetworkHandlerMixin`, priority 900): on the first call
+it sends its channel registration and a ping, and cancels the method until the client answers;
+on the next it fires `BEFORE_CONFIGURE` — where `fabric-registry-sync-v0` adds its own task — and
+then drains the queue in a loop of its own, one task per re-entry, before the game's body ever
+runs. A task added at that head lands before or after Fabric's registry sync depending on which
+mixin's callback runs first, which is a priority number nobody promised to keep. A task added at
+construction is in the queue before either of them looks at it.
+
+**Finished through Fabric's `completeTask` when Fabric API is there, through the game's
+`finishCurrentTask` when it is not.** In Fabric's early loop a task is expected to report back
+through `FabricServerConfigurationNetworkHandler.completeTask`, which re-enters
+`startConfiguration` to pick the next one. The game's `finishCurrentTask` re-enters nothing: it
+polls the queue, and when ours was the last early task it finds the queue empty and stops — the
+phase would hang until the keep-alive gave up on the player. The interface is found by name at
+runtime; the mod still carries no dependency on Fabric API, for the reasons in §1.
+
+**What a refused client receives, in order, on a server running the whole of Fabric API**
+(0.116.15, 44 mods, `fabric-registry-sync-v0` among them):
+
+```
+configuration custom_payload minecraft:register      Fabric's channel registration
+configuration ping                                    Fabric's register/ping barrier
+configuration custom_payload udmc_sync:verify_project
+configuration custom_payload udmc_sync:verify_query
+configuration ping                                    ours
+configuration disconnect
+```
+
+Nothing from registry synchronisation — not Fabric's `fabric:registry/sync/*`, not the game's
+`select_known_packs` or `registry_data` — precedes the refusal. A correct client goes on from
+the same point to `minecraft:brand`, `feature_flags`, `select_known_packs` and the registries.
+Without Fabric API the same order holds with the two Fabric packets absent. Both configurations
+are walked by `npm run e2e:login -- 1.21.1` and `npm run e2e:login -- 1.21.1 fabric-api`, in CI.
+
+### The client that has nothing but this mod (measured 2026-09-03, Minecraft 26.2)
+
+The installation guide asks a new player for one file. On a server whose mods add registry
+entries, that player was refused before any of the above could happen — not by the game and not
+by UDMC, but by Fabric API, at the moment it fires `BEFORE_CONFIGURE`: `fabric-registry-sync-v0`
+asks whether the client registered the channel its synchronisation goes over
+(`ServerConfigurationNetworking.canSend`), and a client with no networking library has
+registered nothing. The answer is `disconnect("This server requires Fabric API installed on your
+client!")`, with the offending namespaces listed — `xaerominimap`, on the stand — and it comes
+before a single task has run, ours included. The player could not accept the project that would
+have installed that very library. Captured on the stand: `.qa/shots/262-first-join.png`.
+
+So the client stands in for the library it does not have. When a server's own channel
+registration arrives — which reaches our handler only where no networking library is installed,
+because such a library reads that channel before the game's fallback is ever asked — a client
+that belongs to no project yet answers with a registration of its own, naming the two spellings
+of the registry-sync channel (`fabric:registry/sync/direct` up to 1.21.x, `fabric:registry/sync`
+from 26.x; the unused one costs nothing). Sent from the network thread, so it is on the wire
+ahead of the pong Fabric waits for. `canSend` is then true, Fabric queues its sync task behind
+ours, and the first thing the player meets is our question.
+
+Two guards keep this honest. A client that has accepted a project never stands in: it has the
+project's files, and if those do not include what the server's mods need, the library's refusal
+is the truthful one. And if the server lets the connection go on — the login rule is off — and
+its registry sync starts talking on a channel this client only claimed, the client ends the
+connection itself with a notice of its own (`udmc_sync.login.stand_in`) rather than leaving both
+sides waiting on each other until the keep-alive gives up.
+
+The two channel ids are the one fact of another mod's that this mod carries by name. They are
+read out of the library's payload classes, kept in `AgentLoginProtocol.REGISTRY_SYNC_CHANNELS`,
+and checked on the stand only: the automated matrix has no content mod to make a server's
+registries modded with. Measured on the 26.2 stand with `fabric-api 0.159.0` and `xaerominimap
+26.4.2` on the server and nothing but this mod on the client:
+
+```
+UDMC told the server this client can receive fabric:registry/sync/direct, fabric:registry/sync
+UDMC was offered project udmc-main at http://127.0.0.1:43077
+Client disconnected with reason: Клиент UDMC установлен, но ещё не настроен ни на какую сборку ...
+UDMC decided about project udmc-main: NEW_PROJECT
+```
 
 ### The verdict compares versions, not bytes (2026-09-01)
 
@@ -229,40 +344,35 @@ trade: an idle connection kept alive by a mod is indistinguishable, to the owner
 a stuck one. The round trip stays. The question waits on the player's screen with no clock
 running, which is the property that matters.
 
-### Why not a configuration task, or a refusal payload
+### Why not a refusal payload
 
-Both were considered here and neither is free.
-
-**A configuration task** — which is what NeoForge already does — holds the phase open until the
-verdict, so the player is never placed and the disconnect goes out on an idle channel. The catch
-is the case that matters most: a player without the mod never answers, so the task waits out its
-whole deadline before saying anything. Today that player is refused the moment they arrive. Ten
-seconds of nothing, for the commonest refusal there is, is a worse trade than two lines in the
-log. NeoForge can afford the task because it can ask `hasChannel` first; Fabric cannot.
-
-**A refusal payload** drawn by our own screen would keep both — no placement and a full
-explanation. It is additive, so the frozen question allows it. But it is sent at the same moment
-as the disconnect that is currently lost, into the same registry burst, so it has to be measured
-before it can be believed: if the payload does not survive either, the screen never appears and
-the player is left with less than they have now. That measurement is the next step, not the
-change itself.
+A refusal drawn by a screen of our own, sent as a payload before the disconnect, was the planned
+answer to the lost explanation. It is no longer needed: the disconnect is not lost any more, and
+the one thing a payload would have added over it — acting on the refusal without leaving the
+screen — the client already does, by putting the project question on the screen the player was
+turned away on.
 
 Whatever replaces this must be walked across the whole matrix below, not just the row that
 hurts: every previous attempt at this transport worked in exactly one configuration.
 
 ## 5. TEST PLAN ON THE REAL STAND
 
-**Automated** (`scripts/runtime-agent-check.js`, 1.21.1 only — `minecraft-protocol@1.66.2` still has no 26.x support, per `docs/development.md:165`). Keep `assert.equal(events.joined, !reject)`; the configuration gate preserves "rejected before world entry". Scenarios:
+**Automated** (`scripts/runtime-agent-check.js`, 1.21.1 only — `minecraft-protocol@1.66.2` still has no 26.x support, per `docs/development.md:165`). Every refused client is held to three things besides the reason: it has received no `registry_data` and no `select_known_packs`, it never reached the play phase, and the refusal arrived in the configuration phase. Those three are the guarantee of §4b, and the harness fails on any of them. Scenarios:
 
 | mode | client behaviour | must show |
 |---|---|---|
 | `current` | correct answer | joins, no notice |
-| `outdated` | different version + hash | rejected, `login.restart` wording, **no** URL in the message |
+| `ahead` / `otherBuild` | newer version / same version, other bytes | joins, no notice |
+| `outdated` | older version | rejected, `login.restart` wording, **no** URL in the message |
 | `other` | different packId, blank hash | rejected, message names this server's packId |
-| `vanilla` | never registers, never answers | rejected **fast** (well under 1 s, via the finish trigger), message contains `/udmc` |
-| `silent` | registers, then never answers and never finishes | rejected at ~10 s via the deadline |
-| `late` | answers **after** `finish_configuration` | still rejected — fail-closed |
-| `warn` | `requireClient:false` + `vanilla` | joins **and** receives a `system_chat` containing `open_url` |
+| `unclaimed` | blank packId | rejected, names the offered project, **no** URL — the client has the file already |
+| `incompatible` | other protocol number | rejected, named as such rather than as missing |
+| `silent` | never answers, only pongs | rejected within the same round trip as everyone else, message contains `/udmc` |
+| `warn` | `requireClient:false` + `unclaimed` / `silent` | joins **and** receives a `system_chat` with the same reason; `open_url` where a file is to be fetched |
+
+The ordering is also checked without a stand, on all four builds, by `AgentUpdateTest`: what
+the check sends is the offer, the question and the ping, in that order and nothing else, and the
+connection is being waited on afterwards. 26.1.2 and 26.2 are covered by that check alone.
 
 **Native matrix** — one CDP screenshot of the disconnect screen per rejecting row (mandatory per `CLAUDE.md`; the "open page" / "copy link" buttons come from `DisconnectedScreenMixin` scraping `getNarrationMessage()` for `UDMC` + `https?://`, and no programmatic check covers them):
 
@@ -282,7 +392,7 @@ hurts: every previous attempt at this transport worked in exactly one configurat
 | 12 | any, behind **Velocity** and behind **BungeeCord** | correct client | joins clean — configuration payloads are the well-trodden proxy path, but prove it |
 | 13 | 0.18 server ↔ 0.19 client, and 0.19 server ↔ 0.18 client | | the §Step-8 behaviour: forced warn-only, reworded message, heals after one restart |
 
-Also assert on rows 1–3 that the verdict appears in the server log **before** `SynchronizeRegistriesTask`-related traffic on NeoForge is irrelevant (our task runs after it there) but on Fabric the finish-gate necessarily lands after registry sync — expected, and worth noting so nobody reads it as a bug.
+On rows 2, 3 and 6 the server log must show the verdict **before** the game's own `lost connection` line for that player and with no `logged in` line between them: the refusal happens in the configuration phase, before registries, and a refused player is never placed. On NeoForge the same holds by NeoForge's own task ordering. Row 2 is also where the new screen is checked: the project question must replace our disconnect screen on its own, without the player pressing anything.
 
 ---
 

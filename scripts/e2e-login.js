@@ -14,6 +14,11 @@ import { setTimeout as delay } from "node:timers/promises";
 import path from "node:path";
 
 const version = process.argv[2] || "1.21.1";
+// "fabric-api" puts the whole of Fabric API on the server and nothing extra on the client.
+// That is the configuration a new player meets on a real server - and the one in which Fabric
+// API drains the configuration queue in a loop of its own, ahead of the game. Every earlier
+// attempt at the login check worked in exactly one of these two configurations, so both run.
+const fullFabricApi = process.argv[3] === "fabric-api";
 const root = path.resolve(".qa", `fabric-${version}-e2e`);
 const windows = process.platform === "win32";
 
@@ -25,14 +30,15 @@ const run = (command, args) => new Promise((resolve, reject) => {
 
 const fixture = async () => JSON.parse(await readFile(path.join(root, "fixture.json"), "utf8"));
 
-console.log(`[e2e] stand for Minecraft ${version}`);
+console.log(`[e2e] stand for Minecraft ${version}${fullFabricApi ? ", the whole Fabric API on the server" : ""}`);
 await run("node", ["scripts/e2e-stand.js", version]);
 const { url } = await fixture();
 
 const gradle = path.resolve("minecraft/udmc-sync-fabric", windows ? "gradlew.bat" : "gradlew");
 const server = spawn(windows ? "cmd.exe" : gradle,
   (windows ? ["/d", "/c", gradle] : []).concat(["runServer", `-Pminecraft_version=${version}`,
-    "-Pudmc_packaged_test", `-Pudmc_run_dir=${path.join(root, "server")}`]),
+    "-Pudmc_packaged_test", `-Pudmc_run_dir=${path.join(root, "server")}`],
+    fullFabricApi ? ["-Pudmc_full_fabric_api"] : []),
   { cwd: path.resolve("minecraft/udmc-sync-fabric"), stdio: ["ignore", "pipe", "pipe"] });
 // The console goes to a file inside the stand as well as to ours: the verdict for every join
 // is written there, and reading it is how the check knows what the player was told even when
@@ -96,5 +102,5 @@ if (failure) {
   console.error("[e2e] failed:", failure.message);
   process.exitCode = 1;
 } else {
-  console.log("[e2e] the whole login matrix passed against a real server");
+  console.log(`[e2e] the whole login matrix passed against a real server${fullFabricApi ? " running the whole Fabric API" : ""}`);
 }

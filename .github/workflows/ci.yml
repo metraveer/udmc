@@ -85,6 +85,15 @@ jobs:
         with:
           name: login-server-console
           path: .qa/fabric-1.21.1-e2e/server-console.log
+      # The same matrix with the whole of Fabric API on the server: the configuration a new
+      # player actually meets, and the one where Fabric API runs the configuration queue in a
+      # loop of its own. Every earlier attempt at this check worked in exactly one of the two.
+      - run: npm run e2e:login -- 1.21.1 fabric-api
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: login-server-console-fabric-api
+          path: .qa/fabric-1.21.1-e2e/server-console.log
 
   windows:
     name: UDMC Control

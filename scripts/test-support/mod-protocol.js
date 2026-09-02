@@ -11,7 +11,7 @@ import { readFile } from "node:fs/promises";
 // out of date without saying so is worse than no test, because it is counted as coverage.
 const root = new URL("../../minecraft/", import.meta.url);
 const LOGIN_SOURCE = new URL("udmc-sync-common/src/main/java/dev/udmc/sync/AgentLoginProtocol.java", root);
-const PAYLOADS = { query: "UdmcQueryPayload", answer: "UdmcAnswerPayload", project: "UdmcProjectPayload" };
+const PAYLOADS = { query: "UdmcQueryPayload", answer: "UdmcAnswerPayload", project: "UdmcProjectPayload", register: "UdmcRegisterPayload" };
 const VARIANTS = ["classic", "modern"];
 
 const constant = (source, name) => {
@@ -30,9 +30,9 @@ const channelOf = (source, file) => {
 const fieldsOf = (source, file) => {
   const body = /public void write\(FriendlyByteBuf output\) \{([\s\S]*?)\n {4}\}/.exec(source);
   if (!body) throw new Error(`${file} no longer has a readable write method`);
-  const fields = [...body[1].matchAll(/output\.write(VarInt|Utf|Boolean)\(([^;]*)\);/g)].map(([, kind, args]) => {
+  const fields = [...body[1].matchAll(/output\.write(VarInt|Utf|Boolean|Bytes)\(([^;]*)\);/g)].map(([, kind, args]) => {
     const limit = /,\s*(\d+)\s*\)?\s*$/.exec(args);
-    return kind === "VarInt" ? "varint" : kind === "Boolean" ? "bool" : `utf:${limit ? limit[1] : "?"}`;
+    return kind === "VarInt" ? "varint" : kind === "Boolean" ? "bool" : kind === "Bytes" ? "bytes" : `utf:${limit ? limit[1] : "?"}`;
   });
   if (!fields.length) throw new Error(`${file} writes nothing: the parser or the payload changed`);
   return fields;

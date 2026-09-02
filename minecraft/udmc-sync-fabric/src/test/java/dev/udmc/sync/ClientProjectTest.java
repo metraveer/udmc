@@ -53,17 +53,18 @@ public final class ClientProjectTest {
     }
 
     /**
-     * Where a waiting screen may appear. A player turned away by the login rule lands on the
-     * disconnect screen, whose first button is the server list: while the question waited for
-     * the title screen they rejoined and were turned away for ever, told to leave the server
-     * once - which is exactly what they had just done.
+     * Where a waiting screen may appear. The second column is a screen the player is waiting
+     * on - the one they were turned away on, or the server list after it - and the question is
+     * the only thing allowed to take it over. While the question waited for the title screen a
+     * refused player rejoined and was refused for ever, told to leave the server once - which
+     * is exactly what they had just done.
      */
     private static void theQuestionFollowsThePlayerToTheServerList() {
         expect(UdmcClientUi.presentable(true, false, true), "The title screen takes the question");
         expect(UdmcClientUi.presentable(true, false, false), "The title screen takes anything else too");
-        expect(UdmcClientUi.presentable(false, true, true), "The server list must take the question");
+        expect(UdmcClientUi.presentable(false, true, true), "The refusal screen and the server list must take the question");
         expect(!UdmcClientUi.presentable(false, true, false),
-            "Nothing but the question may take the list away from someone choosing a server");
+            "Nothing but the question may take a waiting screen away from the player");
         expect(!UdmcClientUi.presentable(false, false, true), "In a world, nothing interrupts");
         expect(!UdmcClientUi.presentable(false, false, false), "In a world, nothing interrupts");
     }
