@@ -72,7 +72,8 @@ public final class ModCheckTest {
                     "Publication rejection must carry the stable validation code");
             }
             diagnosticsAndServerRemoval(root.resolve("unmanaged"), Files.readAllBytes(dependent));
-            System.out.println("Mod checks passed: renamed personal mods, conflicts, stale consent, backups, missing dependencies, duplicate IDs, publication guards.");
+            aLibraryThePlayerAlreadyHas(root.resolve("launcher"));
+            System.out.println("Mod checks passed: renamed personal mods, conflicts, stale consent, backups, missing dependencies, duplicate IDs, publication guards, libraries the player already has.");
         } finally { TestMods.deleteTree(root); }
     }
     private static void diagnosticsAndServerRemoval(Path game, byte[] dependent) throws Exception {
@@ -129,6 +130,55 @@ public final class ModCheckTest {
         Path backup = ClientModCheck.disable(game, conflicts.files.getFirst());
         check(Files.exists(backup) && Files.exists(game.resolve("mods/library.jar")), "Exact consent must preserve the unrelated prefix file");
     }
+    /**
+     * A library the player's launcher installed for them, which is not our file and does not
+     * have to be. Reported by a server owner: TLauncher puts its own Fabric API into every
+     * profile it creates and restores it at every start, so demanding our exact bytes left
+     * everyone on that launcher unable to play - the pack could never be applied, and removing
+     * the file by hand was undone before the next launch. What the mods actually ask for is a
+     * version range, and the copy on disk was inside it by a mile.
+     */
+    private static void aLibraryThePlayerAlreadyHas(Path game) throws Exception {
+        Files.createDirectories(game.resolve("mods"));
+        var needsLib = new JsonObject(); needsLib.addProperty("thelib", TestMods.atLeast("1.0.0"));
+
+        byte[] ours = TestMods.jar("thelib", "2.0.0");
+        byte[] dependent = TestMods.jar("needs_lib", "1.0.0", needsLib, new JsonObject());
+        Path ourSource = game.resolve("../lib-source.jar").normalize(); Files.write(ourSource, ours);
+        Path dependentSource = game.resolve("../dependent-source.jar").normalize(); Files.write(dependentSource, dependent);
+
+        // The launcher's copy: a different build, a different name, and a version the dependent
+        // mod is perfectly happy with.
+        Path launcherCopy = game.resolve("mods/thelib-1.5.0%2Bmc.jar");
+        Files.write(launcherCopy, TestMods.jar("thelib", "1.5.0"));
+
+        var desired = desired("mods/thelib-2.0.0.jar", ours);
+        var dependentFile = new ManifestModels.ManifestFile();
+        dependentFile.path = "mods/needs-lib.jar"; dependentFile.sha256 = Hashes.sha256(dependent);
+        dependentFile.side = "both"; dependentFile.size = dependent.length;
+        desired.put(dependentFile.path, dependentFile);
+        var downloads = new LinkedHashMap<Path, Path>();
+        downloads.put(game.resolve("mods/thelib-2.0.0.jar"), ourSource);
+        downloads.put(game.resolve("mods/needs-lib.jar"), dependentSource);
+
+        ClientModCheck.check(game, new UdmcConfig(), desired, downloads, Map.of());
+        check(!desired.containsKey("mods/thelib-2.0.0.jar"), "The pack must stop carrying a library the player already satisfies");
+        check(!downloads.containsKey(game.resolve("mods/thelib-2.0.0.jar")), "Nothing of ours may be installed over their copy");
+        check(downloads.containsKey(game.resolve("mods/needs-lib.jar")), "Everything else still arrives");
+        check(Files.exists(launcherCopy), "Their own file is never touched");
+
+        // Below what the dependent mod accepts: that is a real problem, and the player is asked.
+        Files.write(launcherCopy, TestMods.jar("thelib", "0.9.0"));
+        var again = desired("mods/thelib-2.0.0.jar", ours);
+        again.put(dependentFile.path, dependentFile);
+        var downloadsAgain = new LinkedHashMap<Path, Path>();
+        downloadsAgain.put(game.resolve("mods/thelib-2.0.0.jar"), ourSource);
+        downloadsAgain.put(game.resolve("mods/needs-lib.jar"), dependentSource);
+        var conflicts = conflicts(game, again, downloadsAgain);
+        check(conflicts.files.stream().anyMatch(f -> f.path().equals("mods/thelib-1.5.0%2Bmc.jar")),
+            "A copy that is too old for the mods that need it must still be named");
+    }
+
     private static Map<String, ManifestModels.ManifestFile> desired(String path, byte[] bytes) {
         var file = new ManifestModels.ManifestFile(); file.path = path; file.sha256 = Hashes.sha256(bytes); file.side = "both"; file.size = bytes.length;
         return new HashMap<>(Map.of(path, file));
