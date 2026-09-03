@@ -76,7 +76,11 @@ public final class UdmcHttpApi {
         access = new AdminAccess(gameDir, config);
         server = HttpServer.create(new InetSocketAddress(config.apiHost, config.apiPort), 0);
         server.createContext("/", this::handle);
-        workers = new ThreadPoolExecutor(8, 8, 0L, TimeUnit.MILLISECONDS, new ArrayBlockingQueue<>(32), task -> {
+        // Eight workers and a long queue. Whatever does not fit the queue runs on the thread that
+        // accepts connections, and for as long as that request takes nobody new gets in - so the
+        // queue has to be longer than one evening's worth of players syncing after a publication,
+        // not thirty-two. Refusing with 503 instead is worse: a client does not retry a download.
+        workers = new ThreadPoolExecutor(8, 8, 0L, TimeUnit.MILLISECONDS, new ArrayBlockingQueue<>(512), task -> {
             Thread thread = new Thread(task, "UDMC HTTP");
             thread.setDaemon(true);
             return thread;
