@@ -73,6 +73,13 @@ public final class ManifestModels {
         public boolean serverRemoval;
         /** Leaves the pack on publish while the file itself stays on the server. */
         public boolean detached;
+        /**
+         * The mods a jar answers for - its root ids and what they declare to provide - and the
+         * root's version. What lets a panel tell "the same mod at another version" from "a
+         * file that happens to share a name", before it adds something from a catalog.
+         */
+        public List<String> modIds = new ArrayList<>();
+        public String modVersion;
     }
 
     public static final class ChangeSummary {

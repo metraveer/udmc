@@ -43,7 +43,9 @@ export async function inspectFile(file, loader = null) {
         if (modIds.includes("udmc_sync")) return { ...settings, inspectionError: t("Агент UDMC устанавливается отдельно от файлов сборки.") };
         if (modIds.some(id => typeof id !== "string" || !/^[a-z][a-z0-9_]{1,63}$/.test(id)) || new Set(modIds).size !== modIds.length) throw new Error("Invalid mod IDs");
         if (!["javafml", "lowcodefml"].includes(metadata.modLoader)) return { ...settings, inspectionError: t("Проверка языкового загрузчика {0} пока не поддерживается.", metadata.modLoader || t("не указан")) };
+        const declared = metadata.mods[0]?.version;
         return { root: "mods/", side: "", sideKnown: false, loaders, modId: modIds[0], modIds,
+          modVersion: typeof declared === "string" && !declared.includes("${") ? declared : null,
           inference: t("NeoForge: выберите назначение файла") };
       }
       if (!archive["fabric.mod.json"]) {
@@ -60,7 +62,8 @@ export async function inspectFile(file, loader = null) {
         side: environment === "*" ? "both" : environment,
         inference: environment === "*" ? t("Fabric: обе стороны") : environment === "client" ? t("Fabric: только клиент") : t("Fabric: только сервер"),
         modId: typeof metadata.id === "string" ? metadata.id : null,
-        modIds: typeof metadata.id === "string" ? [metadata.id] : [], loaders, sideKnown: true
+        modIds: typeof metadata.id === "string" ? [metadata.id, ...(Array.isArray(metadata.provides) ? metadata.provides.filter(id => typeof id === "string") : [])] : [],
+        modVersion: typeof metadata.version === "string" ? metadata.version : null, loaders, sideKnown: true
       };
     }
 

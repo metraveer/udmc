@@ -63,6 +63,19 @@ public final class HttpLifecycleTest {
         }
         upload(client, base, "config/empty.txt", "both", EMPTY);
         upload(client, base, "config/modified.txt", "both", "original".getBytes(StandardCharsets.UTF_8));
+        // The same mod at another version takes the old file's place in one request.
+        upload(client, base, "mods/rep-1.jar", "both", TestMods.jar("rep", "1.0.0"));
+        upload(client, base, "mods/rep-2.jar&replace=mods/rep-1.jar", "both", TestMods.jar("rep", "2.0.0"));
+        var afterReplace = json(call(client, base, "GET", "/admin/files", TOKEN, EMPTY, 200)).getAsJsonArray("files");
+        boolean hasNew = false, hasOld = false, named = false;
+        for (var element : afterReplace) {
+            var row = element.getAsJsonObject();
+            if (row.get("path").getAsString().equals("mods/rep-2.jar")) { hasNew = true; named = row.getAsJsonArray("modIds").toString().contains("rep") && "2.0.0".equals(row.get("modVersion").getAsString()); }
+            if (row.get("path").getAsString().equals("mods/rep-1.jar")) hasOld = true;
+        }
+        check(hasNew && !hasOld, "Replacing must add the new path and drop the old one");
+        check(named, "Draft rows must carry the mod id and version");
+        call(client, base, "DELETE", "/admin/files?path=mods/rep-2.jar", TOKEN, EMPTY, 200);
         check(json(call(client, base, "GET", "/manifest", null, EMPTY, 200)).getAsJsonArray("files").isEmpty(), "Upload published without confirmation");
         check(!Files.exists(serverDir.resolve("mods/both.jar")), "Upload changed active server files");
         call(client, base, "POST", "/admin/publish", TOKEN, GSON.toJson(Map.of("expectedRevision", before.get("revision").getAsString())).getBytes(StandardCharsets.UTF_8), 409);

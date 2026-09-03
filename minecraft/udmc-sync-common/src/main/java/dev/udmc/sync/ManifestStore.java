@@ -1,6 +1,7 @@
 package dev.udmc.sync;
 
 import java.util.function.Supplier;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.Set;
 import java.util.HashSet;
 import com.google.gson.Gson;
@@ -34,6 +35,14 @@ public final class ManifestStore {
     private final Path manifestPath;
     private final Path draftPath;
     private final UdmcConfig config;
+    // What each jar answers for, by content hash. Read once per distinct file: the panel asks
+    // for the draft on every poll, and metadata of a few dozen jars is not free.
+    private final Map<String, Identity> identities = new ConcurrentHashMap<>();
+
+    /** A jar's mod ids (root ids and what they provide) and its root version; empty for anything else. */
+    record Identity(List<String> modIds, String modVersion) {
+        static final Identity NONE = new Identity(List.of(), null);
+    }
     // Who has put entries into the game's registries, asked at validation time. Empty until a
     // running server is attached: a store used by a test, or before the game has started, has
     // no registries to report on and must not pretend otherwise.
@@ -96,10 +105,20 @@ public final class ManifestStore {
     }
 
     public ManifestModels.ManifestFile upsertFile(String managedPath, String side, InputStream body, CommitCheck check, ManifestModels.FileSource source) throws IOException {
+        return upsertFile(managedPath, side, body, check, source, null);
+    }
+
+    /**
+     * @param replace a draft path this upload takes the place of - the same mod at another
+     *     version, under whatever name that version's file carries. Removed from the draft in
+     *     the same step the new file is added, so no reader of the draft ever sees both.
+     */
+    public ManifestModels.ManifestFile upsertFile(String managedPath, String side, InputStream body, CommitCheck check,
+                                                  ManifestModels.FileSource source, String replace) throws IOException {
         if (source != null && !validSource(source)) {
             throw new ApiException(400, "CATALOG_SOURCE_INVALID", "Invalid catalog source metadata.");
         }
-        return stageUpload(managedPath, side, body, null, check, source);
+        return stageUpload(managedPath, side, body, null, check, source, replace);
     }
 
     private static boolean validSource(ManifestModels.FileSource source) {
@@ -117,6 +136,11 @@ public final class ManifestStore {
     }
 
     private ManifestModels.ManifestFile stageUpload(String managedPath, String side, InputStream body, String expectedHash, CommitCheck check, ManifestModels.FileSource source) throws IOException {
+        return stageUpload(managedPath, side, body, expectedHash, check, source, null);
+    }
+
+    private ManifestModels.ManifestFile stageUpload(String managedPath, String side, InputStream body, String expectedHash, CommitCheck check,
+                                                    ManifestModels.FileSource source, String replace) throws IOException {
         String normalizedPath = ManagedPaths.normalize(managedPath);
         String normalizedSide = ManagedPaths.requireSide(side);
         ensure();
@@ -140,15 +164,23 @@ public final class ManifestStore {
             }
             synchronized (this) {
                 check.run();
-                return commitUpload(normalizedPath, normalizedSide, staged, sha256, source);
+                return commitUpload(normalizedPath, normalizedSide, staged, sha256, source, replace);
             }
         } finally {
             Files.deleteIfExists(staged);
         }
     }
 
-    private synchronized ManifestModels.ManifestFile commitUpload(String normalizedPath, String normalizedSide, Path staged, String sha256, ManifestModels.FileSource source) throws IOException {
+    private synchronized ManifestModels.ManifestFile commitUpload(String normalizedPath, String normalizedSide, Path staged, String sha256,
+                                                                  ManifestModels.FileSource source, String replace) throws IOException {
         ManifestModels.Manifest draft = loadDraft();
+        if (replace != null) {
+            String replaced = ManagedPaths.normalize(replace);
+            if (find(draft, replaced) == null) {
+                throw new ApiException(404, "DRAFT_FILE_NOT_FOUND", "Draft file not found: " + replaced, replaced);
+            }
+            draft.files.removeIf(file -> Objects.equals(file.path, replaced));
+        }
         assertUniquePath(draft, normalizedPath, normalizedPath);
         assertNotPendingRemoval(draft, normalizedPath);
         String blobName = sha256 + ManagedPaths.safeExtension(normalizedPath);
@@ -329,8 +361,15 @@ public final class ManifestStore {
                     if (find(draft, relative) != null || find(published, relative) != null || Files.size(path) > 512L * 1024 * 1024) continue;
                     if (AgentFiles.isAgent(path)) continue;
                     if (files.size() >= 1000) { truncated = true; break; }
-                    files.add(Map.of("path", relative, "size", Files.size(path), "sha256", Hashes.sha256(path),
+                    String sha256 = Hashes.sha256(path);
+                    Map<String, Object> row = new LinkedHashMap<>(Map.of("path", relative, "size", Files.size(path), "sha256", sha256,
                         "removalPending", draft.serverRemovals.stream().anyMatch(file -> file.path.equals(relative))));
+                    // Named by what it is, not only by what it is called: a panel about to add a
+                    // mod from a catalog has to know this file is the same mod at another version.
+                    Identity identity = isJar(relative) ? identity(path, relative, sha256) : Identity.NONE;
+                    row.put("modIds", identity.modIds());
+                    if (identity.modVersion() != null) row.put("modVersion", identity.modVersion());
+                    files.add(row);
                 }
             }
             if (truncated) break;
@@ -885,7 +924,7 @@ public final class ManifestStore {
         return GSON.fromJson(GSON.toJson(file), ManifestModels.ManifestFile.class);
     }
 
-    private static ManifestModels.DraftFile toDraftFile(ManifestModels.ManifestFile file, String change) {
+    private ManifestModels.DraftFile toDraftFile(ManifestModels.ManifestFile file, String change) {
         ManifestModels.DraftFile result = new ManifestModels.DraftFile();
         result.source = file.source;
         result.path = file.path;
@@ -895,7 +934,32 @@ public final class ManifestStore {
         result.downloadPath = file.downloadPath;
         result.updatedAt = file.updatedAt;
         result.change = change;
+        if (isJar(file.path) && file.downloadPath != null) {
+            Identity identity = identity(blobPath(blobName(file)), file.path, file.sha256);
+            result.modIds = identity.modIds();
+            result.modVersion = identity.modVersion();
+        }
         return result;
+    }
+
+    /** What a jar answers for, read once per content hash; a jar that cannot be read answers for nothing. */
+    private Identity identity(Path jar, String display, String sha256) {
+        if (sha256 == null) return Identity.NONE;
+        return identities.computeIfAbsent(sha256, key -> {
+            try {
+                List<String> ids = new ArrayList<>();
+                String version = null;
+                for (var mod : ModMetadata.read(jar, display)) {
+                    if (mod.nested()) continue;
+                    ids.add(mod.id());
+                    ids.addAll(mod.provides());
+                    if (version == null) version = mod.version();
+                }
+                return new Identity(List.copyOf(ids), version);
+            } catch (IOException | IllegalArgumentException unreadable) {
+                return Identity.NONE;
+            }
+        });
     }
 
     private static String bumpPatch(String version) {

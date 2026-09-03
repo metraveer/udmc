@@ -1,4 +1,5 @@
 import { t } from "./i18n.js";
+import { findInDraft, findOnServer, sideAfter } from "./draft-match.js";
 import { inspectFile } from "./file-intake.js";
 import { catalogLink, descriptionFragment } from "./catalog-content.js";
 import { loaderLabel } from "./platform.js";
@@ -21,7 +22,7 @@ export const releaseJars = release => (release.assets || []).filter(asset =>
   && !/^(con|prn|aux|nul|com[1-9]|lpt[1-9])\./i.test(asset.name)
   && !/-(sources|javadoc|dev)\.jar$/i.test(asset.name));
 
-export function initGithub({ getContext, getBusy, setBusy, upload, refresh, showToast }) {
+export function initGithub({ getContext, getBusy, setBusy, upload, refresh, showToast, getServerFiles, removeFromServer }) {
   let operation = 0, writing = false, page = 1, hasMore = false, result = null, selected = null, prepared = null;
   const signature = () => JSON.stringify(getContext());
   const current = op => { if (op !== operation) throw Object.assign(new Error("Cancelled"), { cancelled: true }); };
@@ -114,7 +115,7 @@ export function initGithub({ getContext, getBusy, setBusy, upload, refresh, show
       $("githubSide").replaceChildren(...(restricted ? [metadata.side] : ["both", "client", "server"]).map(side => new Option(sides[side], side)));
       if (!metadata.sideKnown) { $("githubSide").prepend(new Option(t("Выберите назначение"), "")); $("githubSide").value = ""; }
       $("githubJarSummary").textContent = `${metadata.modIds.join(", ")} · ${sizes(file.size)} · ${metadata.inference}`;
-      prepared = { file, sha256, binding, source: { provider: "github", projectId: result.repository, versionId: String(asset.id), environment: restricted ? `${metadata.side}_only` : metadata.sideKnown ? "jar_universal" : "manual" } };
+      prepared = { file, sha256, binding, modIds: metadata.modIds, source: { provider: "github", projectId: result.repository, versionId: String(asset.id), environment: restricted ? `${metadata.side}_only` : metadata.sideKnown ? "jar_universal" : "manual" } };
       status(t("JAR прочитан. Зависимости и версии проверит серверный агент перед публикацией; GitHub не подбирает их автоматически."));
     } catch (error) { if (op === operation) report(error); }
     finally { if (op === operation) { $("githubProgress").hidden = true; setBusy(false); render(); } }
@@ -125,12 +126,20 @@ export function initGithub({ getContext, getBusy, setBusy, upload, refresh, show
     let sent = false;
     try {
       if (signature() !== entry.binding) throw new Error(t("Подключение или черновик изменились. Подготовьте файл заново."));
-      const existing = getContext().files.find(file => file.path.toLowerCase() === `mods/${entry.file.name}`.toLowerCase());
-      if (existing && (existing.sha256 !== entry.sha256 || existing.side !== side)) throw new Error(t("В черновике уже есть файл с этим именем и другим содержимым или назначением. Разберите его в разделе «Сборка»."));
+      // The same mod already in the draft is replaced, not joined; the same mod outside the
+      // pack on the server is taken off it on publish, with a backup. Both are said afterwards.
+      const match = findInDraft(getContext().files, { modIds: entry.modIds || [], provider: "github", projectId: entry.source.projectId, path: `mods/${entry.file.name}`, sha256: entry.sha256 });
+      const kept = match ? sideAfter(match.file.side, side) : side;
+      const same = Boolean(match?.same && kept === match.file.side);
+      const replace = match && !same && match.file.path.toLowerCase() !== `mods/${entry.file.name}`.toLowerCase() ? match.file.path : null;
+      const server = findOnServer(await getServerFiles(), { modIds: entry.modIds || [] });
       writing = true; setBusy(true); render(); status(t("Отправка в черновик: {0}", entry.file.name));
-      if (!existing) { await upload(entry.file, side, entry.source); sent = true; }
-      prepared = null; status(existing ? t("Этот файл уже есть в черновике.") : t("Файл добавлен в черновик. Проверьте зависимости во вкладке «Проверка» перед публикацией."));
-      showToast(t("Черновик обновлён. Публикации не было."));
+      if (!same) { await upload(entry.file, kept, entry.source, replace); sent = true; }
+      if (server && !server.removalPending) { await removeFromServer(server.path, server.sha256); sent = true; }
+      prepared = null;
+      status(same ? t("Этот файл уже есть в черновике.") : [t("Файл добавлен в черновик. Проверьте зависимости во вкладке «Проверка» перед публикацией."),
+        replace ? t("Заменён {0}.", replace) : "", server && !server.removalPending ? t("Будет удалён с сервера при публикации: {0}.", server.path) : ""].filter(Boolean).join(" "));
+      showToast(sent ? t("Черновик обновлён. Публикации не было.") : t("Черновик не изменился: этот файл уже там."));
     } catch (error) { report(error); }
     finally {
       try { if (sent) await refresh(); } finally { writing = false; setBusy(false); render(); }

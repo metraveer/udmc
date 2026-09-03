@@ -719,6 +719,9 @@ public final class UdmcHttpApi {
             managedPath = queryParam(exchange, "path");
         }
         String side = firstHeader(exchange, "x-udmc-side");
+        // The draft file this one takes the place of: the same mod at another version, which a
+        // panel replaces in one step rather than deleting and then adding across two revisions.
+        String replace = queryParam(exchange, "replace");
         String sourceHeader = firstHeader(exchange, "x-udmc-source");
         if (sourceHeader != null && sourceHeader.length() > 1024) throw new ApiException(400, "CATALOG_SOURCE_TOO_LARGE", "Catalog source metadata is too large.");
         var source = sourceHeader == null ? null : GSON.fromJson(sourceHeader, ManifestModels.FileSource.class);
@@ -735,7 +738,7 @@ public final class UdmcHttpApi {
         try {
             synchronized (store) { guardMutation(exchange, false); }
             ManifestModels.ManifestFile file = store.upsertFile(managedPath, side == null ? "both" : side,
-                exchange.getRequestBody(), () -> guardMutation(exchange, true), source);
+                exchange.getRequestBody(), () -> guardMutation(exchange, true), source, replace);
             respondJson(exchange, 201, Map.of("file", file));
         } catch (ApiException error) {
             // A refusal before the body was read closes the socket mid-stream and panels see a raw

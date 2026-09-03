@@ -1,5 +1,6 @@
 import { t, getLocale } from "./i18n.js";
 import { compatibleVersions, resolveMods, modSidePolicy } from "./modrinth.js";
+import { findInDraft, findOnServer, sideAfter } from "./draft-match.js";
 import { catalogImageUrl, catalogLink, descriptionFragment } from "./catalog-content.js";
 import { inspectFile } from "./file-intake.js";
 import { loaderLabel, updatePlatformControls } from "./platform.js";
@@ -17,7 +18,7 @@ const invoke = (name, args) => {
 };
 const get = (path, query = {}) => invoke("modrinth_get", { path, query });
 
-export function initModrinth({ getContext, getBusy, setBusy, upload, refresh, showToast }) {
+export function initModrinth({ getContext, getBusy, setBusy, upload, refresh, showToast, getServerFiles, removeFromServer }) {
   let plan = null;
   let offset = 0;
   let total = 0;
@@ -36,6 +37,8 @@ export function initModrinth({ getContext, getBusy, setBusy, upload, refresh, sh
     if (op !== operation) return;
     setBusy(value);
     $("modrinthPanel").querySelectorAll("input,select,button").forEach((el) => { el.disabled = value; });
+    // The mod a plan was made for cannot be left out of it, busy or not.
+    $("modrinthPanel").querySelectorAll(".catalog-plan-pick[data-root]").forEach((el) => { el.disabled = true; });
     $("modrinthPrevious").disabled = value || offset === 0;
     $("modrinthNext").disabled = value || offset + 12 >= total;
     $("modrinthInstall").disabled = value || !plan || !getContext()?.modValidation;
@@ -75,10 +78,15 @@ export function initModrinth({ getContext, getBusy, setBusy, upload, refresh, sh
     if (!templates.some(t => t.minecraft === minecraft && t.loader === loader)) throw new Error(t("Выберите встроенный профиль каталога."));
     return { minecraft, loader, url: null, files: [], modValidation: false };
   };
+  // A search is bound to a connection, not to a draft. The draft is read afresh whenever a
+  // file is about to be added, so a draft that changed - by this very import, or by another
+  // administrator - neither aborts an install nor throws a search away.
+  const identity = c => c ? { url: c.url, projectId: c.projectId, minecraft: c.minecraft, loader: c.loader, modValidation: c.modValidation } : null;
   const unchanged = () => {
-    if (JSON.stringify(current()) !== JSON.stringify(context)) throw new Error(t("Подключение или черновик изменились. Выполните поиск заново."));
+    if (JSON.stringify(identity(current())) !== JSON.stringify(identity(context))) throw new Error(t("Подключение изменилось. Выполните поиск заново."));
   };
-  const signature = () => JSON.stringify([current(), $("modrinthQuery").value.trim(), $("modrinthSort").value, $("modrinthCategory").value]);
+  const draftFiles = () => { try { return current().files || []; } catch { return context?.files || []; } };
+  const signature = () => JSON.stringify([identity(current()), $("modrinthQuery").value.trim(), $("modrinthSort").value, $("modrinthCategory").value]);
   async function search(reset, quiet = false) {
     if (getBusy()) return;
     const op = ++operation;
@@ -204,14 +212,36 @@ export function initModrinth({ getContext, getBusy, setBusy, upload, refresh, sh
       const resolved = await resolveMods({ projectId: project.project_id, versionId: $("modrinthVersion").value, side: $("modrinthSide").value, minecraft: context.minecraft, loader: context.loader,
         get: async (...args) => { active(op); const data = await get(...args); active(op); return data; } });
       active(op); unchanged(); plan = resolved;
+      // Each file is looked up in the draft before anyone downloads it: a dependency that is
+      // already there at this version is left out by default, one that is there at another
+      // version says which file it will take the place of, and any dependency can be left
+      // out by hand - the mod itself cannot.
+      const known = draftFiles();
+      for (const entry of plan.nodes) {
+        entry.match = findInDraft(known, { provider: "modrinth", projectId: entry.project.id, versionId: entry.version.id, path: `mods/${entry.file.filename}` });
+        entry.pick = !entry.match?.same;
+        // Shown as it will be added: with the side the file already had, widened if need be.
+        entry.keptSide = entry.match ? sideAfter(entry.match.file.side, entry.side) : entry.side;
+      }
+      const summary = () => {
+        const picked = plan.nodes.filter(entry => entry.pick);
+        $("modrinthPlanSummary").textContent = t("{0} файлов · {1}", picked.length, sizes(picked.reduce((total, entry) => total + entry.file.size, 0)));
+      };
       $("modrinthPlanFiles").replaceChildren(...plan.nodes.map((entry) => {
         const row = node("div", "", "catalog-plan-row");
+        row.classList.toggle("skipped", !entry.pick);
+        const pick = node("input", ""); pick.type = "checkbox"; pick.className = "catalog-plan-pick"; pick.checked = entry.pick;
+        pick.disabled = !entry.requiredBy.size; pick.title = entry.requiredBy.size ? t("Снимите, если эта зависимость не нужна") : t("Выбранный мод");
+        if (!entry.requiredBy.size) pick.dataset.root = "1";
+        pick.addEventListener("change", () => { entry.pick = pick.checked; row.classList.toggle("skipped", !entry.pick); summary(); });
         const copy = node("div", ""); copy.append(node("strong", `${entry.project.title} ${entry.version.version_number}`), node("small", `mods/${entry.file.filename}`), node("small", entry.requiredBy.size ? t("Нужен для: {0}", [...entry.requiredBy].join(", ")) : t("Выбранный мод")));
-        const side = node("span", sides[entry.side]); side.title = entry.sidePolicy.explanation;
-        row.append(copy, side, node("span", sizes(entry.file.size))); return row;
+        if (entry.match?.same) copy.append(node("small", t("Уже в черновике: {0}", entry.match.file.path), "catalog-plan-note"));
+        else if (entry.match) copy.append(node("small", t("Заменит {0} ({1})", entry.match.file.path, entry.match.file.modVersion || "?"), "catalog-plan-note"));
+        const side = node("span", sides[entry.keptSide]); side.title = entry.keptSide === entry.side ? entry.sidePolicy.explanation : t("Файл уже в сборке для другой стороны; назначение станет общим, чтобы ни одна сторона его не потеряла.");
+        row.append(pick, copy, side, node("span", sizes(entry.file.size))); return row;
       }));
       $("modrinthWarnings").replaceChildren(...plan.warnings.map((w) => node("p", w)));
-      $("modrinthPlanSummary").textContent = t("{0} файлов · {1}", plan.nodes.length, sizes(plan.total));
+      summary();
       $("modrinthStatus").textContent = context.modValidation ? t("Зависимости подобраны. Публикация остаётся отдельным действием.") : t("Зависимости подобраны для просмотра. Для добавления подключите обновлённый серверный агент.");
       $("modrinthPlan").hidden = false;
       $("modrinthPlan").scrollIntoView({ block: "nearest" });
@@ -230,7 +260,11 @@ export function initModrinth({ getContext, getBusy, setBusy, upload, refresh, sh
       if (!getContext()?.modValidation) throw new Error(t("Для добавления модов подключите обновлённый серверный агент."));
       const prepared = [];
       const ids = new Set();
+      const serverFiles = await getServerFiles();
+      const known = draftFiles();
+      active(op);
       for (const entry of plan.nodes) {
+        if (!entry.pick) { $("modrinthProgress").value += 2; continue; }
         $("modrinthStatus").textContent = t("Скачивание и проверка: {0}", entry.project.title);
         const data = await invoke("modrinth_download", { url: entry.file.url, size: entry.file.size, sha512: entry.file.hashes.sha512 });
         active(op);
@@ -245,19 +279,35 @@ export function initModrinth({ getContext, getBusy, setBusy, upload, refresh, sh
         }
         const hash = [...new Uint8Array(await crypto.subtle.digest("SHA-256", await file.arrayBuffer()))].map((v) => v.toString(16).padStart(2, "0")).join("");
         active(op);
-        const old = context.files.find((f) => f.path.toLowerCase() === `mods/${file.name}`.toLowerCase());
-        if (old && (old.sha256 !== hash || old.side !== entry.side)) throw new Error(t("{0} уже есть в черновике с другим содержимым или назначением. Сначала разберите этот файл в разделе «Сборка».", file.name));
-        prepared.push({ file, side: entry.side, skip: Boolean(old), source: { provider: "modrinth", projectId: entry.project.id, versionId: entry.version.id, environment: entry.sidePolicy.environment } });
+        // Now that the file is here, it is known by its ids too: a copy added by hand, under
+        // any name, is found and replaced rather than joined by a second copy.
+        const match = findInDraft(known, { modIds: metadata.modIds, provider: "modrinth", projectId: entry.project.id, path: `mods/${file.name}`, sha256: hash });
+        // A file already there keeps the side it had and gains the one asked for now: the
+        // same bytes stay for both, and another version gives way to this one - for both. A
+        // library the server ran must not leave the server because a client mod asked for it.
+        const side = match ? sideAfter(match.file.side, entry.side) : entry.side;
+        const skip = Boolean(match?.same && side === match.file.side);
+        const replace = match && !skip && match.file.path.toLowerCase() !== `mods/${file.name}`.toLowerCase() ? match.file.path : null;
+        const server = findOnServer(serverFiles, { modIds: metadata.modIds });
+        prepared.push({ file, side, skip, replace, server: server && !server.removalPending ? server : null,
+          source: { provider: "modrinth", projectId: entry.project.id, versionId: entry.version.id, environment: entry.sidePolicy.environment } });
         $("modrinthProgress").value++;
       }
       active(op); unchanged();
       writing = true; $("modrinthCancel").disabled = true;
+      const replaced = [], removed = [];
       for (const entry of prepared) {
         $("modrinthStatus").textContent = t("Добавление в черновик: {0}", entry.file.name);
-        if (!entry.skip) { await upload(entry.file, entry.side, entry.source); uploaded++; }
+        if (!entry.skip) {
+          await upload(entry.file, entry.side, entry.source, entry.replace); uploaded++;
+          if (entry.replace) replaced.push(entry.replace);
+          if (entry.server) { await removeFromServer(entry.server.path, entry.server.sha256); removed.push(entry.server.path); }
+        }
         $("modrinthProgress").value++;
       }
-      $("modrinthStatus").textContent = t("Добавлено в черновик: {0}. Перед публикацией проверьте состав сборки.", uploaded);
+      $("modrinthStatus").textContent = [t("Добавлено в черновик: {0}. Перед публикацией проверьте состав сборки.", uploaded),
+        replaced.length ? t("Заменены: {0}.", replaced.join(", ")) : "",
+        removed.length ? t("Будут удалены с сервера при публикации: {0}.", removed.join(", ")) : ""].filter(Boolean).join(" ");
       plan = null;
       $("modrinthPlan").hidden = true; $("modrinthProgress").hidden = true;
       showToast(t("Моды и зависимости добавлены в черновик"));

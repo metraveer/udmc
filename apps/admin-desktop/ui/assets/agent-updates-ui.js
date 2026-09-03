@@ -17,6 +17,9 @@ export function initAgentUpdates({ getContext, getBinding, getRevision, getBusy,
     }
     return false;
   };
+  // Known to be current: both versions are in hand and this app's is not the newer one. With
+  // either unknown, the button stays - it is the only way to push an agent at all.
+  const upToDate = () => /^\d+(\.\d+)*$/.test(String(appVersion || "")) && Boolean(current?.currentVersion) && !newerAvailable();
   // The mod for the game this server runs. One file per version, chosen by the server's
   // own answer rather than by anything the administrator has to keep in step by hand.
   const getTemplate = () => getTemplates().find(entry =>
@@ -65,9 +68,11 @@ export function initAgentUpdates({ getContext, getBinding, getRevision, getBusy,
     // it still has to be updatable: there the same button only prepares the replacement.
     const powerAllowed = getContext()?.capabilities?.powerActions === true;
     const button = $("agentUpdateRestartButton");
-    button.disabled = !current?.canUpdate || !current?.signed || getBusy() || pending();
+    button.disabled = !current?.canUpdate || !current?.signed || getBusy() || pending() || upToDate();
     $("agentUpdateLabel").textContent = powerAllowed ? t("Обновить и перезапустить") : t("Обновить агенты");
-    button.title = pending()
+    button.title = upToDate() && current?.canUpdate
+      ? t("Новых версий нет: на сервере та же версия агентов, что в приложении.")
+      : pending()
       ? t("Обновление уже подготовлено: остановите или перезапустите сервер, чтобы оно применилось.")
       : powerAllowed ? t("Подготовит обновление и сразу предложит перезапуск с предупреждением игроков.")
         : t("Подготовит обновление. Перезапуск из панели этому серверу недоступен — перезапустите его сами.");

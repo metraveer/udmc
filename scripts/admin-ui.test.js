@@ -1292,3 +1292,107 @@ test("an open settings dialog locks the workspace scroller beneath it", async t 
   ui.$("serverProfileDialog").close();
   assert.equal(ui.w.document.querySelector(".workspace:has(dialog[open])"), null);
 });
+
+function dependencyFixture() {
+  const jar = (id, version) => zipSync({ "fabric.mod.json": strToU8(JSON.stringify({ schemaVersion: 1, id, version, environment: "*" })) });
+  const jars = { "root-1.0.jar": jar("rootmod", "1.0"), "dep-2.0.jar": jar("depmod", "2.0") };
+  const root = { id: "RootMod", project_id: "RootMod", title: "Root Mod", project_type: "mod", description: "A mod", environment: ["client_and_server"], body: "", gallery: [] };
+  const dep = { id: "DepMod", project_id: "DepMod", title: "Dep Mod", project_type: "mod", description: "A library", environment: ["client_and_server"], body: "", gallery: [] };
+  const depVersion = { id: "DepNew", project_id: "DepMod", version_number: "2.0", version_type: "release", game_versions: ["26.2"], loaders: ["fabric"], environment: "client_and_server", dependencies: [],
+    files: [{ filename: "dep-2.0.jar", primary: true, size: jars["dep-2.0.jar"].length, hashes: { sha512: "b".repeat(128) }, url: "https://cdn.modrinth.com/data/DepMod/versions/DepNew/dep-2.0.jar" }] };
+  const rootVersion = { id: "RootV", project_id: "RootMod", version_number: "1.0", version_type: "release", game_versions: ["26.2"], loaders: ["fabric"], environment: "client_and_server",
+    dependencies: [{ dependency_type: "required", project_id: "DepMod", version_id: "DepNew" }],
+    files: [{ filename: "root-1.0.jar", primary: true, size: jars["root-1.0.jar"].length, hashes: { sha512: "a".repeat(128) }, url: "https://cdn.modrinth.com/data/RootMod/versions/RootV/root-1.0.jar" }] };
+  return { native(name, args) {
+    if (name === "modrinth_download") return jars[args.url.split("/").pop()];
+    if (name !== "modrinth_get") return;
+    if (args.path === "search") return { hits: [root], total_hits: 1 };
+    if (args.path === "project/RootMod/version") return [rootVersion];
+    if (args.path === "project/RootMod") return root;
+    if (args.path === "version/RootV") return rootVersion;
+    if (args.path === "project/DepMod/version") return [depVersion];
+    if (args.path === "project/DepMod") return dep;
+    if (args.path === "version/DepNew") return depVersion;
+  } };
+}
+
+const draftWith = rows => ({ schemaVersion: 1, pack: { id: "udmc-main", name: "Test pack", version: "1.0.0" },
+  minecraft: { version: "26.2", loader: { type: "fabric", version: "0.19.3" } },
+  files: rows.map(({ path, side, sha256 }) => ({ path, side, sha256, size: 10, downloadPath: `/files/${sha256}.jar` })) });
+
+test("a catalog plan names a dependency already in the draft and replaces its older version in one request", async t => {
+  const fixture = dependencyFixture(), writes = [];
+  const rows = [{ path: "mods/dep-1.0.jar", side: "both", sha256: "c".repeat(64), change: "unchanged", modIds: ["depmod"], modVersion: "1.0",
+    source: { provider: "modrinth", projectId: "DepMod", versionId: "DepOld", environment: "client_and_server" } }];
+  const ui = await createAdmin(t, { native: fixture.native, fetch: ({ url, options }) => {
+    if (url.pathname === "/admin/files" && options.method === "POST") { writes.push(url); return response({ file: { path: url.searchParams.get("path") } }, 201); }
+    if (url.pathname === "/admin/files") return response({ revision: "rev-1", draft: draftWith(rows), files: rows, changes: { added: 0, updated: 0, removed: 0, total: 0, dirty: false } });
+    if (url.pathname === "/admin/server/files") return response({ files: [] });
+  } });
+  ui.w.document.querySelector('[data-view="modrinth"]').click();
+  await until(() => ui.$("modrinthResults").querySelector("button")); ui.$("modrinthResults").querySelector("button").click();
+  await until(() => !ui.$("modrinthDetails").hidden && !ui.$("modrinthResolve").disabled);
+  ui.click("modrinthResolve");
+  await until(() => !ui.$("modrinthPlan").hidden);
+  const rowsShown = [...ui.$("modrinthPlanFiles").querySelectorAll(".catalog-plan-row")];
+  assert.equal(rowsShown.length, 2);
+  // Rows are told apart by their own title: a dependency's row also names what needs it.
+  const rowOf = title => rowsShown.find(row => row.querySelector("strong").textContent.startsWith(title));
+  const depRow = rowOf("Dep Mod");
+  assert.match(depRow.querySelector(".catalog-plan-note").textContent, /Заменит mods\/dep-1\.0\.jar \(1\.0\)/);
+  assert.equal(depRow.querySelector(".catalog-plan-pick").checked, true);
+  const rootRow = rowOf("Root Mod");
+  assert.equal(rootRow.querySelector(".catalog-plan-pick").disabled, true, "The mod itself cannot be left out of its own plan");
+  assert.equal(rootRow.querySelector(".catalog-plan-note"), null);
+  ui.click("modrinthInstall");
+  await until(() => writes.length === 2);
+  const depWrite = writes.find(url => url.searchParams.get("path") === "mods/dep-2.0.jar");
+  assert.equal(depWrite.searchParams.get("replace"), "mods/dep-1.0.jar", "The newer version takes the older file's place in one request");
+  assert.equal(writes.find(url => url.searchParams.get("path") === "mods/root-1.0.jar").searchParams.get("replace"), null);
+  await until(() => /Заменены: mods\/dep-1\.0\.jar/.test(ui.$("modrinthStatus").textContent));
+});
+
+test("a dependency already in the draft at the same version is left out unless ticked", async t => {
+  const fixture = dependencyFixture(), writes = [];
+  const rows = [{ path: "mods/dep-2.0.jar", side: "both", sha256: "c".repeat(64), change: "unchanged", modIds: ["depmod"], modVersion: "2.0",
+    source: { provider: "modrinth", projectId: "DepMod", versionId: "DepNew", environment: "client_and_server" } }];
+  const ui = await createAdmin(t, { native: fixture.native, fetch: ({ url, options }) => {
+    if (url.pathname === "/admin/files" && options.method === "POST") { writes.push(url); return response({ file: { path: url.searchParams.get("path") } }, 201); }
+    if (url.pathname === "/admin/files") return response({ revision: "rev-1", draft: draftWith(rows), files: rows, changes: { added: 0, updated: 0, removed: 0, total: 0, dirty: false } });
+    if (url.pathname === "/admin/server/files") return response({ files: [] });
+  } });
+  ui.w.document.querySelector('[data-view="modrinth"]').click();
+  await until(() => ui.$("modrinthResults").querySelector("button")); ui.$("modrinthResults").querySelector("button").click();
+  await until(() => !ui.$("modrinthDetails").hidden && !ui.$("modrinthResolve").disabled);
+  ui.click("modrinthResolve");
+  await until(() => !ui.$("modrinthPlan").hidden);
+  const depRow = [...ui.$("modrinthPlanFiles").querySelectorAll(".catalog-plan-row")].find(row => row.querySelector("strong").textContent.startsWith("Dep Mod"));
+  assert.match(depRow.querySelector(".catalog-plan-note").textContent, /Уже в черновике: mods\/dep-2\.0\.jar/);
+  assert.equal(depRow.querySelector(".catalog-plan-pick").checked, false);
+  assert.match(ui.$("modrinthPlanSummary").textContent, /^1 /, "Only the picked files are counted");
+  ui.click("modrinthInstall");
+  await until(() => /Добавлено в черновик: 1\./.test(ui.$("modrinthStatus").textContent));
+  assert.deepEqual(writes.map(url => url.searchParams.get("path")), ["mods/root-1.0.jar"]);
+});
+
+test("a staged file that is the same mod at another version replaces it and retires the server's stray copy", async t => {
+  const jar = zipSync({ "fabric.mod.json": strToU8(JSON.stringify({ schemaVersion: 1, id: "fabric-api", version: "0.159.0", environment: "*" })) });
+  const rows = [{ path: "mods/fabric-api-0.158.0.jar", side: "both", sha256: "b".repeat(64), change: "unchanged", modIds: ["fabric-api"], modVersion: "0.158.0" }];
+  const writes = [], removals = [];
+  const ui = await createAdmin(t, { fetch: ({ url, options }) => {
+    if (url.pathname === "/admin/files" && options.method === "POST") { writes.push(url); return response({ file: { path: "mods/fabric-api-0.159.0.jar" } }, 201); }
+    if (url.pathname === "/admin/files") return response({ revision: "rev-1", draft: draftWith(rows), files: rows, changes: { added: 0, updated: 0, removed: 0, total: 0, dirty: false } });
+    if (url.pathname === "/admin/server/files") return response({ files: [{ path: "mods/fabric-api-0.150.0.jar", size: 5, sha256: "c".repeat(64), removalPending: false, modIds: ["fabric-api"], modVersion: "0.150.0" }] });
+    if (url.pathname === "/admin/server/files/remove") { removals.push(typeof options.body === "string" ? JSON.parse(options.body) : options.body); return response({ ok: true }); }
+  } });
+  Object.defineProperty(ui.$("fileInput"), "files", { value: [new File([jar], "fabric-api-0.159.0.jar")] });
+  ui.$("fileInput").dispatchEvent(new ui.w.Event("change", { bubbles: true }));
+  await until(() => /заменит mods\/fabric-api-0\.158\.0\.jar \(0\.158\.0\)/.test(ui.$("stagedFileList").textContent), "The staged row says which file it takes the place of");
+  await until(() => /на сервере вне сборки: mods\/fabric-api-0\.150\.0\.jar \(0\.150\.0\)/.test(ui.$("stagedFileList").textContent), "The staged row names the stray copy on the server");
+  await until(() => !ui.$("uploadButton").disabled);
+  ui.click("uploadButton");
+  await until(() => writes.length === 1 && removals.length === 1);
+  assert.equal(writes[0].searchParams.get("replace"), "mods/fabric-api-0.158.0.jar");
+  assert.equal(removals[0].path, "mods/fabric-api-0.150.0.jar");
+  assert.equal(removals[0].sha256, "c".repeat(64));
+});

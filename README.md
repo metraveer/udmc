@@ -67,6 +67,7 @@ The step-by-step guide is [docs/installation.md](docs/installation.md) (in Russi
 - Modrinth and GitHub Releases — no keys, no registration.
 - CurseForge — with your own free API key.
 - Descriptions, screenshots, dependencies and licences are visible before you install.
+- A dependency the pack already has is never added twice: the same version is skipped, an older one is replaced by the newer, and any unwanted dependency can be unticked before adding. The same rule applies to files uploaded by hand and to copies of a mod lying on the server outside the pack.
 - A button to translate descriptions into Russian (with a Yandex Translate key).
 
 **Running the server**

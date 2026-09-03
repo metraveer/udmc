@@ -220,10 +220,11 @@ export function initAccess({ getConnection, setConnection, replaceToken, getBusy
       if (pending && (pending.url !== invitation.url || pending.invite !== invitation.code)) throw new Error(t("Сначала отмените предыдущую заявку."));
       const request = pending || { url: invitation.url, token: deviceSecret(), name: $("deviceNameInput").value.trim(), invite: invitation.code, allowHttp: c.allowHttp };
       request.allowHttp = c.allowHttp;
-      await writeSecret("pending-access", request);
-      pending = request; renderPending();
+      // Kept only once the server has it: a request it refused - an expired invitation, say -
+      // would otherwise be polled for ever and reopen this dialog on every launch.
       const status = await accessRequest(request, "/access/request", { method: "POST", token: null, body: { invite: request.invite, token: request.token, name: request.name } });
-      renderPending(status); request.status = status.status;
+      await writeSecret("pending-access", request);
+      pending = request; renderPending(status); request.status = status.status;
       $("joinStatus").textContent = t("Заявка отправлена. Дождитесь решения владельца.");
     } catch (error) { $("joinStatus").textContent = formatAgentError(error); }
     finally { setBusy(false); }

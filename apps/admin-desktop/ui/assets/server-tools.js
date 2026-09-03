@@ -33,7 +33,7 @@ const descriptions = {
 export const RISKY_COMMANDS = new Set(["stop", "save-off", "op", "deop", "ban", "ban-ip", "kill", "clear", "fill", "clone", "setblock", "datapack"]);
 const $ = (id) => document.getElementById(id);
 
-export function initServerTools({ adminGet, adminJson, refresh, showToast, getBusy, setBusy, getBinding, getRevision, insertCommand, removeServerFile, removeManagedFile, onValidation, getDirty }) {
+export function initServerTools({ adminGet, adminJson, refresh, showToast, getBusy, setBusy, getBinding, getRevision, insertCommand, removeServerFile, removeManagedFile, onValidation, onInventory, getDirty }) {
   let commands = [];
   let commandRequest = 0;
   let inventoryRequest = 0;
@@ -48,6 +48,7 @@ export function initServerTools({ adminGet, adminJson, refresh, showToast, getBu
   const notifyValidation = () => onValidation?.({ supported: validationSupported, draft: validationState.draft, server: validationState.server });
   function reset() {
     commandRequest++; validationRequest.draft++; validationRequest.server++; commands = [];
+    onInventory?.([]);
     clearTimeout(draftValidationTimer);
     $("commandCatalogSource").textContent = t("Нет данных сервера");
     $("commandCatalog").textContent = t("Подключите UDMC Agent, чтобы получить команды этого сервера.");
@@ -214,6 +215,7 @@ export function initServerTools({ adminGet, adminJson, refresh, showToast, getBu
     try {
       const inventory = await adminGet("/admin/server/files");
       if (binding !== getBinding() || request !== inventoryRequest) return;
+      onInventory?.(inventory.files);
       $("serverInventory").replaceChildren();
       const scope = document.createElement("p"); scope.className = "muted-copy";
       scope.textContent = t("Файлы опубликованной сборки здесь не показываются - они живут на вкладках «Черновик» и «Опубликовано». Тут только то, что попало на сервер мимо UDMC. Взяли файл под управление и передумали? Пока не опубликовано, на вкладке «Черновик» нажмите «Отменить изменение» - файл вернётся сюда. Назначение «Только сервер» игрокам не раздаётся.");
@@ -301,6 +303,7 @@ export function initServerTools({ adminGet, adminJson, refresh, showToast, getBu
     $("bulkRemoveTitle").textContent = kind === "managed"
       ? t("Удалить из сборки: {0}?", countText("files", files.length))
       : t("Удалить с сервера: {0}?", countText("files", files.length));
+    $("bulkRemoveConfirm").textContent = kind === "managed" ? t("Удалить из сборки") : t("Удалить с сервера");
     $("bulkRemoveText").textContent = kind === "managed"
       ? t("Файлы будут помечены на удаление в черновике. С сервера и у игроков они исчезнут после публикации; только что добавленные просто уберутся из черновика.")
       : t("Удаление попадёт в черновик и применится к серверу после публикации, с резервными копиями. Личные файлы игроков не затрагиваются.");

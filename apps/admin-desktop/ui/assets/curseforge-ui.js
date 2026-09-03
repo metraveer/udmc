@@ -1,4 +1,5 @@
-import { t } from "./i18n.js";
+import { t, getLocale } from "./i18n.js";
+import { findInDraft, findOnServer, sideAfter } from "./draft-match.js";
 import { inspectFile } from "./file-intake.js";
 import { catalogLink, descriptionFragment } from "./catalog-content.js";
 import { loaderLabel } from "./platform.js";
@@ -17,7 +18,7 @@ const invoke = (name, args) => {
   return window.__TAURI__.core.invoke(name, args);
 };
 
-export function initCurseforge({ getContext, getBusy, setBusy, upload, refresh, showToast }) {
+export function initCurseforge({ getContext, getBusy, setBusy, upload, refresh, showToast, getServerFiles, removeFromServer }) {
   const readSecret = name => profileInvoke("credential_read", { name });
   const writeSecret = (name, value) => profileInvoke("credential_write", { name, value });
   let operation = 0, writing = false, page = 1, hasMore = false, apiKey = null, keyLoaded = false;
@@ -77,7 +78,7 @@ export function initCurseforge({ getContext, getBusy, setBusy, upload, refresh, 
         if (typeof entry.logoUrl === "string") icon.src = entry.logoUrl; else icon.hidden = true;
         icon.addEventListener("error", () => { icon.hidden = true; });
         copy.append(node("strong", entry.name), node("small", entry.summary || ""));
-        copy.append(node("small", t("Загрузок: {0}", Number(entry.downloads || 0).toLocaleString("ru-RU"))));
+        copy.append(node("small", t("Загрузок: {0}", Number(entry.downloads || 0).toLocaleString(getLocale()))));
         if (entry.distributionAllowed) {
           const choose = node("button", t("Выбрать"), "button subtle"); choose.type = "button";
           choose.addEventListener("click", () => select(entry));
@@ -180,7 +181,7 @@ export function initCurseforge({ getContext, getBusy, setBusy, upload, refresh, 
       $("curseforgeSide").replaceChildren(...(restricted ? [metadata.side] : ["both", "client", "server"]).map(side => new Option(sides[side], side)));
       if (!metadata.sideKnown) { $("curseforgeSide").prepend(new Option(t("Выберите назначение"), "")); $("curseforgeSide").value = ""; }
       $("curseforgeJarSummary").textContent = `${metadata.modIds.join(", ")} · ${sizes(blob.size)} · ${metadata.inference}`;
-      prepared = { file: blob, sha256, binding, source: { provider: "curseforge", projectId: String(selected.id), versionId: String(file.id), environment: restricted ? `${metadata.side}_only` : metadata.sideKnown ? "jar_universal" : "manual" } };
+      prepared = { file: blob, sha256, binding, modIds: metadata.modIds, source: { provider: "curseforge", projectId: String(selected.id), versionId: String(file.id), environment: restricted ? `${metadata.side}_only` : metadata.sideKnown ? "jar_universal" : "manual" } };
       status(t("JAR прочитан. Зависимости и версии проверит серверный агент перед публикацией."));
     } catch (error) { if (op === operation) report(error); }
     finally { if (op === operation) { $("curseforgeProgress").hidden = true; setBusy(false); render(); } }
@@ -191,12 +192,20 @@ export function initCurseforge({ getContext, getBusy, setBusy, upload, refresh, 
     let sent = false;
     try {
       if (signature() !== entry.binding) throw new Error(t("Подключение или черновик изменились. Подготовьте файл заново."));
-      const existing = getContext().files.find(file => file.path.toLowerCase() === `mods/${entry.file.name}`.toLowerCase());
-      if (existing && (existing.sha256 !== entry.sha256 || existing.side !== side)) throw new Error(t("В черновике уже есть файл с этим именем и другим содержимым или назначением. Разберите его в разделе «Сборка»."));
+      // The same mod already in the draft is replaced, not joined; the same mod outside the
+      // pack on the server is taken off it on publish, with a backup. Both are said afterwards.
+      const match = findInDraft(getContext().files, { modIds: entry.modIds || [], provider: "curseforge", projectId: entry.source.projectId, path: `mods/${entry.file.name}`, sha256: entry.sha256 });
+      const kept = match ? sideAfter(match.file.side, side) : side;
+      const same = Boolean(match?.same && kept === match.file.side);
+      const replace = match && !same && match.file.path.toLowerCase() !== `mods/${entry.file.name}`.toLowerCase() ? match.file.path : null;
+      const server = findOnServer(await getServerFiles(), { modIds: entry.modIds || [] });
       writing = true; setBusy(true); render(); status(t("Отправка в черновик: {0}", entry.file.name));
-      if (!existing) { await upload(entry.file, side, entry.source); sent = true; }
-      prepared = null; status(existing ? t("Этот файл уже есть в черновике.") : t("Файл добавлен в черновик. Проверьте зависимости во вкладке «Проверка» перед публикацией."));
-      showToast(t("Черновик обновлён. Публикации не было."));
+      if (!same) { await upload(entry.file, kept, entry.source, replace); sent = true; }
+      if (server && !server.removalPending) { await removeFromServer(server.path, server.sha256); sent = true; }
+      prepared = null;
+      status(same ? t("Этот файл уже есть в черновике.") : [t("Файл добавлен в черновик. Проверьте зависимости во вкладке «Проверка» перед публикацией."),
+        replace ? t("Заменён {0}.", replace) : "", server && !server.removalPending ? t("Будет удалён с сервера при публикации: {0}.", server.path) : ""].filter(Boolean).join(" "));
+      showToast(sent ? t("Черновик обновлён. Публикации не было.") : t("Черновик не изменился: этот файл уже там."));
     } catch (error) { report(error); }
     finally {
       try { if (sent) await refresh(); } finally { writing = false; setBusy(false); render(); }

@@ -21,7 +21,7 @@
     "admin:test:instance": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-single-instance.ps1",
     "minecraft:build": "node scripts/build-minecraft-fabric.js",
     "pretest": "node scripts/prepare-admin-assets.js",
-    "test": "node --experimental-vm-modules --test scripts/file-intake.test.js scripts/modrinth.test.js scripts/access.test.js scripts/protected-settings.test.js scripts/admin-ui.test.js scripts/http.test.js scripts/workspace-access.test.js scripts/server-profiles.test.js scripts/i18n.test.js scripts/mod-metadata.test.js scripts/consistency.test.js",
+    "test": "node --experimental-vm-modules --test scripts/file-intake.test.js scripts/draft-match.test.js scripts/modrinth.test.js scripts/access.test.js scripts/protected-settings.test.js scripts/admin-ui.test.js scripts/http.test.js scripts/workspace-access.test.js scripts/server-profiles.test.js scripts/i18n.test.js scripts/mod-metadata.test.js scripts/consistency.test.js",
     "e2e:stand": "node scripts/e2e-stand.js",
     "e2e:admin": "node scripts/e2e-admin.js",
     "e2e:login": "node scripts/e2e-login.js"

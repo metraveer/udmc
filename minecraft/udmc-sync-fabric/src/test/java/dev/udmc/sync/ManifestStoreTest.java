@@ -15,7 +15,8 @@ public final class ManifestStoreTest {
             testDetach(root.resolve("detach"));
             testPaths();
             registryWarnings();
-            System.out.println("ManifestStore tests passed: draft lifecycle, migration, rollback, blob integrity, path validation, detach, mods players do not receive.");
+            identityAndReplacement();
+            System.out.println("ManifestStore tests passed: draft lifecycle, migration, rollback, blob integrity, path validation, detach, mods players do not receive, mod identity and replacement.");
         } finally {
             TestMods.deleteTree(root);
         }
@@ -204,6 +205,38 @@ public final class ManifestStoreTest {
         store.attachRegistries(java.util.Map::of);
         expect(codes(store.validation(true)).stream().noneMatch(code -> code.startsWith("udmc_sync.diagnostic.not_delivered")),
             "Without registry entries there is nothing to warn about");
+    }
+
+    /**
+     * A panel about to add a mod from a catalog has to know whether the same mod is already
+     * here at another version - in the draft, or on the server outside the pack - and it has
+     * to be able to put the new file in the old one's place in a single step.
+     */
+    private static void identityAndReplacement() throws Exception {
+        Path gameDir = Files.createTempDirectory("udmc-identity-");
+        Files.createDirectories(gameDir.resolve("mods"));
+        ManifestStore store = new ManifestStore(gameDir, new UdmcConfig());
+        store.upsertFile("mods/thelib-1.0.0.jar", "both", TestMods.jar("thelib", "1.0.0"));
+        store.upsertFile("config/thelib.json", "both", "{}".getBytes(StandardCharsets.UTF_8));
+        var rows = store.draftState().files;
+        var lib = rows.stream().filter(row -> row.path.equals("mods/thelib-1.0.0.jar")).findFirst().orElseThrow();
+        expect(lib.modIds.equals(java.util.List.of("thelib")) && "1.0.0".equals(lib.modVersion), "A draft jar must be named by its mod id and version: " + lib.modIds + " " + lib.modVersion);
+        var config = rows.stream().filter(row -> row.path.equals("config/thelib.json")).findFirst().orElseThrow();
+        expect(config.modIds.isEmpty() && config.modVersion == null, "A file that is not a mod answers for nothing");
+
+        Files.write(gameDir.resolve("mods/stray-2.jar"), TestMods.jar("stray", "2.0.0"));
+        @SuppressWarnings("unchecked")
+        var inventory = (java.util.List<java.util.Map<String, Object>>) store.inventory().get("files");
+        var stray = inventory.stream().filter(row -> row.get("path").equals("mods/stray-2.jar")).findFirst().orElseThrow();
+        expect(java.util.List.of("stray").equals(stray.get("modIds")) && "2.0.0".equals(stray.get("modVersion")), "A server file outside the pack is named the same way: " + stray);
+
+        // The same mod at another version takes the old file's place in one step.
+        var replaced = store.upsertFile("mods/thelib-2.0.0.jar", "both", new java.io.ByteArrayInputStream(TestMods.jar("thelib", "2.0.0")), () -> {}, null, "mods/thelib-1.0.0.jar");
+        var paths = store.draftState().files.stream().filter(row -> !row.change.equals("removed")).map(row -> row.path).toList();
+        expect(paths.contains("mods/thelib-2.0.0.jar") && !paths.contains("mods/thelib-1.0.0.jar"), "Replacing must remove the old path and add the new: " + paths);
+        expect("2.0.0".equals(store.draftState().files.stream().filter(row -> row.path.equals(replaced.path)).findFirst().orElseThrow().modVersion), "The new row carries the new version");
+        expectFailure(() -> store.upsertFile("mods/thelib-3.0.0.jar", "both", new java.io.ByteArrayInputStream(TestMods.jar("thelib", "3.0.0")), () -> {}, null, "mods/never-there.jar"));
+        expect(store.draftState().files.stream().noneMatch(row -> row.path.equals("mods/thelib-3.0.0.jar")), "A replacement of a file that is not there adds nothing");
     }
 
     @SuppressWarnings("unchecked")

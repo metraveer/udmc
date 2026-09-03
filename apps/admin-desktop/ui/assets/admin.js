@@ -1,5 +1,6 @@
 import { t, getLocale, countText, translateDocument, initLanguage } from "./i18n.js";
 import { initialFileSettings, inspectFile } from "./file-intake.js";
+import { findInDraft, findOnServer, replacementFor } from "./draft-match.js";
 import { initGenerator } from "./generator-ui.js";
 import { initServerTools, RISKY_COMMANDS } from "./server-tools.js";
 import { normalizeAddress } from "./connection.js";
@@ -66,6 +67,12 @@ const elements = Object.fromEntries([
 elements.uploadButtonLabel = document.querySelector("#uploadButton span");
 
 let selectedFiles = [];
+// Set by a status poll that failed: the reset that comes with it empties the command
+// reference, the inventory and the draft check, and only a full refresh brings them back.
+let statusLost = false;
+// Files on the server outside the pack, as last listed: a staged file that is the same mod
+// as one of them replaces it on publish, and the staged row says so.
+let serverInventory = [];
 let playerNames = [];
 /**
  * The dropdowns in the summary strip. Both hang from the number they belong to.
@@ -213,6 +220,7 @@ accessUi = initAccess({ getConnection, setConnection: adoptConnection,
 });
 serverTools = initServerTools({ adminGet, adminJson, refresh: () => refresh({ silent: true }), showToast,
   getRevision: () => draftState?.revision,
+  onInventory: files => { serverInventory = Array.isArray(files) ? files : []; updateDropZone(); },
   removeServerFile: file => openDeleteDialog({ ...file, change: "unchanged", unmanaged: true, side: "server" }),
   removeManagedFile: file => workspaceAccess.mutate(`/admin/files?path=${encodeURIComponent(file.path)}`, { method: "DELETE" }),
   getBinding: () => connectionRevision,
@@ -236,11 +244,17 @@ document.getElementById("draftValidationChip").addEventListener("click", () => {
 modrinthUi = initCatalog({ initialProvider: rememberedUi.catalog, getContext: () => draftState && serverStatus ? {
   url: normalizedServerUrl(), projectId: draftState.draft.pack.id, minecraft: draftState.draft.minecraft.version,
   loader: draftState.draft.minecraft.loader.type, modValidation: serverStatus.capabilities?.modValidation === true,
-  files: draftState.draft.files.map(({ path, side, sha256 }) => ({ path, side, sha256 }))
+  // Rows as the agent names them - by mod id, version and catalog origin - so a catalog can
+  // tell "this mod is already here at another version" from "a file with this name exists".
+  files: (draftState.files || []).filter(row => row.change !== "removed" && !row.serverRemoval)
+    .map(({ path, side, sha256, source, modIds, modVersion }) => ({ path, side, sha256, source: source || null, modIds: modIds || [], modVersion: modVersion || null }))
 } : null, getBusy: () => buildBusy, setBusy: setBuildBusy, showToast,
   refresh: () => refresh({ silent: true }),
-  upload: (file, side, source) => adminRaw(`/admin/files?path=${encodeURIComponent(`mods/${file.name}`)}`, file, { "content-type": "application/octet-stream", "x-udmc-side": side,
-    ...(source ? { "x-udmc-source": JSON.stringify(source) } : {}) })
+  // Asked fresh each time: the list of files outside the pack changes behind the panel's back.
+  getServerFiles: async () => { try { return (await adminGet("/admin/server/files")).files || []; } catch { return serverInventory; } },
+  removeFromServer: (path, sha256) => adminJson("/admin/server/files/remove", { path, sha256 }),
+  upload: (file, side, source, replace) => adminRaw(`/admin/files?path=${encodeURIComponent(`mods/${file.name}`)}${replace ? `&replace=${encodeURIComponent(replace)}` : ""}`, file,
+    { "content-type": "application/octet-stream", "x-udmc-side": side, ...(source ? { "x-udmc-source": JSON.stringify(source) } : {}) })
 });
 initTranslator({ showToast });
 initAppUpdates({ showToast, getBusy: () => buildBusy });
@@ -539,9 +553,14 @@ async function refreshServerStatus(silent = false) {
     serverTools.syncStatus(serverStatus, manifest);
     accessUi.receive(serverStatus.access);
     setStatus(t("Сервер доступен"), "ok");
+    // Back after a lost poll: the reset that came with it dropped the command reference and
+    // the draft check. Both are asked for again here - not through a full refresh, whose own
+    // failure would mark the status lost once more and go round again.
+    if (statusLost) { statusLost = false; serverTools.refreshCommands(); serverTools.receiveRevision(draftState?.revision); }
     if (document.getElementById("serverProfileDialog").open) agentUpdates.refresh();
   } catch (error) {
     if (revision !== connectionRevision) return;
+    statusLost = true;
     // A dead status during a requested power action is the expected middle of the
     // process: keep a progress row instead of a plain "connection lost".
     if (!powerWatch && lastKnownPower && lastKnownPower.executeAt <= Date.now()) {
@@ -662,7 +681,8 @@ function otherAdmins() {
  */
 function agreedWithOthers(command) {
   const others = otherAdmins();
-  const name = String(command).trim().split(/\s+/)[0].toLowerCase();
+  // "/stop" is the same command as "stop": the slash is habit, not a different name.
+  const name = String(command).trim().replace(/^\//, "").split(/\s+/)[0].toLowerCase();
   if (!others.length || !RISKY_COMMANDS.has(name)) return Promise.resolve(true);
   const dialog = document.getElementById("commandGuardDialog");
   document.getElementById("commandGuardText").textContent =
@@ -877,6 +897,9 @@ async function confirmPowerAction(event) {
       showToast(action === "restart" ? t("Сервер перезапускается") : t("Сервер останавливается"));
     }
     powerAction = null;
+    // The request took the workspace lease; nothing is being edited, so give it back rather
+    // than leave another administrator's panel answering "locked" for the next ninety seconds.
+    await workspaceAccess.release().catch(() => {});
     refreshServerStatus(true);
   } catch (error) {
     handleError(error);
@@ -890,6 +913,7 @@ async function cancelScheduledPower(action) {
     await adminJson(`/admin/server/${action}`, { cancel: true });
     addActivity(t("Запланированное действие сервера отменено."), "success");
     showToast(t("Отменено"));
+    await workspaceAccess.release().catch(() => {});
     refreshServerStatus(true);
   } catch (error) {
     handleError(error);
@@ -983,12 +1007,20 @@ async function uploadSelectedFiles() {
       const item = selectedFiles[index];
       const remotePath = `${item.root}${cleanFileName(item.file.name)}`;
       elements.uploadButtonLabel.textContent = `${index + 1} / ${selectedFiles.length}`;
-      const payload = await adminRaw(`/admin/files?path=${encodeURIComponent(remotePath)}`, item.file, {
+      // The same mod at another version takes the old file's place in one step; the same
+      // mod outside the pack is taken off the server on publish, with a backup, as the row said.
+      const match = stagedMatch(item);
+      const replace = match?.replace;
+      const payload = await adminRaw(`/admin/files?path=${encodeURIComponent(remotePath)}${replace ? `&replace=${encodeURIComponent(replace)}` : ""}`, item.file, {
         "content-type": "application/octet-stream",
         "x-udmc-side": item.side
       });
       uploadedIds.push(item.id);
-      addActivity(t("Добавлен в черновик {0}.", payload.file.path), "success");
+      addActivity(replace ? t("Добавлен в черновик {0} вместо {1}.", payload.file.path, replace) : t("Добавлен в черновик {0}.", payload.file.path), "success");
+      if (match?.server && !match.server.removalPending) {
+        await adminJson("/admin/server/files/remove", { path: match.server.path, sha256: match.server.sha256 });
+        addActivity(t("{0} будет удалён с сервера при публикации: его заменяет {1}.", match.server.path, payload.file.path), "success");
+      }
     }
     const uploadedCount = selectedFiles.length;
     selectedFiles = selectedFiles.filter((item) => !uploadedIds.includes(item.id));
@@ -1009,6 +1041,10 @@ async function uploadSelectedFiles() {
 function openDeleteDialog(file) {
   deleteTarget = file;
   elements.deleteFileName.textContent = file.path;
+  // A file outside the pack is removed from the server; one inside is taken out of the draft.
+  // The heading and the button say which, so the confirmation reads as what it does.
+  document.querySelector("#deleteDialog h2").textContent = file.unmanaged ? t("Удалить с сервера") : t("Удалить из сборки");
+  document.querySelector("#deleteForm button[type=submit]").textContent = file.unmanaged ? t("Удалить с сервера") : t("Удалить из черновика");
   elements.deleteDialogText.textContent = file.change === "added"
     ? t("Файл ещё не публиковался и будет просто убран из черновика.")
     : t("Удаление попадёт в черновик. Сервер и клиенты применят его только после публикации.");
@@ -1659,6 +1695,20 @@ async function setSelectedFiles(files, append = false) {
     Object.assign(item, result, { analyzing: false });
     updateDropZone();
   }
+  // Only once the ids are known can the same mod be found under another name.
+  if (added.some(item => item.modIds?.length)) {
+    try { serverInventory = (await adminGet("/admin/server/files")).files || []; } catch { /* the last list stands */ }
+    if (selectedFiles.some(item => added.includes(item))) updateDropZone();
+  }
+}
+
+/** What adding a staged file does to the draft and to the server, by what the file is. */
+function stagedMatch(item) {
+  if (!item.modIds?.length && item.analyzing) return null;
+  const remotePath = `${item.root}${cleanFileName(item.file.name)}`;
+  const draft = findInDraft(draftState?.files || [], { modIds: item.modIds || [], version: item.modVersion || null, path: remotePath });
+  const server = item.modIds?.length ? findOnServer(serverInventory, { modIds: item.modIds }) : null;
+  return { draft, server, replace: replacementFor(draft, remotePath) };
 }
 
 function updateDropZone() {
@@ -1770,14 +1820,26 @@ function validateSelectedFiles() {
   const loader = draftState?.draft?.minecraft?.loader?.type;
   if (loader && selectedFiles.some(item => item.loaders && !item.loaders.includes(loader))) return { error: true, message: t("Загрузчик выбранного мода не совпадает с сервером."), conflicts };
   if (conflicts.size) return { error: true, message: t("Несколько файлов получат одинаковый путь. Измените папку или уберите дубликат."), conflicts };
+  const owners = new Map();
+  for (const item of selectedFiles) for (const id of item.modIds || []) {
+    if (owners.has(id)) { conflicts.add(owners.get(id)); conflicts.add(item.id); }
+    else owners.set(id, item.id);
+  }
+  if (conflicts.size) return { error: true, message: t("Два файла содержат один мод. Оставьте один из них."), conflicts };
   if (oversized) return { error: true, message: t("Один из файлов больше допустимых 512 МБ."), conflicts };
   return { error: false, message: selectedFiles.length ? t("Готово к добавлению в черновик") : "", conflicts };
 }
 
 function stagedActionLabel(item) {
   const remotePath = `${item.root}${cleanFileName(item.file.name)}`;
-  const existing = (draftState?.draft?.files || []).some((file) => file.path.toLowerCase() === remotePath.toLowerCase());
-  return existing ? t("обновит существующий файл") : t("новый файл");
+  const match = stagedMatch(item);
+  const parts = [];
+  if (match?.draft?.same) parts.push(t("уже в черновике ({0})", match.draft.file.path));
+  else if (match?.replace) parts.push(t("заменит {0} ({1})", match.replace, match.draft.file.modVersion || "?"));
+  else if ((draftState?.draft?.files || []).some((file) => file.path.toLowerCase() === remotePath.toLowerCase())) parts.push(t("обновит существующий файл"));
+  else parts.push(t("новый файл"));
+  if (match?.server && !match.server.removalPending) parts.push(t("на сервере вне сборки: {0} ({1}) - будет удалён с резервной копией при публикации", match.server.path, match.server.modVersion || "?"));
+  return parts.join(" · ");
 }
 
 function fileIdentity(file) {
