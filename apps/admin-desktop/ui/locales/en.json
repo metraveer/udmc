@@ -1234,5 +1234,11 @@
   "Остановка и перезапуск из панели выключены. Включите их на странице «Сервер» в блоке «Действия сервера».": "Stopping and restarting from the panel are disabled. Enable them on the Server page in \"Server actions\".",
   "Как установить мод: инструкция на GitHub": "How to install the mod: the guide on GitHub",
   "Компоненты": "Components",
-  "Пока панель говорит с сервером, версия берётся у него: файл всегда подходит этому серверу. Без подключения выберите версию сами — ту, на которой сервер будет работать.": "While the panel is talking to a server, the version comes from it: the file always fits that server. Without a connection, pick the version yourself — the one the server will run."
+  "Пока панель говорит с сервером, версия берётся у него: файл всегда подходит этому серверу. Без подключения выберите версию сами — ту, на которой сервер будет работать.": "While the panel is talking to a server, the version comes from it: the file always fits that server. Without a connection, pick the version yourself — the one the server will run.",
+  "Предупреждение": "Warning",
+  "Проблем нет, предупреждений: {0}": "No problems, warnings: {0}",
+  "Проверка нашла предупреждения: {0} - публикация возможна": "The check found warnings: {0} - publishing is allowed",
+  "Черновик: {0}. Публикация возможна, но откройте проверку.": "Draft: {0}. Publishing is allowed, but open the check.",
+  "warnings_one": "{count} warning",
+  "warnings_other": "{count} warnings"
 }

@@ -93,8 +93,13 @@ export function initServerTools({ adminGet, adminJson, refresh, showToast, getBu
     if (!state) { box.textContent = t("Проверка ещё не выполнялась."); return; }
     if (state.pending) { box.textContent = t("Проверяем метаданные модов..."); return; }
     if (state.error) { box.textContent = state.error; return; }
+    // A warning is something the owner should know; a problem is something that refuses the
+    // publication. The two are counted apart so a warning never reads as a refusal.
+    const blocking = state.issues.filter(issue => issue.level !== "warning").length;
+    const warnings = state.issues.length - blocking;
     const summary = document.createElement("strong");
-    summary.textContent = state.ok ? t("В метаданных проблем не найдено") : t("Найдено проблем: {0}", state.issues.length);
+    summary.textContent = blocking ? t("Найдено проблем: {0}", blocking)
+      : warnings ? t("Проблем нет, предупреждений: {0}", warnings) : t("В метаданных проблем не найдено");
     box.append(summary);
     if (!getDirty?.()) {
       const same = document.createElement("p"); same.className = "muted-copy";
@@ -109,9 +114,15 @@ export function initServerTools({ adminGet, adminJson, refresh, showToast, getBu
     }
     for (const issue of state.issues) {
       const item = document.createElement("div"); item.className = "validation-issue";
+      const badges = document.createElement("div"); badges.className = "validation-badges";
       const side = document.createElement("span"); side.className = "state-badge neutral"; side.textContent = issue.side === "client" ? t("Клиент") : t("Сервер");
+      badges.append(side);
+      if (issue.level === "warning") {
+        const level = document.createElement("span"); level.className = "state-badge warning"; level.textContent = t("Предупреждение");
+        badges.append(level);
+      }
       const message = document.createElement("p"); message.textContent = diagnosticMessage(issue);
-      item.append(side, message); box.append(item);
+      item.append(badges, message); box.append(item);
     }
   }
   async function runValidation(target, manual = false) {

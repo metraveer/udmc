@@ -18,8 +18,13 @@ final class Messages {
         Message { args = List.copyOf(args); }
         String fallback() { return ENGLISH.get(key); }
         String english() { return String.format(Locale.ROOT, fallback(), args.toArray()); }
+        /** A problem that refuses a publication until it is fixed. */
         Map<String, Object> issue(String side) {
-            return Map.of("side", side, "code", key, "args", args, "message", english());
+            return Map.of("side", side, "code", key, "args", args, "message", english(), "level", "error");
+        }
+        /** Something the owner should know that is not certain enough to refuse a publication over. */
+        Map<String, Object> warning(String side) {
+            return Map.of("side", side, "code", key, "args", args, "message", english(), "level", "warning");
         }
     }
 

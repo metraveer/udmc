@@ -518,7 +518,9 @@ public final class ManifestStore {
     }
 
     private void validateDraftMods(ManifestModels.Manifest published, ManifestModels.Manifest draft) throws IOException {
-        var issues = inspectMods(published, draft, false);
+        // Warnings are shown, not enforced: an inference about registries once refused every
+        // publication on a server over a namespace that belonged to the game itself.
+        var issues = inspectMods(published, draft, false).stream().filter(ManifestStore::blocking).toList();
         if (issues.isEmpty()) return;
         // An invalid composition is an expected, fixable refusal: it must reach panels as a stable code, not a 500.
         throw new ApiException(409, "PUBLISH_BLOCKED_BY_VALIDATION",
@@ -534,16 +536,19 @@ public final class ManifestStore {
         if (!installed) {
             try { validateDraftBlobs(draft); validateServerRemovals(draft); }
             catch (ApiException error) {
-                issues.add(Map.of("side", "server", "code", error.code, "args", error.args, "message", error.getMessage()));
+                issues.add(Map.of("side", "server", "code", error.code, "args", error.args, "message", error.getMessage(), "level", "error"));
             } catch (IOException | IllegalArgumentException error) {
                 UdmcSync.LOGGER.warn("Could not verify the UDMC draft files", error);
                 issues.add(Map.of("side", "server", "code", "DRAFT_VALIDATION_FAILED", "args", List.of(),
-                    "message", "The draft files could not be verified. Check the server log and retry."));
+                    "message", "The draft files could not be verified. Check the server log and retry.", "level", "error"));
             }
         }
         return Map.of("target", installed ? "server" : "draft", "revision", draftState().revision,
-            "ok", issues.isEmpty(), "issues", issues, "checkedAt", TimeUtil.nowIso());
+            "ok", issues.stream().noneMatch(ManifestStore::blocking), "issues", issues, "checkedAt", TimeUtil.nowIso());
     }
+
+    /** Whether an issue refuses a publication. Anything not marked a warning does. */
+    private static boolean blocking(Map<String, Object> issue) { return !"warning".equals(issue.get("level")); }
 
     /** Lets validation ask the running server who has put entries into its registries. */
     public void attachRegistries(Supplier<Map<String, Integer>> report) { registries = report; }
@@ -601,6 +606,10 @@ public final class ManifestStore {
      * who tried once. Named by file and by mod where the server can trace the namespace to one
      * of its jars, and by namespace alone where it cannot - an entry nobody accounts for is
      * still an entry a new player will be missing.
+     *
+     * <p>A warning, not a refusal. The report is an inference: the library may treat the
+     * registry as optional, and a namespace nobody on the server claims may be the game's own -
+     * as {@code brigadier} was, the day this refused an owner every publication.
      */
     private List<Map<String, Object>> undelivered(ManifestModels.Manifest forPlayers, List<ModMetadata.Mod> serverMods) {
         Map<String, Integer> namespaces = registries.get();
@@ -623,7 +632,7 @@ public final class ManifestStore {
                 .findFirst();
             issues.add((owner.isPresent()
                 ? Messages.of("udmc_sync.diagnostic.not_delivered", owner.get().path(), owner.get().id(), entry.getValue())
-                : Messages.of("udmc_sync.diagnostic.not_delivered_namespace", namespace, entry.getValue())).issue("server"));
+                : Messages.of("udmc_sync.diagnostic.not_delivered_namespace", namespace, entry.getValue())).warning("server"));
         }
         return issues;
     }

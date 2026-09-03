@@ -1124,8 +1124,10 @@ select.select-open, select.select-open:focus-visible { outline: none; border-col
 .section-tabs button > span:not([data-i18n]) { font-size: 11px; color: var(--muted); min-width: 20px; font-variant-numeric: tabular-nums; }
 .validation-target { max-width: 360px; margin: 13px 0; }
 .validation-result { margin: 14px 0; font-size: 13px; }
-.validation-issue { display: grid; grid-template-columns: 78px minmax(0, 1fr); align-items: start; gap: 12px; border-bottom: 1px solid var(--line); padding: 10px 0; }
+.validation-issue { display: grid; grid-template-columns: 112px minmax(0, 1fr); align-items: start; gap: 12px; border-bottom: 1px solid var(--line); padding: 10px 0; }
 .validation-issue p { margin: 0; overflow-wrap: anywhere; line-height: 1.5; }
+.validation-badges { display: grid; gap: 4px; justify-items: start; }
+.draft-validation-chip.warning { color: var(--amber); background: var(--amber-soft); border-color: var(--amber); }
 .server-profile-picker { display: grid; grid-template-columns: minmax(0, 1fr) 30px 30px; align-items: center; gap: 4px; }
 .server-profile-picker label { color: #9ba0aa; font-size: 11px; }
 .server-profile-picker select { grid-column: 1 / -1; min-width: 0; min-height: 32px; padding: 5px; background: var(--sidebar-soft); border-color: #2c2f37; color: #f4f5f7; font-size: 12px; }

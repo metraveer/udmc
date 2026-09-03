@@ -1265,9 +1265,20 @@ function renderPackRestartNotice() {
 function renderDraftValidationChip() {
   const chip = document.getElementById("draftValidationChip");
   // A clean draft has nothing to publish: its issues mirror the server and live there.
-  const issues = draftState?.changes?.dirty ? validationSnapshot.draft?.issues?.length || 0 : 0;
-  chip.hidden = !issues;
-  if (issues) chip.textContent = t("Проверка нашла проблемы: {0} - публикация будет отклонена", issues);
+  const issues = draftState?.changes?.dirty ? validationSnapshot.draft?.issues || [] : [];
+  const blocking = issues.filter(issue => issue.level !== "warning").length;
+  const warnings = issues.length - blocking;
+  chip.hidden = !issues.length;
+  chip.classList.toggle("warning", !blocking && warnings > 0);
+  if (blocking) chip.textContent = t("Проверка нашла проблемы: {0} - публикация будет отклонена", blocking);
+  else if (warnings) chip.textContent = t("Проверка нашла предупреждения: {0} - публикация возможна", warnings);
+}
+
+/** Problems refuse a publication; warnings are shown and let it through. Counted apart everywhere. */
+function validationCounts(snapshot) {
+  const issues = snapshot?.issues || [];
+  const blocking = issues.filter(issue => issue.level !== "warning").length;
+  return { blocking, warnings: issues.length - blocking };
 }
 
 function renderDashboard() {
@@ -1284,12 +1295,15 @@ function renderDashboard() {
     : t("Совпадает");
   // With a clean draft the draft target mirrors the server: count each problem once.
   const dirty = Boolean(changes?.dirty);
-  const draftIssues = dirty ? validationSnapshot.draft?.issues?.length || 0 : 0;
-  const serverIssues = validationSnapshot.server?.issues?.length || 0;
+  const draftCounts = dirty ? validationCounts(validationSnapshot.draft) : { blocking: 0, warnings: 0 };
+  const serverCounts = validationCounts(validationSnapshot.server);
+  const draftIssues = draftCounts.blocking, serverIssues = serverCounts.blocking;
+  const warnings = draftCounts.warnings + serverCounts.warnings;
   byId("dashValidation").textContent = !serverStatus ? "-"
     : !validationSnapshot.supported ? t("Недоступна на этом агенте")
     : validationSnapshot.draft?.pending || validationSnapshot.server?.pending ? t("Выполняется...")
     : draftIssues + serverIssues ? countText("problems", draftIssues + serverIssues)
+    : warnings ? countText("warnings", warnings)
     : validationSnapshot.draft || validationSnapshot.server ? t("Проблем нет") : "-";
 
   const rows = [];
@@ -1312,6 +1326,10 @@ function renderDashboard() {
     if (draftIssues) add("error", "shield-alert", t("Черновик не пройдёт публикацию: {0}. Откройте проверку.", countText("problems", draftIssues)),
       () => { navigateTo("overview"); serverTools.showValidation("draft"); setBuildTab("validation"); });
     if (serverIssues) add("error", "shield-alert", t("Совместимость на сервере: {0}. Откройте проверку.", countText("problems", serverIssues)),
+      () => { navigateTo("overview"); serverTools.showValidation("server"); setBuildTab("validation"); });
+    if (draftCounts.warnings) add("warn", "shield-alert", t("Черновик: {0}. Публикация возможна, но откройте проверку.", countText("warnings", draftCounts.warnings)),
+      () => { navigateTo("overview"); serverTools.showValidation("draft"); setBuildTab("validation"); });
+    if (serverCounts.warnings) add("warn", "shield-alert", t("Совместимость на сервере: {0}. Откройте проверку.", countText("warnings", serverCounts.warnings)),
       () => { navigateTo("overview"); serverTools.showValidation("server"); setBuildTab("validation"); });
     if (changes?.dirty) add("warn", "file-pen-line", t("Игроки ещё не видят изменения черновика: {0}. Опубликуйте сборку.", countText("changes", changes.total)),
       () => { navigateTo("overview"); setBuildTab("draft"); });

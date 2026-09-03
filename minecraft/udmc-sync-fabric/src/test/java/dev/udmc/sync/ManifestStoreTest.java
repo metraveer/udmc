@@ -191,6 +191,16 @@ public final class ManifestStoreTest {
         expect(codes.contains("udmc_sync.diagnostic.not_delivered_namespace [orphan, 2]"),
             "Entries nobody on the server accounts for are still reported: " + codes);
         expect(codes.stream().noneMatch(code -> code.contains("shared")), "A mod players receive raises nothing: " + codes);
+        // Said, never enforced: the check still passes, and a publication still goes through.
+        @SuppressWarnings("unchecked")
+        var levels = ((java.util.List<java.util.Map<String, Object>>) store.validation(true).get("issues")).stream()
+            .filter(issue -> String.valueOf(issue.get("code")).startsWith("udmc_sync.diagnostic.not_delivered")).map(issue -> issue.get("level")).toList();
+        expect(!levels.isEmpty() && levels.stream().allMatch("warning"::equals), "Registry findings must be warnings: " + levels);
+        expect(Boolean.TRUE.equals(store.validation(true).get("ok")), "Warnings alone must not fail the check");
+        store.upsertFile("mods/another.jar", "both", TestMods.jar("another", "1.0.0"));
+        expect(Boolean.TRUE.equals(store.validation(false).get("ok")), "A draft with only warnings must be publishable");
+        store.publish("1.0.1");
+        expect(Files.exists(gameDir.resolve("mods/another.jar")), "Publication must go through despite registry warnings");
         store.attachRegistries(java.util.Map::of);
         expect(codes(store.validation(true)).stream().noneMatch(code -> code.startsWith("udmc_sync.diagnostic.not_delivered")),
             "Without registry entries there is nothing to warn about");

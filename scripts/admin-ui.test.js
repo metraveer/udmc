@@ -937,7 +937,9 @@ test("the dashboard aggregates attention items and live validation guides to the
       return url.searchParams.get("target") === "draft"
         ? response({ revision: "rev-1", ok: false, checkedAt: "2026-08-30T10:00:00Z",
           issues: [{ side: "server", code: "udmc_sync.diagnostic.duplicate", args: ["mods/a.jar", "mods/b.jar"], message: "dup" }] })
-        : response({ revision: "rev-1", ok: true, checkedAt: "2026-08-30T10:00:00Z", issues: [] });
+        // The running server carries a warning: said, counted apart, never a refusal.
+        : response({ revision: "rev-1", ok: true, checkedAt: "2026-08-30T10:00:00Z",
+          issues: [{ side: "server", level: "warning", code: "udmc_sync.diagnostic.not_delivered_namespace", args: ["orphan", "2"], message: "orphan" }] });
     }
     if (url.pathname === "/admin/files") return response({ revision: "rev-1", draft, files: [],
       changes: { added: 2, updated: 0, removed: 0, total: 2, dirty: true } });
@@ -951,12 +953,20 @@ test("the dashboard aggregates attention items and live validation guides to the
   const rows = [...ui.$("attentionList").querySelectorAll(".attention-row")];
   assert.ok(rows.some(row => row.classList.contains("error") && /не пройдёт публикацию/.test(row.textContent)));
   assert.ok(rows.some(row => row.classList.contains("warn") && /не видят изменения черновика/.test(row.textContent)));
+  assert.ok(rows.some(row => row.classList.contains("warn") && /Совместимость на сервере: 1 предупреждение/.test(row.textContent)),
+    "A warning on the server is its own row, and not an error");
+  assert.ok(!rows.some(row => row.classList.contains("error") && /Совместимость на сервере/.test(row.textContent)),
+    "A warning must never be counted as a problem that refuses publication");
   assert.ok(!rows.some(row => row.classList.contains("ok")), "The all-good row must not show next to problems");
   rows.find(row => row.classList.contains("error")).click();
   assert.equal(ui.$("overviewView").classList.contains("active"), true);
   assert.equal(ui.w.document.querySelector('[data-build-tab="validation"]').getAttribute("aria-selected"), "true");
   assert.equal(ui.$("validationTarget").value, "draft");
   await until(() => ui.$("validationResult").querySelector(".validation-issue"));
+  assert.equal(ui.$("validationResult").querySelector(".state-badge.warning"), null, "The draft's problem is not a warning");
+  ui.$("validationTarget").value = "server"; ui.$("validationTarget").dispatchEvent(new ui.w.Event("change", { bubbles: true }));
+  await until(() => ui.$("validationResult").querySelector(".state-badge.warning"), "The server's warning wears its own badge");
+  assert.match(ui.$("validationResult").textContent, /Проблем нет, предупреждений: 1/);
   ui.w.document.querySelector('[data-build-tab="server"]').click();
   await until(() => ui.$("serverInventory").textContent.includes("mods/manual.jar"), "The out-of-pack list loads by itself");
   assert.match(ui.$("serverInventory").textContent, /Под управление/);

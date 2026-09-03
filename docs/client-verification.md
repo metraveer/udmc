@@ -302,8 +302,17 @@ to let it pass in silence. Now the composition check asks the running server whi
 have put entries into its registries (`RegistryReport`), traces each to a jar on the server, and
 reports every one that no file handed to players accounts for: `udmc_sync.diagnostic.not_delivered`
 by file and mod, `udmc_sync.diagnostic.not_delivered_namespace` where no jar claims the
-namespace. The loaders' own namespaces are left out. Covered by `ManifestStoreTest` without a
-game, through a supplied report. Measured on the 26.2 stand with `fabric-api 0.159.0` and `xaerominimap
+namespace. The game's and the loaders' own namespaces are left out. Covered by `ManifestStoreTest`
+without a game, through a supplied report, and by `AgentUpdateTest` on every Fabric build with
+the real registries: a bare game must report nothing.
+
+Both are **warnings**, shown and never enforced. The report is an inference twice over - the
+library may treat a registry as optional, and a namespace nobody on the server claims may be
+the game's own - and 0.26.0 learned that the expensive way: `brigadier`, the namespace of the
+six command argument types the game itself registers, was reported as a mod nobody had
+installed, and because every finding refused publication then, an owner could not publish
+anything at all. Since 0.26.1 a finding carries a level; only errors refuse a publication, and
+the panel counts the two apart. Measured on the 26.2 stand with `fabric-api 0.159.0` and `xaerominimap
 26.4.2` on the server and nothing but this mod on the client:
 
 ```

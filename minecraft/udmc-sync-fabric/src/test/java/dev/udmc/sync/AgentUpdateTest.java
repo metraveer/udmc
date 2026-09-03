@@ -160,6 +160,12 @@ public final class AgentUpdateTest {
                 // unit test. On 26.x it is not needed and costs a second; the same code either way.
                 net.minecraft.SharedConstants.tryDetectVersion();
                 net.minecraft.server.Bootstrap.bootStrap();
+                // The game alone puts entries into its registries under more than one namespace
+                // - "brigadier" for the command argument types - and every one of them has to
+                // be known to the report, or the panel tells an owner that a mod nobody has
+                // installed is locking players out. It did, once, and refused every publication.
+                var namespaces = RegistryReport.moddedNamespaces();
+                check(namespaces.isEmpty(), "A bare game must report no modded namespaces, not " + namespaces);
                 var connection = new net.minecraft.network.Connection(net.minecraft.network.protocol.PacketFlow.SERVERBOUND);
                 var sent = new java.util.ArrayList<net.minecraft.network.protocol.Packet<?>>();
                 new AgentLoginVerification(null, connection).start(sent::add);
