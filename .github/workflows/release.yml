@@ -57,10 +57,21 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # One command per step: in this shell a failing first command is masked by a passing
+      # second one, and an installer would be signed over a red test run.
       - name: Run tests
-        run: |
-          npm test
-          npm run version:check
+        run: npm test
+
+      - name: Check version metadata
+        run: npm run version:check
+
+      # The tag is what installed copies compare themselves against. A tag on a commit whose
+      # package.json says another version would ship an installer that calls itself something
+      # else, and no installed copy would ever see the update.
+      - name: Check that the tag names this version
+        env:
+          TAG: ${{ github.event.inputs.tag || github.ref_name }}
+        run: node -e "const v = require('./package.json').version; if (process.env.TAG !== 'v' + v) { console.error('Tag ' + process.env.TAG + ' does not name package.json version ' + v); process.exit(1); } console.log('Tag matches version ' + v);"
 
       # Agent tests run in the CI workflow on Linux; here only the jars are needed.
       - name: Build agent templates

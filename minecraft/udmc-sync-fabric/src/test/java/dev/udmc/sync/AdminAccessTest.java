@@ -21,7 +21,7 @@ public final class AdminAccessTest {
     public static void main(String[] args) throws Exception {
         Path root = Files.createTempDirectory("udmc-access-test-");
         try {
-            lifecycle(root.resolve("registry"));
+            lifecycle(root.resolve("registry")); identityChange(root.resolve("registry"));
             expiry(root.resolve("expiry"));
             projectBinding(root.resolve("binding"));
             http(root.resolve("http"));
@@ -32,6 +32,31 @@ public final class AdminAccessTest {
     }
 
     private static UdmcConfig config() { var config = new UdmcConfig(); config.adminToken = ROOT; config.apiHost = "127.0.0.1"; config.apiPort = 0; return config; }
+    /**
+     * The project's identity changes under the registry twice in a server's life: a backup is
+     * restored at pairing, or pairing is reset. Neither may leave the server without its API.
+     * Restored at pairing, the registry is re-signed and keeps what it had; reset, it is set
+     * aside with the reset and the new recovery key opens a fresh one.
+     */
+    private static void identityChange(Path root) throws Exception {
+        Path path = root.resolve("identity");
+        var config = config();
+        var access = new AdminAccess(path, config);
+        var recovery = access.authenticate(ROOT, "127.0.0.1");
+        access.enrollOwner(recovery, OWNER, "Owner PC", "127.0.0.1");
+        config.packId = "restored";
+        access.rebind();
+        expect(new AdminAccess(path, config).authenticate(OWNER, "127.0.0.1").owner(), "Re-signing at pairing keeps the devices");
+        config.resetPairing = true;
+        ServerIdentity.ensure(path, config);
+        var reopened = new AdminAccess(path, config);
+        denied(401, () -> reopened.authenticate(OWNER, "127.0.0.1"));
+        expect(reopened.authenticate(config.adminToken, "127.0.0.1").bootstrap(), "The new recovery key opens a fresh registry after a reset");
+        try (var files = Files.list(path.resolve("udmc-sync"))) {
+            expect(files.anyMatch(file -> file.getFileName().toString().matches("admin-access\\.\\d+\\.bak\\.json")), "The old registry is kept beside the new one");
+        }
+    }
+
     private static void lifecycle(Path path) throws Exception {
         var config = config();
         var access = new AdminAccess(path, config);

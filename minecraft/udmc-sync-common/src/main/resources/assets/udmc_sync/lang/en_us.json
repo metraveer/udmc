@@ -79,6 +79,7 @@
   "udmc_sync.diagnostic.overwrite": "A personal server mod would be overwritten: %1$s",
   "udmc_sync.diagnostic.not_delivered": "%1$s (%2$s) adds %3$s entries to the game's registries but is not handed to players. A new player cannot join: the game refuses them before UDMC can ask anything. Publish the file for the client or remove it from the server.",
   "udmc_sync.diagnostic.not_delivered_namespace": "The server holds %2$s registry entries in the “%1$s” namespace, but no file handed to players carries them. A new player cannot join. Find the mod they belong to and publish it for the client.",
+  "udmc_sync.diagnostic.modified": "%1$s was changed on the server outside UDMC, and the draft replaces it. Publishing will not overwrite someone else's edits: revert the draft's change to the file, or take the server's version under management again.",
   "udmc_sync.diagnostic.side": "%1$s is assigned to %2$s, but its metadata requires %3$s.",
   "udmc_sync.diagnostic.inspect": "Could not inspect %1$s. Technical details: %2$s",
   "udmc_sync.button.install_page": "Open install page",

@@ -16,6 +16,7 @@ public final class ManifestStoreTest {
             testPaths();
             registryWarnings();
             identityAndReplacement();
+            playersView();
             System.out.println("ManifestStore tests passed: draft lifecycle, migration, rollback, blob integrity, path validation, detach, mods players do not receive, mod identity and replacement.");
         } finally {
             TestMods.deleteTree(root);
@@ -205,6 +206,40 @@ public final class ManifestStoreTest {
         store.attachRegistries(java.util.Map::of);
         expect(codes(store.validation(true)).stream().noneMatch(code -> code.startsWith("udmc_sync.diagnostic.not_delivered")),
             "Without registry entries there is nothing to warn about");
+    }
+
+    /**
+     * What players are told about and handed: never a server-only file, whoever knows its hash.
+     * And the two things a restore at pairing has to fix in the manifests, and the one thing a
+     * publication must refuse in words rather than with a crash: a managed file somebody edited
+     * on the server by hand.
+     */
+    private static void playersView() throws Exception {
+        Path gameDir = Files.createTempDirectory("udmc-players-view-");
+        Files.createDirectories(gameDir.resolve("mods"));
+        ManifestStore store = new ManifestStore(gameDir, new UdmcConfig());
+        store.upsertFile("mods/shared.jar", "both", TestMods.jar("shared", "1.0.0"));
+        store.upsertFile("mods/only-client.jar", "client", TestMods.jar("onlyclient", "1.0.0"));
+        store.upsertFile("config/secret.json", "server", "{\"password\":\"hunter2\"}".getBytes(StandardCharsets.UTF_8));
+        store.upsertFile("config/managed.json", "both", "{\"a\":1}".getBytes(StandardCharsets.UTF_8));
+        store.publish("1.0.0");
+        var paths = store.publicManifest().files.stream().map(file -> file.path).toList();
+        expect(paths.contains("mods/shared.jar") && paths.contains("mods/only-client.jar") && !paths.contains("config/secret.json"),
+            "Players are told about client-side files only: " + paths);
+        var secret = store.loadPublished().files.stream().filter(file -> file.path.equals("config/secret.json")).findFirst().orElseThrow();
+        var shared = store.loadPublished().files.stream().filter(file -> file.path.equals("mods/shared.jar")).findFirst().orElseThrow();
+        expect(!store.servesBlob(secret.downloadPath.substring("/files/".length())), "A server-only blob is not served to players");
+        expect(store.servesBlob(shared.downloadPath.substring("/files/".length())), "A shared blob is");
+        store.adoptIdentity("restored", "Restored pack");
+        expect(store.loadPublished().pack.id.equals("restored") && store.loadDraft().pack.id.equals("restored") && store.loadDraft().pack.name.equals("Restored pack"),
+            "Both manifests carry the restored identity");
+        // Edited by hand on the server, and replaced in the draft: said before the button.
+        Files.writeString(gameDir.resolve("config/managed.json"), "{\"a\":\"edited by hand\"}");
+        store.upsertFile("config/managed.json", "both", "{\"a\":2}".getBytes(StandardCharsets.UTF_8));
+        var codes = codes(store.validation(false));
+        expect(codes.contains("udmc_sync.diagnostic.modified [config/managed.json]"), "A managed file changed on the server is named: " + codes);
+        expectFailure(() -> store.publish("1.0.1"));
+        expect(Files.readString(gameDir.resolve("config/managed.json")).contains("edited by hand"), "The hand-made edit survives the refused publication");
     }
 
     /**

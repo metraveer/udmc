@@ -1328,7 +1328,8 @@ function renderDashboard() {
   elements.packSummary.disabled = !manifest;
   if (elements.packSummary.disabled) toggleSummary("packSummary", false);
   byId("dashPublishedVersion").textContent = manifest ? manifest.pack.version : "-";
-  byId("dashFileCount").textContent = manifest ? String(manifest.files.length) : "-";
+  // The public manifest lists what players get; the whole pack is in the draft state.
+  byId("dashFileCount").textContent = manifest ? String((draftState?.published?.files || manifest.files).length) : "-";
   byId("dashDraftState").textContent = !draftState ? "-"
     : changes?.dirty ? countText("changes", changes.total)
     : t("Совпадает");

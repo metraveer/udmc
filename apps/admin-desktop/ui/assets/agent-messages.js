@@ -12,6 +12,7 @@ const diagnostics = {
   "udmc_sync.diagnostic.overwrite": [1, args => t("udmc_sync.diagnostic.overwrite", ...args)],
   "udmc_sync.diagnostic.side": [3, args => t("udmc_sync.diagnostic.side", args[0], side(args[1]), side(args[2]))],
   "udmc_sync.diagnostic.inspect": [2, args => t("udmc_sync.diagnostic.inspect", ...args)],
+  "udmc_sync.diagnostic.modified": [1, args => t("udmc_sync.diagnostic.modified", ...args)],
   "udmc_sync.diagnostic.not_delivered": [3, args => t("udmc_sync.diagnostic.not_delivered", ...args)],
   "udmc_sync.diagnostic.not_delivered_namespace": [2, args => t("udmc_sync.diagnostic.not_delivered_namespace", ...args)]
 };

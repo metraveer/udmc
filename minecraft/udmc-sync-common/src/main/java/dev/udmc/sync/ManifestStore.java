@@ -589,6 +589,41 @@ public final class ManifestStore {
     /** Whether an issue refuses a publication. Anything not marked a warning does. */
     private static boolean blocking(Map<String, Object> issue) { return !"warning".equals(issue.get("level")); }
 
+    /**
+     * The project's id and name after a restore at pairing, written into both manifests. A
+     * client refuses a manifest of another project, and until now the manifests kept the id the
+     * server had invented for itself before the backup replaced it.
+     */
+    public synchronized void adoptIdentity(String packId, String packName) throws IOException {
+        ManifestModels.Manifest published = loadPublished();
+        if (!Objects.equals(published.pack.id, packId) || !Objects.equals(published.pack.name, packName)) {
+            published.pack.id = packId; published.pack.name = packName;
+            savePublished(published);
+        }
+        ManifestModels.Manifest draft = loadDraft();
+        if (!Objects.equals(draft.pack.id, packId) || !Objects.equals(draft.pack.name, packName)) {
+            draft.pack.id = packId; draft.pack.name = packName;
+            saveDraft(draft);
+        }
+    }
+
+    /**
+     * What players are told about: the published manifest without its server-only files. Those
+     * are applied on the server from the local store and never travel; listing them told anyone
+     * who asked which files exist and where to fetch them - configs with credentials included.
+     */
+    public synchronized ManifestModels.Manifest publicManifest() throws IOException {
+        ManifestModels.Manifest manifest = copy(loadPublished());
+        manifest.files.removeIf(file -> !ManagedPaths.neededFor(file.side, "client"));
+        return manifest;
+    }
+
+    /** Whether a blob is one players are told about - anything else is not served to them. */
+    public synchronized boolean servesBlob(String blobName) throws IOException {
+        String suffix = "/files/" + blobName;
+        return loadPublished().files.stream().anyMatch(file -> ManagedPaths.neededFor(file.side, "client") && suffix.equals(file.downloadPath));
+    }
+
     /** Lets validation ask the running server who has put entries into its registries. */
     public void attachRegistries(Supplier<Map<String, Integer>> report) { registries = report; }
 
@@ -611,7 +646,10 @@ public final class ManifestStore {
                     if (jars.size() > 2000) throw new IOException("Too many server mods to inspect");
                     for (Path path : jars) {
                         String relative = gameDir.relativize(path).toString().replace('\\', '/');
-                        ManagedPaths.resolve(gameDir, relative);
+                        // A name the pack could never carry is the file's problem, not the pack's:
+                        // said, and stepped over, rather than refusing every check and publication.
+                        try { ManagedPaths.resolve(gameDir, relative); }
+                        catch (IllegalArgumentException unsafe) { issues.add(Messages.of("udmc_sync.diagnostic.inspect", relative, unsafe.getMessage()).warning(side)); continue; }
                         if (AgentFiles.isAgent(path)) continue;
                         String hash = Hashes.sha256(path);
                         var old = installed ? null : oldFiles.get(relative);
@@ -629,8 +667,33 @@ public final class ManifestStore {
                     }
                 }
                 issues.addAll(undelivered(installed ? published : draft, mods));
+                if (!installed) issues.addAll(modifiedOnServer(published, draft));
             }
             for (var problem : ModMetadata.diagnostics(mods, side, config)) issues.add(problem.detail().issue(side));
+        }
+        return issues;
+    }
+
+    /**
+     * Managed server files that were changed on the server outside UDMC and that the draft is
+     * about to replace. Publishing refuses to overwrite such a file; saying so here, before the
+     * button, is what turns that refusal from a surprise into a choice - revert the draft's
+     * change, or take the server's version under management again. Jars under mods/ are
+     * covered by the walk above; this is for everything else the server keeps.
+     */
+    private List<Map<String, Object>> modifiedOnServer(ManifestModels.Manifest published, ManifestModels.Manifest draft) throws IOException {
+        List<Map<String, Object>> issues = new ArrayList<>();
+        var oldFiles = indexByPath(published);
+        for (var next : draft.files) {
+            if (!neededForServer(next) || isJar(next.path)) continue;
+            var old = oldFiles.get(next.path);
+            if (sameContent(old, next)) continue;
+            Path target;
+            try { target = ManagedPaths.resolve(gameDir, next.path); } catch (IllegalArgumentException unsafe) { continue; }
+            if (!Files.isRegularFile(target, java.nio.file.LinkOption.NOFOLLOW_LINKS)) continue;
+            String hash = Hashes.sha256(target);
+            if (hash.equals(next.sha256) || (neededForServer(old) && hash.equals(old.sha256))) continue;
+            issues.add(Messages.of("udmc_sync.diagnostic.modified", next.path).issue("server"));
         }
         return issues;
     }
@@ -732,7 +795,7 @@ public final class ManifestStore {
                     Path backup = null;
                     if (Files.exists(target)) {
                         if (!Files.isRegularFile(target)) {
-                            throw new IOException("Server path is not a file: " + path);
+                            throw new ApiException(409, "SERVER_PATH_NOT_FILE", "The server path is not a file: " + path, path);
                         }
                         backup = directory.resolve(path);
                         Files.createDirectories(backup.getParent());
@@ -782,7 +845,9 @@ public final class ManifestStore {
                     String currentHash = Hashes.sha256(target);
                     if (!Objects.equals(currentHash, newFile.sha256)
                         && (!neededForServer(oldFile) || !Objects.equals(currentHash, oldFile.sha256))) {
-                        throw new IOException("Local server file would be overwritten: " + path);
+                        // Named and coded: a plain exception reached the panel as "internal error"
+                        // with the path only in the server log, and every later publish met it again.
+                        throw new ApiException(409, "SERVER_FILE_MODIFIED", "The server's copy of " + path + " was changed outside UDMC and would be overwritten.", path);
                     }
                 }
                 String blobName = newFile.downloadPath.replaceFirst("^/files/", "");

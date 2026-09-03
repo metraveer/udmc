@@ -137,7 +137,7 @@ public final class UdmcHttpApi {
             }
 
             if ("GET".equals(method) && "/manifest".equals(path)) {
-                String body = GSON.toJson(store.loadPublished());
+                String body = GSON.toJson(store.publicManifest());
                 if (!config.manifestPrivateKey.isBlank()) {
                     exchange.getResponseHeaders().set("x-udmc-signature", ManifestSecurity.sign(
                         body.getBytes(StandardCharsets.UTF_8), config.manifestPrivateKey));
@@ -174,8 +174,14 @@ public final class UdmcHttpApi {
             // Unauthenticated on purpose, and only answerable while nobody has claimed this server.
             if ("POST".equals(method) && "/pair".equals(path)) {
                 PairRequest body = parseBody(exchange, PairRequest.class);
-                respondJson(exchange, 200, ServerIdentity.claim(gameDir, config,
-                    body == null ? "" : body.code, ip, body == null ? null : body.project));
+                var claimed = ServerIdentity.claim(gameDir, config, body == null ? "" : body.code, ip, body == null ? null : body.project);
+                // A restored backup replaced the identity the server had invented for itself.
+                // Everything signed or bound under the old one follows: the manifests' project
+                // id, the administrator registry, and the client file the server hands out.
+                store.adoptIdentity(config.packId, config.packName);
+                access.rebind();
+                agents.publishSelf();
+                respondJson(exchange, 200, claimed);
                 return;
             }
             if ("GET".equals(method) && "/pair".equals(path)) {
@@ -640,7 +646,9 @@ public final class UdmcHttpApi {
         String blobName = URLDecoder.decode(rawBlobName, StandardCharsets.UTF_8);
         Path blobPath = store.blobPath(blobName);
 
-        if (!Files.exists(blobPath)) {
+        // Only what players are told about. A server-only file, or a draft nobody published,
+        // is not theirs to fetch, whoever knows its hash. A device with a key gets any blob.
+        if (!Files.exists(blobPath) || (!store.servesBlob(blobName) && !keyed(exchange))) {
             respondError(exchange, 404, "FILE_NOT_FOUND", "File not found.");
             return;
         }
@@ -809,6 +817,14 @@ public final class UdmcHttpApi {
             "pack", manifest.pack,
             "minecraft", manifest.minecraft
         ));
+    }
+
+    /** Whether the request carries a device key the registry accepts; never an error. */
+    private boolean keyed(HttpExchange exchange) {
+        String token = token(exchange);
+        if (token == null || token.isBlank()) return false;
+        try { return access.authenticate(token, exchange.getRemoteAddress().getAddress().getHostAddress()) != null; }
+        catch (Exception denied) { return false; }
     }
 
     private String token(HttpExchange exchange) {

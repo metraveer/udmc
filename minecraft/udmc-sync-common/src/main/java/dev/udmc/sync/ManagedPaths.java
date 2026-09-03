@@ -73,7 +73,7 @@ public final class ManagedPaths {
     }
 
     public static String requireSide(String side) {
-        if (!VALID_SIDES.contains(side)) {
+        if (side == null || !VALID_SIDES.contains(side)) {
             throw new ApiException(400, "FILE_SIDE_INVALID", "Invalid file destination: " + side, side);
         }
 

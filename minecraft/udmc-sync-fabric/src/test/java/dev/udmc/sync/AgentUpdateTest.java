@@ -244,6 +244,7 @@ public final class AgentUpdateTest {
             replacement(root.resolve("tampered"), true, false);
             replacement(root.resolve("changed-original"), false, true);
             childProcess(root.resolve("process"));
+            staleRelease();
             System.out.println("Agent update checks passed: signed releases, secret/platform/role rejection, idempotent delivery, login policy, post-exit replacement, backup, tampering and stale original protection.");
         } finally {
             TestMods.deleteTree(root);
@@ -423,6 +424,27 @@ public final class AgentUpdateTest {
             }
         }
         return path;
+    }
+
+    /**
+     * A stored client release the project's identity no longer vouches for - the project was
+     * restored from a backup at pairing - reads as no release at all. Read as an error, it took
+     * down every agent endpoint, the upload that would have replaced it included.
+     */
+    private static void staleRelease() throws Exception {
+        Path dir = Files.createTempDirectory("udmc-stale-release-");
+        try {
+            UdmcConfig config = config();
+            AgentDistribution distribution = new AgentDistribution(dir, config);
+            Path client = jar(dir.resolve("client.jar"), config, true, "one", Map.of());
+            distribution.publishClient(client);
+            check(distribution.release() != null, "A release signed by this identity is on offer");
+            config.packId = "restored-" + config.packId;
+            check(distribution.release() == null, "A release of another identity must read as absent, not fail");
+            check(!distribution.describe().containsKey("client"), "Nothing is described as on offer under the new identity");
+            distribution.publishClient(client);
+            check("1".equals(distribution.release().verify(config, "client").getProperty("sequence")), "Publishing under the new identity starts its own chain");
+        } finally { TestMods.deleteTree(dir); }
     }
 
     private static UdmcConfig config() throws Exception {

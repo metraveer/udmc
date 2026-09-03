@@ -66,7 +66,15 @@ final class AgentDistribution {
         if (Files.size(path) > 16384) throw new IOException("Invalid stored agent release");
         var result = GSON.fromJson(Files.readString(path), AgentRelease.class);
         if (result == null) throw new IOException("Invalid stored agent release");
-        result.verify(config, "client");
+        // A release the current identity no longer vouches for is no release. The project was
+        // restored from a backup at pairing, or the game version changed under it; read as
+        // absent, the next publication signs afresh. Read as an error, it took every agent
+        // endpoint down with it - the one the panel would have used to put it right included.
+        try { result.verify(config, "client"); }
+        catch (IOException stale) {
+            UdmcSync.LOGGER.warn("UDMC ignores the stored client release: it no longer belongs to this project ({})", stale.getMessage());
+            return null;
+        }
         return result;
     }
 

@@ -269,6 +269,13 @@ public final class AdminAccess {
         next.events.add(Map.of("at", clock.getAsLong(), "deviceId", id, "name", name, "action", action, "ip", ip, "detail", detail, "status", status));
         while (next.events.size() > 250) next.events.remove(0);
     }
+    /**
+     * Signs the registry for the identity the project has now. For a restore at pairing, where
+     * nothing in the registry was admitted under the old identity and nothing should be lost.
+     */
+    public synchronized void rebind() throws IOException {
+        State next = copy(); next.binding = binding(); commit(next);
+    }
     private State copy() { return GSON.fromJson(GSON.toJson(state), State.class); }
     private String binding() { return hash(config.packId + "\n" + config.manifestPublicKey + "\n" + config.adminToken); }
     private Path path() throws IOException { return ManagedPaths.internal(gameDir, "admin-access.json"); }

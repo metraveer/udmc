@@ -82,6 +82,21 @@ public final class HttpLifecycleTest {
         publish(client, base);
         check(Files.exists(serverDir.resolve("mods/server.jar")) && Files.exists(serverDir.resolve("mods/both.jar")), "Server mods not applied");
         check(!Files.exists(serverDir.resolve("mods/client.jar")), "Client-only mod installed on server");
+        // Players are told about client-side files only, and handed only those.
+        boolean serverListed = false;
+        for (var element : json(call(client, base, "GET", "/manifest", null, EMPTY, 200)).getAsJsonArray("files")) {
+            if (element.getAsJsonObject().get("path").getAsString().equals("mods/server.jar")) serverListed = true;
+        }
+        check(!serverListed, "A server-only file must not be listed in the public manifest");
+        String serverBlob = null, bothBlob = null;
+        for (var element : json(call(client, base, "GET", "/admin/files", TOKEN, EMPTY, 200)).getAsJsonArray("files")) {
+            var row = element.getAsJsonObject();
+            if (row.get("path").getAsString().equals("mods/server.jar")) serverBlob = row.get("downloadPath").getAsString();
+            if (row.get("path").getAsString().equals("mods/both.jar")) bothBlob = row.get("downloadPath").getAsString();
+        }
+        check(serverBlob != null && bothBlob != null, "Both rows must be known to the panel");
+        call(client, base, "GET", serverBlob, null, EMPTY, 404);
+        call(client, base, "GET", bothBlob, null, EMPTY, 200);
 
         Path player = root.resolve("player");
         Files.createDirectories(player.resolve("mods"));
@@ -157,7 +172,10 @@ public final class HttpLifecycleTest {
         check(uploaded.statusCode() == 201, "Large upload failed: " + new String(uploaded.body(), StandardCharsets.UTF_8));
         var entry = json(uploaded).getAsJsonObject("file");
         Path downloaded = root.resolve("downloaded.txt");
-        var response = client.send(HttpRequest.newBuilder(base.resolve(entry.get("downloadPath").getAsString())).timeout(Duration.ofSeconds(60)).build(), HttpResponse.BodyHandlers.ofFile(downloaded));
+        // A draft nobody published is not for players to fetch, whoever knows its hash. A device with a key gets it.
+        check(client.send(HttpRequest.newBuilder(base.resolve(entry.get("downloadPath").getAsString())).timeout(Duration.ofSeconds(60)).build(), HttpResponse.BodyHandlers.discarding()).statusCode() == 404,
+            "An unpublished blob must not be served without a key");
+        var response = client.send(HttpRequest.newBuilder(base.resolve(entry.get("downloadPath").getAsString())).timeout(Duration.ofSeconds(60)).header("x-udmc-token", TOKEN).build(), HttpResponse.BodyHandlers.ofFile(downloaded));
         check(response.statusCode() == 200 && Files.size(downloaded) == Files.size(source), "Large download truncated");
         check(Hashes.sha256(source).equals(Hashes.sha256(downloaded)), "Large download corrupted");
         call(client, base, "DELETE", "/admin/files?path=config/large.txt", TOKEN, EMPTY, 200);

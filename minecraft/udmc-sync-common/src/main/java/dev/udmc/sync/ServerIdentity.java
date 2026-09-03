@@ -50,6 +50,17 @@ public final class ServerIdentity {
             config.adminToken = token();
             config.pairingCode = code();
             changed = true;
+            // The registry that admitted those panels is bound to the old token. Set aside here,
+            // with the reset that makes it stale, rather than left to refuse the whole admin API
+            // at start-up because its binding no longer matches.
+            try {
+                Path registry = ManagedPaths.internal(gameDir, "admin-access.json");
+                if (Files.exists(registry)) {
+                    Files.move(registry, registry.resolveSibling("admin-access." + System.currentTimeMillis() + ".bak.json"));
+                }
+            } catch (IOException error) {
+                UdmcSync.LOGGER.error("UDMC could not set the administrator registry aside after the pairing reset", error);
+            }
             UdmcSync.LOGGER.warn("UDMC pairing was reset. Previously paired panels no longer have access.");
         }
 

@@ -1265,5 +1265,7 @@
   "Укажите адрес, по которому игроки достигают этот сервер: http:// или https://, без логина и пароля.": "Enter the address players reach this server at: http:// or https://, without a login or password.",
   "Этот файл агента содержит встроенные настройки и не может быть установлен. Возьмите текущий на вкладке «Скачать мод».": "This agent file carries built-in settings and cannot be installed. Take the current one from the “Download mod” tab.",
   "Задержка должна быть от 0 до 600 секунд.": "The delay must be between 0 and 600 seconds.",
-  "Файл уже в сборке для другой стороны; назначение станет общим, чтобы ни одна сторона его не потеряла.": "The file is already in the pack for another side; it will be assigned to both so neither side loses it."
+  "Файл уже в сборке для другой стороны; назначение станет общим, чтобы ни одна сторона его не потеряла.": "The file is already in the pack for another side; it will be assigned to both so neither side loses it.",
+  "Файл {0} изменён на сервере вне UDMC, и публикация не станет перезаписывать чужие правки. Отмените изменение файла в черновике или заберите серверную версию под управление заново.": "{0} was changed on the server outside UDMC, and publishing will not overwrite someone else's edits. Revert the draft's change to the file, or take the server's version under management again.",
+  "На сервере по пути {0} лежит не файл, а папка. Уберите её или снимите этот путь со сборки.": "On the server, {0} is a folder, not a file. Remove it or take this path out of the pack."
 }
