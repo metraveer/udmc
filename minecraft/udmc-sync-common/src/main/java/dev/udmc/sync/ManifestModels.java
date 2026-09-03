@@ -93,6 +93,8 @@ public final class ManifestModels {
         public String syncedAt;
         public long releaseSequence;
         public List<ManagedFile> files = new ArrayList<>();
+        /** Files of the player's own that stand in for pack entries, so that being told about one happens once. */
+        public List<String> standIns = new ArrayList<>();
     }
 
     public static final class ManagedFile {

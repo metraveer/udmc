@@ -14,7 +14,8 @@ public final class ManifestStoreTest {
             testCatalogSource(root.resolve("catalog-source"));
             testDetach(root.resolve("detach"));
             testPaths();
-            System.out.println("ManifestStore tests passed: draft lifecycle, migration, rollback, blob integrity, path validation, detach.");
+            registryWarnings();
+            System.out.println("ManifestStore tests passed: draft lifecycle, migration, rollback, blob integrity, path validation, detach, mods players do not receive.");
         } finally {
             TestMods.deleteTree(root);
         }
@@ -164,6 +165,41 @@ public final class ManifestStoreTest {
         // The same file can be taken back under management afterwards.
         store.importServerFile("config/example.json", "server", Hashes.sha256(config));
         expect(store.draftState().changes.added == 1, "Re-adopting a detached file failed");
+    }
+
+    /**
+     * A mod that has put entries into the game's registries and is not handed to players locks
+     * every new player out before UDMC can ask them anything: the game refuses a client
+     * without those entries during registry synchronisation. The panel has to say so - by file
+     * and by mod where the server can trace the namespace, by namespace alone where it cannot -
+     * and stay quiet about mods players do receive.
+     */
+    private static void registryWarnings() throws Exception {
+        Path gameDir = Files.createTempDirectory("udmc-registry-warnings-");
+        Files.createDirectories(gameDir.resolve("mods"));
+        ManifestStore store = new ManifestStore(gameDir, new UdmcConfig());
+        store.upsertFile("mods/shared.jar", "both", TestMods.jar("shared", "1.0.0"));
+        store.upsertFile("mods/serveronly.jar", "server", TestMods.jar("serveronly", "1.0.0"));
+        store.publish("1.0.0");
+        Files.write(gameDir.resolve("mods/minimap.jar"), TestMods.jar("xaerominimap", "26.4.2"));
+        store.attachRegistries(() -> java.util.Map.of("xaerominimap", 12, "shared", 3, "serveronly", 1, "orphan", 2));
+        var codes = codes(store.validation(true));
+        expect(codes.contains("udmc_sync.diagnostic.not_delivered [mods/minimap.jar, xaerominimap, 12]"),
+            "A mod on the server with registry entries must be named by file and id: " + codes);
+        expect(codes.contains("udmc_sync.diagnostic.not_delivered [mods/serveronly.jar, serveronly, 1]"),
+            "A mod published for the server only is not handed to players either: " + codes);
+        expect(codes.contains("udmc_sync.diagnostic.not_delivered_namespace [orphan, 2]"),
+            "Entries nobody on the server accounts for are still reported: " + codes);
+        expect(codes.stream().noneMatch(code -> code.contains("shared")), "A mod players receive raises nothing: " + codes);
+        store.attachRegistries(java.util.Map::of);
+        expect(codes(store.validation(true)).stream().noneMatch(code -> code.startsWith("udmc_sync.diagnostic.not_delivered")),
+            "Without registry entries there is nothing to warn about");
+    }
+
+    @SuppressWarnings("unchecked")
+    private static java.util.List<String> codes(java.util.Map<String, Object> validation) {
+        return ((java.util.List<java.util.Map<String, Object>>) validation.get("issues")).stream()
+            .map(issue -> issue.get("code") + " " + issue.get("args")).toList();
     }
 
     private static void expect(boolean condition, String message) {

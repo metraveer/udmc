@@ -89,10 +89,14 @@ public final class UdmcClientUi {
                 // looks for a server anyway, instead of behind a screen of ours.
                 String address = ModSynchronizer.fetchGameAddress(config);
                 offerServer = address;
+                // A file of the player's own that the pack now runs on is said on whatever
+                // screen the sync has anyway, and earns a screen of its own the first time:
+                // silence about it would leave the player guessing when the server disagrees.
+                Component standIns = standIns(result);
                 state = result.changed()
-                    ? new State(text("udmc_sync.title.ready"), text("udmc_sync.message.ready"), List.of(), false, true)
-                    : announce
-                        ? new State(text("udmc_sync.title.verified"), text("udmc_sync.message.verified"), List.of(), false, false, true, address)
+                    ? new State(text("udmc_sync.title.ready"), withStandIns(text("udmc_sync.message.ready"), standIns), List.of(), false, true)
+                    : announce || !result.newStandIns.isEmpty()
+                        ? new State(text("udmc_sync.title.verified"), withStandIns(text("udmc_sync.message.verified"), standIns), List.of(), false, false, true, address)
                         : null;
             } catch (ClientModCheck.Conflicts error) {
                 state = new State(text("udmc_sync.title.conflicts"), Component.empty(), error.files, false, false);
@@ -108,6 +112,19 @@ public final class UdmcClientUi {
 
     static Component component(Messages.Message message) {
         return Component.translatableWithFallback(message.key(), message.fallback(), message.args().toArray());
+    }
+
+    /** One line per file of the player's own that a pack entry defers to: which, instead of which, and what to do if it fails. */
+    private static Component standIns(SyncResult result) {
+        var lines = Component.empty();
+        for (var standIn : result.standIns) {
+            lines.append("\n\n").append(text("udmc_sync.message.stand_in", standIn.theirs(), standIn.theirVersion(), standIn.ours(), standIn.ourVersion()));
+        }
+        return lines;
+    }
+
+    private static Component withStandIns(Component message, Component standIns) {
+        return Component.empty().append(message).append(standIns);
     }
 
     private static Component text(String key, Object... args) { return component(Messages.of(key, args)); }

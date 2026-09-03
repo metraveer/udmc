@@ -27,10 +27,17 @@ final class ClientModCheck {
         }
     }
 
-    static Set<String> check(Path gameDir, UdmcConfig config, Map<String, ManifestModels.ManifestFile> desired,
-                             Map<Path, Path> downloads, Map<String, ManifestModels.ManagedFile> oldFiles) throws IOException {
+    /**
+     * What the check decided about the player's own files: which pack entries they supply byte
+     * for byte (borrowed), and which they stand in for at a version of their own, by pack path.
+     */
+    record Outcome(Set<String> borrowed, Map<String, SyncResult.StandIn> standIns) {}
+
+    static Outcome check(Path gameDir, UdmcConfig config, Map<String, ManifestModels.ManifestFile> desired,
+                         Map<Path, Path> downloads, Map<String, ManifestModels.ManagedFile> oldFiles) throws IOException {
         List<Conflict> conflicts = new ArrayList<>();
         Set<String> borrowed = new HashSet<>();
+        Map<String, SyncResult.StandIn> standIns = new LinkedHashMap<>();
         // Pack entries the player already satisfies with a copy of their own: not installed,
         // not compared against, and not part of the duplicate check that follows.
         Set<String> supplied = new HashSet<>();
@@ -98,7 +105,11 @@ final class ClientModCheck {
                 // Nothing of ours is installed for this entry: the pack does not carry it onto
                 // this machine at all. Their file stays personal and untouched, and if it ever
                 // goes away the next launch installs ours, because nothing provides it then.
-                UdmcSync.LOGGER.info("UDMC keeps the player's own {}: it satisfies every mod that needs it", String.join(", ", standIn));
+                // Named, with both versions: the player is told which file of theirs the pack
+                // now runs on, and the log says the same for whoever reads it later.
+                String theirs = standIn.getFirst();
+                standIns.put(expected.getKey(), new SyncResult.StandIn(theirs, versionOf(personal.get(theirs), roots), expected.getKey(), versionOf(roots, roots)));
+                UdmcSync.LOGGER.info("UDMC keeps the player's own {} in place of {}: it satisfies every mod of the pack", String.join(", ", standIn), expected.getKey());
                 desired.remove(expected.getKey());
                 downloads.remove(ManagedPaths.resolve(gameDir, expected.getKey()));
                 // Out of the picture entirely, or the duplicate check below would still see two
@@ -135,7 +146,14 @@ final class ClientModCheck {
                 new Conflict(a.path, a.sha256, java.util.stream.Stream.concat(a.reasons.stream(), b.reasons.stream()).distinct().toList()));
             throw new Conflicts(List.copyOf(grouped.values()));
         }
-        return borrowed;
+        return new Outcome(borrowed, standIns);
+    }
+
+    /** The version of the mod among {@code mods} that answers for one of {@code roots}, for the notice. */
+    private static String versionOf(List<ModMetadata.Mod> mods, List<ModMetadata.Mod> roots) {
+        return mods.stream()
+            .filter(mod -> !mod.nested() && roots.stream().anyMatch(root -> mod.id().equals(root.id()) || mod.provides().contains(root.id())))
+            .map(ModMetadata.Mod::version).findFirst().orElse("?");
     }
 
     static Path disable(Path gameDir, Conflict conflict) throws IOException {
@@ -158,29 +176,36 @@ final class ClientModCheck {
      * alone and installing nothing over it. The mods are their own authority here: each one
      * declares the versions it accepts, so the test is simply whether swapping their copy in
      * for ours introduces a problem that ours did not have.
+     *
+     * <p>Any mod, not only a library. This used to be limited to a mod something else depends
+     * on, on the grounds that a mod nobody depends on was chosen by the administrator for its
+     * own sake and a different version of it was a real difference. The owner's answer was
+     * that a version the pack's mods are content with is not a wall worth putting in a
+     * player's way: keep theirs, install everything else, and say so. What the player is told
+     * is which file of theirs stands in for which of the pack's, with both versions, and what
+     * to do if the server turns out to disagree - the check stays blocking only where the mods
+     * themselves object, which is a copy too old for something that needs it.
      */
     private static boolean standsIn(Map.Entry<String, List<ModMetadata.Mod>> theirs,
                                     Map.Entry<String, List<ModMetadata.Mod>> ours,
                                     Map<String, List<ModMetadata.Mod>> required,
                                     Map<String, List<ModMetadata.Mod>> personal,
                                     UdmcConfig config) throws IOException {
+        // Theirs has to answer for everything ours does. A jar can carry more than one mod, and
+        // a copy that brings only one of them would take the others away with the entry it
+        // replaces - which is not a different version, it is a missing mod.
+        if (!provided(theirs.getValue()).containsAll(provided(ours.getValue()))) return false;
         List<ModMetadata.Mod> shared = new ArrayList<>();
         required.forEach((path, mods) -> { if (!path.equals(ours.getKey())) shared.addAll(mods); });
         personal.forEach((path, mods) -> { if (!path.equals(theirs.getKey())) shared.addAll(mods); });
-
-        // Only a mod that is in the pack because something else needs it. A library is chosen by
-        // the mods that depend on it, and they say in writing which versions will do - so any
-        // copy inside that range is as good as ours. A mod nobody depends on was chosen by the
-        // administrator for its own sake, and a different version of it is a real difference,
-        // not a technicality: there the player is asked, exactly as before.
-        Set<String> provided = new HashSet<>();
-        for (var mod : ours.getValue()) { if (!mod.nested()) { provided.add(mod.id()); provided.addAll(mod.provides()); } }
-        boolean neededByOthers = shared.stream().anyMatch(mod -> mod.dependencies().stream()
-            .anyMatch(dependency -> provided.contains(dependency.id())
-                && (dependency.type().equals("required") || dependency.type().equals("optional"))));
-        if (!neededByOthers) return false;
-
         return signatures(shared, ours.getValue(), config).containsAll(signatures(shared, theirs.getValue(), config));
+    }
+
+    /** Every id a jar answers for: its root mods and whatever they declare to provide. */
+    private static Set<String> provided(List<ModMetadata.Mod> mods) {
+        Set<String> ids = new HashSet<>();
+        for (var mod : mods) if (!mod.nested()) { ids.add(mod.id()); ids.addAll(mod.provides()); }
+        return ids;
     }
 
     /** What is wrong with a set of mods, in a form two sets can be compared by. */

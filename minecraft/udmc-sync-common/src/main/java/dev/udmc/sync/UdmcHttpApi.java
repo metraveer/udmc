@@ -66,6 +66,9 @@ public final class UdmcHttpApi {
 
     public void attachServer(MinecraftServer minecraftServer) {
         this.minecraftServer = minecraftServer;
+        // The registries are complete once the server is up, and validation may ask about them
+        // from then on: which mods have put entries in, and whether players get those mods.
+        store.attachRegistries(RegistryReport::moddedNamespaces);
         UdmcSync.LOGGER.info("UDMC attached to the dedicated server runtime.");
     }
 

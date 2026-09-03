@@ -1,5 +1,8 @@
 package dev.udmc.sync;
 
+import java.util.function.Supplier;
+import java.util.Set;
+import java.util.HashSet;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
@@ -31,6 +34,10 @@ public final class ManifestStore {
     private final Path manifestPath;
     private final Path draftPath;
     private final UdmcConfig config;
+    // Who has put entries into the game's registries, asked at validation time. Empty until a
+    // running server is attached: a store used by a test, or before the game has started, has
+    // no registries to report on and must not pretend otherwise.
+    private volatile Supplier<Map<String, Integer>> registries = Map::of;
 
     public ManifestStore(Path gameDir, UdmcConfig config) {
         this.gameDir = gameDir;
@@ -538,14 +545,17 @@ public final class ManifestStore {
             "ok", issues.isEmpty(), "issues", issues, "checkedAt", TimeUtil.nowIso());
     }
 
+    /** Lets validation ask the running server who has put entries into its registries. */
+    public void attachRegistries(Supplier<Map<String, Integer>> report) { registries = report; }
+
     private List<Map<String, Object>> inspectMods(ManifestModels.Manifest published, ManifestModels.Manifest draft, boolean installed) throws IOException {
         List<Map<String, Object>> issues = new ArrayList<>();
         for (String side : List.of("client", "server")) {
             if (installed && side.equals("client")) continue;
             List<ModMetadata.Mod> mods = new ArrayList<>();
             for (var file : installed ? List.<ManifestModels.ManifestFile>of() : draft.files) {
-                if (!file.path.startsWith("mods/") || !file.path.toLowerCase(java.util.Locale.ROOT).endsWith(".jar") || !ManagedPaths.neededFor(file.side, side)) continue;
-                inspectMod(blobPath(file.downloadPath.replaceFirst("^/files/", "")), file.path, side, mods, issues);
+                if (!isJar(file.path) || !ManagedPaths.neededFor(file.side, side)) continue;
+                inspectMod(blobPath(blobName(file)), file.path, side, mods, issues);
             }
             if (side.equals("server")) {
                 var oldFiles = indexByPath(published);
@@ -574,11 +584,62 @@ public final class ManifestStore {
                         inspectMod(path, relative, side, mods, issues);
                     }
                 }
+                issues.addAll(undelivered(installed ? published : draft, mods));
             }
             for (var problem : ModMetadata.diagnostics(mods, side, config)) issues.add(problem.detail().issue(side));
         }
         return issues;
     }
+
+    /**
+     * Mods that have put entries into the game's registries and are not handed to players.
+     *
+     * <p>This is the warning the panel owed its owner. A client without those entries is
+     * refused during registry synchronisation - by the game, or by Fabric API before it - and
+     * refused before any mod has spoken, UDMC included: a new player cannot accept the project,
+     * so never receives the pack, so never stops being refused. The server sees it as a player
+     * who tried once. Named by file and by mod where the server can trace the namespace to one
+     * of its jars, and by namespace alone where it cannot - an entry nobody accounts for is
+     * still an entry a new player will be missing.
+     */
+    private List<Map<String, Object>> undelivered(ManifestModels.Manifest forPlayers, List<ModMetadata.Mod> serverMods) {
+        Map<String, Integer> namespaces = registries.get();
+        if (namespaces.isEmpty()) return List.of();
+        Set<String> delivered = new HashSet<>();
+        for (var file : forPlayers.files) {
+            if (!isJar(file.path) || !ManagedPaths.neededFor(file.side, "client")) continue;
+            try {
+                for (var mod : ModMetadata.read(blobPath(blobName(file)), file.path)) { delivered.add(mod.id()); delivered.addAll(mod.provides()); }
+            } catch (IOException | IllegalArgumentException unreadable) {
+                // Already an issue of its own on the client side; here it simply cannot vouch for anything.
+            }
+        }
+        List<Map<String, Object>> issues = new ArrayList<>();
+        for (var entry : namespaces.entrySet()) {
+            String namespace = entry.getKey();
+            if (delivered.stream().anyMatch(id -> accountsFor(id, namespace))) continue;
+            var owner = serverMods.stream()
+                .filter(mod -> accountsFor(mod.id(), namespace) || mod.provides().stream().anyMatch(id -> accountsFor(id, namespace)))
+                .findFirst();
+            issues.add((owner.isPresent()
+                ? Messages.of("udmc_sync.diagnostic.not_delivered", owner.get().path(), owner.get().id(), entry.getValue())
+                : Messages.of("udmc_sync.diagnostic.not_delivered_namespace", namespace, entry.getValue())).issue("server"));
+        }
+        return issues;
+    }
+
+    /**
+     * Whether a mod id answers for a registry namespace. Mods name their entries after
+     * themselves, give or take a separator - and a family of modules after the family:
+     * {@code fabric-api} for {@code fabric}, {@code create_xyz} for {@code create}.
+     */
+    private static boolean accountsFor(String id, String namespace) {
+        String mod = id.replace('-', '_'), space = namespace.replace('-', '_');
+        return mod.equals(space) || mod.startsWith(space + "_");
+    }
+
+    private static boolean isJar(String path) { return path.startsWith("mods/") && path.toLowerCase(java.util.Locale.ROOT).endsWith(".jar"); }
+    private static String blobName(ManifestModels.ManifestFile file) { return file.downloadPath == null ? "" : file.downloadPath.replaceFirst("^/files/", ""); }
 
     private static void inspectMod(Path path, String display, String side, List<ModMetadata.Mod> mods, List<Map<String, Object>> issues) {
         try {

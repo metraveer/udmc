@@ -292,7 +292,18 @@ sides waiting on each other until the keep-alive gives up.
 The two channel ids are the one fact of another mod's that this mod carries by name. They are
 read out of the library's payload classes, kept in `AgentLoginProtocol.REGISTRY_SYNC_CHANNELS`,
 and checked on the stand only: the automated matrix has no content mod to make a server's
-registries modded with. Measured on the 26.2 stand with `fabric-api 0.159.0` and `xaerominimap
+registries modded with.
+
+**And the owner is told what the server is doing to new players.** The first connection being
+one question does not help a player whose pack, once accepted, still lacks a mod the server
+runs: the game refuses them on the next join, by registry, as before. That is the owner's
+mistake to make - Xaero's on the server and not in the pack was exactly it - and the panel used
+to let it pass in silence. Now the composition check asks the running server which namespaces
+have put entries into its registries (`RegistryReport`), traces each to a jar on the server, and
+reports every one that no file handed to players accounts for: `udmc_sync.diagnostic.not_delivered`
+by file and mod, `udmc_sync.diagnostic.not_delivered_namespace` where no jar claims the
+namespace. The loaders' own namespaces are left out. Covered by `ManifestStoreTest` without a
+game, through a supplied report. Measured on the 26.2 stand with `fabric-api 0.159.0` and `xaerominimap
 26.4.2` on the server and nothing but this mod on the client:
 
 ```

@@ -24,12 +24,28 @@ public final class ModCheckTest {
             Path personal = game.resolve("mods/my-name.jar"); Files.write(personal, correct);
             var desired = desired("mods/server-name.jar", correct);
             var downloads = new LinkedHashMap<Path, Path>(); downloads.put(game.resolve("mods/server-name.jar"), source);
-            var borrowed = ClientModCheck.check(game, new UdmcConfig(), desired, downloads, Map.of());
+            var borrowed = ClientModCheck.check(game, new UdmcConfig(), desired, downloads, Map.of()).borrowed();
             check(borrowed.contains("mods/my-name.jar") && downloads.isEmpty(), "Identical renamed personal JAR must be borrowed");
             check(desired.containsKey("mods/my-name.jar") && Files.exists(personal), "Reuse must preserve the original name");
 
+            // A different version of the same mod, and nothing in the pack that says which
+            // versions will do: the player's copy stands in, and the player is told which file.
             Files.write(personal, TestMods.jar("example", "1.0.0"));
             desired = desired("mods/server-name.jar", correct); downloads.put(game.resolve("mods/server-name.jar"), source);
+            var outcome = ClientModCheck.check(game, new UdmcConfig(), desired, downloads, Map.of());
+            var standIn = outcome.standIns().get("mods/server-name.jar");
+            check(standIn != null && standIn.theirs().equals("mods/my-name.jar") && standIn.theirVersion().equals("1.0.0") && standIn.ourVersion().equals("2.0.0"),
+                "The player's own version must stand in for the pack's and be named with both versions: " + outcome.standIns());
+            check(downloads.isEmpty() && !desired.containsKey("mods/server-name.jar") && Files.exists(personal), "Nothing is installed over a copy that stands in");
+            // Too old for a mod that needs it: that is a real conflict, and the player is asked.
+            JsonObject needsExample = new JsonObject(); needsExample.addProperty("example", TestMods.atLeast("2.0.0"));
+            byte[] dependentOnExample = TestMods.jar("needs_example", "1.0.0", needsExample, new JsonObject());
+            Path dependentOnExampleSource = root.resolve("needs-example.jar"); Files.write(dependentOnExampleSource, dependentOnExample);
+            desired = desired("mods/server-name.jar", correct); downloads.put(game.resolve("mods/server-name.jar"), source);
+            var needsExampleFile = new ManifestModels.ManifestFile();
+            needsExampleFile.path = "mods/needs-example.jar"; needsExampleFile.sha256 = Hashes.sha256(dependentOnExample);
+            needsExampleFile.side = "both"; needsExampleFile.size = dependentOnExample.length;
+            desired.put(needsExampleFile.path, needsExampleFile); downloads.put(game.resolve(needsExampleFile.path), dependentOnExampleSource);
             ClientModCheck.Conflicts conflict = conflicts(game, desired, downloads);
             check(conflict.files.stream().anyMatch(f -> f.path().equals("mods/my-name.jar")), "Conflict must name the personal file");
             check(!Files.exists(game.resolve("mods/server-name.jar")), "Preflight must not install conflicting mods");
@@ -73,7 +89,7 @@ public final class ModCheckTest {
             }
             diagnosticsAndServerRemoval(root.resolve("unmanaged"), Files.readAllBytes(dependent));
             aLibraryThePlayerAlreadyHas(root.resolve("launcher"));
-            System.out.println("Mod checks passed: renamed personal mods, conflicts, stale consent, backups, missing dependencies, duplicate IDs, publication guards, libraries the player already has.");
+            System.out.println("Mod checks passed: renamed personal mods, conflicts, stale consent, backups, missing dependencies, duplicate IDs, publication guards, mods the player already has and is told about.");
         } finally { TestMods.deleteTree(root); }
     }
     private static void diagnosticsAndServerRemoval(Path game, byte[] dependent) throws Exception {

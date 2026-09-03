@@ -1,5 +1,6 @@
 package dev.udmc.sync;
 
+import java.util.List;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
@@ -91,7 +92,11 @@ public final class ModSynchronizer {
 
         progress.stage(Messages.of("udmc_sync.progress.mods"));
         int beforeCheck = downloads.size();
-        var borrowed = ClientModCheck.check(gameDir, config, desired, downloads, oldFiles);
+        var outcome = ClientModCheck.check(gameDir, config, desired, downloads, oldFiles);
+        var borrowed = outcome.borrowed();
+        result.standIns = List.copyOf(outcome.standIns().values());
+        // Told once: a file the player has already been told about is not news on every launch.
+        result.newStandIns = result.standIns.stream().filter(standIn -> !state.standIns.contains(standIn.theirs())).toList();
         result.skipped += beforeCheck - downloads.size();
         result.downloaded = downloads.size();
         for (ManifestModels.ManagedFile oldFile : state.files) {
@@ -131,7 +136,7 @@ public final class ModSynchronizer {
                 Files.createDirectories(entry.getKey().getParent());
                 replace(entry.getValue(), entry.getKey());
             }
-            writeState(gameDir, manifest, desired, borrowed);
+            writeState(gameDir, manifest, desired, borrowed, result.standIns);
         } catch (Exception error) {
             for (var entry : backups.entrySet()) {
                 try {
@@ -282,13 +287,15 @@ public final class ModSynchronizer {
         Path gameDir,
         ManifestModels.Manifest manifest,
         Map<String, ManifestModels.ManifestFile> desired,
-        java.util.Set<String> borrowed
+        java.util.Set<String> borrowed,
+        List<SyncResult.StandIn> standIns
     ) throws IOException {
         ManifestModels.ManagedState state = new ManifestModels.ManagedState();
         state.packId = manifest.pack.id;
         state.packVersion = manifest.pack.version;
         state.syncedAt = TimeUtil.nowIso();
         state.releaseSequence = manifest.releaseSequence;
+        state.standIns = standIns.stream().map(SyncResult.StandIn::theirs).toList();
 
         for (Map.Entry<String, ManifestModels.ManifestFile> entry : desired.entrySet()) {
             ManifestModels.ManagedFile managedFile = new ManifestModels.ManagedFile();

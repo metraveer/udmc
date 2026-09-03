@@ -59,6 +59,7 @@ The step-by-step guide is [docs/installation.md](docs/installation.md) (in Russi
 **Building the pack**
 - Draft and publish: nothing reaches players until you publish it.
 - Compatibility validation runs by itself on every change and after publishing.
+- The check names any mod on the server that adds registry entries but is not handed to players: without it a new player is refused by the game before UDMC can ask them anything.
 - Files that arrived on the server outside the panel can be taken under management or left alone.
 - Per-file sides: server only, client only, or both.
 
