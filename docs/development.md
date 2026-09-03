@@ -15,16 +15,27 @@ Gradle устанавливать отдельно не нужно: проект
 npm ci
 ```
 
-## Node API-mock
+## Мок-агент для проверки панели глазами
 
-Mock повторяет API серверного агента и нужен только для разработки UDMC Control.
+`scripts/dev/mock-agent.mjs` отвечает на столько API агента, сколько нужно, чтобы заполнить
+каждый экран панели правдоподобными данными, и не трогает никакой сервер: изменения
+принимаются и ничего не меняют. Он печатает код привязки — панель привязывается к нему так же,
+как к настоящему серверу, через диалог сервера.
 
 ```powershell
-$env:UDMC_ADMIN_TOKEN = "dev-token"
-npm run server
+node scripts/dev/mock-agent.mjs 46000 3
 ```
 
-API будет доступен по адресу `http://127.0.0.1:3077`.
+Первый аргумент — порт, второй — сколько игроков «в сети». Отладочная сборка панели с
+отдельным профилем и портом отладки WebView2:
+
+```powershell
+$env:UDMC_TEST_PROFILE = "design1"; $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS = "--remote-debugging-port=9333"
+./apps/admin-desktop/src-tauri/target/debug/udmc-control.exe
+```
+
+Дальше снимки и действия — через CDP на `http://127.0.0.1:9333/json`. Заголовки CORS и ответ на
+OPTIONS в моке обязательны: без них WebView2 (origin `tauri.localhost`) молча не подключается.
 
 ## Предпросмотр интерфейса
 

@@ -108,6 +108,7 @@ let activeView = "dashboard";
 let buildTab = "draft";
 let refreshRunning = false;
 let refreshQueued = false;
+let refreshQueuedSilent = true;
 let packNameDirty = rememberedUi.packNameDirty;
 let profileNameDirty = rememberedUi.profileNameDirty;
 let publishRevision = null;
@@ -462,7 +463,9 @@ function setAgentMode(mode) {
 }
 
 async function refresh(options = {}) {
-  if (refreshRunning) { refreshQueued = true; return; }
+  // A refresh asked for while one is running waits its turn, and keeps its voice: a reconnect
+  // the owner asked for must not be answered by a silent one that swallows the reason it failed.
+  if (refreshRunning) { refreshQueued = true; refreshQueuedSilent = refreshQueuedSilent && silent; return; }
   refreshRunning = true;
   const silent = Boolean(options.silent);
   const revision = connectionRevision;
@@ -525,7 +528,7 @@ async function refresh(options = {}) {
   } finally {
     setBusy(elements.refreshButton, buildBusy);
     refreshRunning = false;
-    if (refreshQueued) { refreshQueued = false; refresh({ silent: true }); }
+    if (refreshQueued) { const quiet = refreshQueuedSilent; refreshQueued = false; refreshQueuedSilent = true; refresh({ silent: quiet }); }
   }
 }
 
