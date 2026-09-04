@@ -22,6 +22,8 @@
 
 **Transport: yes, two adapters. Say it plainly.**
 
+*(The plan as first written. What actually runs is §4b: the task is queued from the listener constructor, the verdict comes from the answer or the pong, and there is no finish-gate.)*
+
 | Target | Codec / transport | Ask point | Gate | Verdict |
 |---|---|---|---|---|
 | **Fabric 1.21.1 / 26.1.2 / 26.2**, Fabric API present or absent | own mixin on `DiscardedPayload.codec` + HEAD mixins on `ServerCommonPacketListenerImpl.handleCustomPayload` and `ClientCommonPacketListenerImpl.handleCustomPayload`; transmit with `connection.send` | `ServerConfigurationPacketListenerImpl.startConfiguration` HEAD | answer, or `handleConfigurationFinished` HEAD, or tick deadline — first wins | `listener.disconnect(Component)` before world entry |
@@ -128,7 +130,7 @@ third case again: installed, current, and not yet set up.
 
 **Step 1 — shared core** (`udmc-sync-common`, no Minecraft networking types):
 - `AgentLoginProtocol`: keep `Query`/`Answer`/`Decision`, `query()`, `answer(Query)`, `validate(Answer)`, `warn`/`takeWarning` **exactly as they are** — this is what keeps `AgentUpdateTest` and `LocalizationTest` compiling untouched. Add: `encodeQuery/decodeQuery/encodeAnswer/decodeAnswer`; a **memoized `Query`** invalidated by `AgentDistribution` on publish and by the `requireClientAgent` settings flip (so the question is never built from file I/O on a netty thread); and `clearServer()`, called when `api.start()` throws — today `configureServer` has already run by then and nothing ever unsets it, so a dead API keeps handing players a dead URL.
-- New `UdmcVerification`: the state machine, keyed by `Connection` in a `WeakHashMap` beside `WARN`. Per connection: `asked`, `answered`, `decided` (all volatile — `startConfiguration` runs on the netty loop, `tick()` on the server thread, and the current `ServerLoginMixin` already marks its cross-thread fields volatile; losing that is a fail-*open* regression), a tick counter, and a `Gate`. **Three decision triggers, first wins:** the answer arrives; the gate/finish fires; the deadline (200 ticks ≈ 10 s) expires. Deciding on arrival means a bad client is rejected in one RTT, and the finish trigger means a clean vanilla client is rejected instantly instead of waiting out the deadline. All decisions hop to the server thread first.
+- New `UdmcVerification`: the state machine, keyed by `Connection` in a `WeakHashMap` beside `WARN`. Per connection: `asked`, `answered`, `decided` (all volatile — `startConfiguration` runs on the netty loop, `tick()` on the server thread, and the current `ServerLoginMixin` already marks its cross-thread fields volatile; losing that is a fail-*open* regression), a tick counter, and a `Gate`. **Three decision triggers, first wins:** the answer arrives; the gate/finish fires; the deadline (`PATIENCE_MILLIS`, five seconds) expires. Deciding on arrival means a bad client is rejected in one RTT, and the finish trigger means a clean vanilla client is rejected instantly instead of waiting out the deadline. All decisions hop to the server thread first.
 - `Gate` interface: `release()` / `reject(Component)` / `onServerThread(Runnable)`.
 
 **Step 2 — payloads** in the existing `src/network/{classic,modern}` (`ResourceLocation` vs `Identifier`, the split that already exists and that NeoForge shares): `UdmcQueryPayload` and `UdmcAnswerPayload`, both `implements CustomPacketPayload` with a `Type<>` and a `StreamCodec<FriendlyByteBuf, …>`. Same file names as today, new supertype.
@@ -136,7 +138,7 @@ third case again: installed, current, and not yet set up.
 **Step 3 — Fabric transport** (three mixins):
 - `UdmcPayloadCodecMixin` (per-version, in `src/network/{classic,modern}`) — `@Inject` at `DiscardedPayload.codec` HEAD, `setReturnValue` for our two ids. Serves both encode and decode, both directions, both phases.
 - `ServerPayloadMixin` / `ClientPayloadMixin` (common) — `@Inject(HEAD, cancellable)` on `handleCustomPayload` of `ServerCommonPacketListenerImpl` / `ClientCommonPacketListenerImpl` (the client one needs the explicit descriptor; the method is overloaded). **Set an explicit `priority` (1500)** — do not rely on load order where any competitor is a hard failure.
-- `ServerConfigVerifyMixin` (common) on `ServerConfigurationPacketListenerImpl`: ask at `startConfiguration` HEAD (idempotent guard — Fabric re-enters this method from its register/pong pump); gate at `handleConfigurationFinished` HEAD with `if (!server.isSameThread()) return;` so vanilla's `ensureRunningOnSameThread` reschedules us onto the server thread; deadline at `tick()` HEAD.
+- `ServerConfigVerifyMixin` (common) on `ServerConfigurationPacketListenerImpl` (plan; §4b is what runs): ask at `startConfiguration` HEAD (idempotent guard — Fabric re-enters this method from its register/pong pump); gate at `handleConfigurationFinished` HEAD with `if (!server.isSameThread()) return;` so vanilla's `ensureRunningOnSameThread` reschedules us onto the server thread; deadline at `tick()` HEAD.
 - Transmit with `connection.send(new ClientboundCustomPayloadPacket(...))` / `ServerboundCustomPayloadPacket`.
 
 **Step 4 — NeoForge transport** (`udmc-sync-neoforge`, ~110 lines, no mixins):
@@ -150,7 +152,8 @@ third case again: installed, current, and not yet set up.
 **Step 6 — mixin configs.** File **names** unchanged, so `generator.rs::customize_jar` (lines 259–275) and its assertion at ~789 need **no edit** — it rewrites only the two hard-coded filenames, `environment`, `displayName`, and one entrypoint key.
 ```
 udmc_sync.mixins.json         : DedicatedServerMixin, MinecraftServerMixin, ServerConfigVerifyMixin,
-                                ServerPayloadMixin, PlayerListMixin, UdmcPayloadCodecMixin
+                                ServerPayloadMixin, PlayerListMixin, UdmcPayloadCodecMixin,
+                                CommandsMixin, ConfigurationTaskAccess
 udmc_sync.client.mixins.json  : ClientTickMixin, ClientPayloadMixin, DisconnectedScreenMixin,
                                 UdmcPayloadCodecMixin
 udmc_sync.neoforge.mixins.json: PlayerListMixin  |  client: DisconnectedScreenMixin
@@ -377,7 +380,7 @@ hurts: every previous attempt at this transport worked in exactly one configurat
 
 ## 5. TEST PLAN ON THE REAL STAND
 
-**Automated** (`scripts/runtime-agent-check.js`, 1.21.1 only — `minecraft-protocol@1.66.2` still has no 26.x support, per `docs/development.md:165`). Every refused client is held to three things besides the reason: it has received no `registry_data` and no `select_known_packs`, it never reached the play phase, and the refusal arrived in the configuration phase. Those three are the guarantee of §4b, and the harness fails on any of them. Scenarios:
+**Automated** (`scripts/runtime-agent-check.js`, 1.21.1 only — `minecraft-protocol@1.66.2` still has no 26.x support, per the runtime-check section of `docs/development.md`). Every refused client is held to three things besides the reason: it has received no `registry_data` and no `select_known_packs`, it never reached the play phase, and the refusal arrived in the configuration phase. Those three are the guarantee of §4b, and the harness fails on any of them. Scenarios:
 
 | mode | client behaviour | must show |
 |---|---|---|
@@ -390,9 +393,11 @@ hurts: every previous attempt at this transport worked in exactly one configurat
 | `silent` | never answers, only pongs | rejected within the same round trip as everyone else, message contains `/udmc` |
 | `warn` | `requireClient:false` + `unclaimed` / `silent` | joins **and** receives a `system_chat` with the same reason; `open_url` where a file is to be fetched |
 
-The ordering is also checked without a stand, on all four builds, by `AgentUpdateTest`: what
-the check sends is the offer, the question and the ping, in that order and nothing else, and the
-connection is being waited on afterwards. 26.1.2 and 26.2 are covered by that check alone.
+The ordering is also checked without a stand, on the three Fabric builds, by `AgentUpdateTest`:
+what the check sends is the offer, the question and the ping, in that order and nothing else, and
+the connection is being waited on afterwards. 26.1.2 and 26.2 are covered by that check alone;
+NeoForge, whose task is registered through `RegisterConfigurationTasksEvent`, is checked only on
+the stand.
 
 **Native matrix** — one CDP screenshot of the disconnect screen per rejecting row (mandatory per `CLAUDE.md`; the "open page" / "copy link" buttons come from `DisconnectedScreenMixin` scraping `getNarrationMessage()` for `UDMC` + `https?://`, and no programmatic check covers them):
 
@@ -430,8 +435,8 @@ On rows 2, 3 and 6 the server log must show the verdict **before** the game's ow
 
 **Vanilla clients on NeoForge are not unconditionally safe** — if the pack contains any *other* Neo mod with a non-optional payload, `initializeOtherConnection` disconnects the vanilla client from `handlePong(0)` with NeoForge's misleading "you are not running NeoForge" text, before our task ever runs. Not our bug, not fixable by us, but do not promise configuration (d) on NeoForge unconditionally.
 
-**Configuration has no phase timeout, and that cuts both ways.** Our 200-tick deadline covers our own task; it cannot rescue a player stuck behind *another* mod's configuration task that never finishes. Serial task execution is a shared-fate property of the phase. Document it.
+**Configuration has no phase timeout, and that cuts both ways.** Our five-second deadline covers our own task; it cannot rescue a player stuck behind *another* mod's configuration task that never finishes. Serial task execution is a shared-fate property of the phase. Document it.
 
-**Two things that were broken in the tree when this was written:** `runtime-agent-check.js` could not pass (`/agents/install` vs `/udmc`) and ran nowhere; and `AgentLoginProtocol.server` was never cleared when `api.start()` threw. Both are fixed — the harness now walks nine scenarios against a real server on every push.
+**Two things that were broken in the tree when this was written:** `runtime-agent-check.js` could not pass (`/agents/install` vs `/udmc`) and ran nowhere; and `AgentLoginProtocol.server` was never cleared when `api.start()` threw. Both are fixed — the harness now walks ten logins over eight answer modes against a real server on every push, with and without the whole Fabric API.
 
 **One judgement where I disagree with a critique, stated so the maintainer can overrule me:** the "reconfiguration silently bypasses the check" finding. `handleConfigurationAcknowledged` indeed does not call `startConfiguration`, but reconfiguration is reachable only from the play phase, which is reachable only through the gate on the same `Connection` — so there is nothing to bypass, and `takeWarning`'s `remove` semantics prevent a duplicate notice. I recommend arming only at `startConfiguration` HEAD and adding a DEBUG log if the finish gate ever fires on a connection we never asked, rather than adding a second ask point on `returnToWorld`.

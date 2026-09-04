@@ -2,15 +2,12 @@ node_modules/
 apps/admin-desktop/ui/vendor/
 apps/admin-desktop/ui/locales/resources.js
 apps/admin-desktop/src-tauri/agent-templates/
-dist/
 target/
 build/
 .gradle/
 .gradle-runtime/
-data/
 tmp/
 .qa/
-udmc-sync-server.jar
 udmc-sync.json
 udmc-sync/
 *.log
@@ -24,3 +21,6 @@ Thumbs.db
 
 # Логи тестовых запусков Minecraft: генерируются при каждой сборке агентов.
 minecraft/*/logs/
+
+# Схемы возможностей Tauri генерируются при каждой сборке (tauri-build).
+apps/admin-desktop/src-tauri/gen/

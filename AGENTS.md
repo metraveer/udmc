@@ -11,6 +11,6 @@ Session journals from earlier stages are kept in `docs/internal/` for history.
 Do not mark planned or partially tested features complete.
 
 UDMC Control is a Windows Tauri admin application, not a Minecraft launcher.
-Players install a generated client agent JAR into their existing game profile.
+Players install the same unmodified udmc-sync JAR the server runs into their existing game profile; the project is learned from the server at login.
 Preserve existing projects, credentials, personal files, and managed-file safety.
 Use isolated test profiles and worlds; never test against the user's real server.

@@ -88,6 +88,8 @@ The app, the guide and the source: **https://github.com/metraveer/udmc**
 - Never installs anything before you accept a server, and never overwrites a file you edited.
 - Talks to no service of ours. No account, no telemetry, no central server — only the Minecraft
   server you joined.
+- Hears only about the files meant for players. Whatever the server keeps for itself — configs,
+  credentials — is never listed to a client and cannot be fetched by hash.
 - Says nothing when there is nothing to say: a launch where your pack is already correct goes
   straight to the game.
 - Does nothing on its own: the server has to be running UDMC too.
@@ -105,8 +107,9 @@ the label is on the code and on this page's text.
 
 It is still tested the ordinary way. Every release is walked by hand on real servers and real
 clients — a player's first join, on Fabric 1.21.1, 26.1.2 and 26.2 and on NeoForge — and on every
-change an automated stand starts a real server and joins it as nine different kinds of client,
-from "no mod at all" to "a version newer than the server's".
+change an automated stand starts a real server and joins it as ten different kinds of client,
+from "no mod at all" to "a version newer than the server's" — twice, with and without the whole
+Fabric API on the server.
 
 No image here came out of a generator: the icon is Lucide's `package` glyph (ISC) on a plain
 background, and the screenshots are of the running program.
@@ -171,6 +174,8 @@ background, and the screenshots are of the running program.
 - Ничего не ставит до вашего согласия и не переписывает файл, который вы правили.
 - Не ходит ни в какие наши сервисы. Нет аккаунта, нет телеметрии, нет центрального сервера —
   только тот сервер Minecraft, куда вы зашли.
+- Знает только о файлах для игроков. То, что сервер держит для себя — конфиги, пароли, — клиенту
+  не перечисляется и по хешу не выдаётся.
 - Молчит, когда сказать нечего: запуск игры с актуальной сборкой ничем не прерывается.
 - Сам по себе не делает ничего: на сервере тоже должен работать UDMC.
 - Уходит, когда скажете: удалите JAR и папку `udmc-sync` рядом с ним. Моды, которые он поставил,
@@ -187,8 +192,9 @@ background, and the screenshots are of the running program.
 
 Проверяется он при этом обычным способом. Каждый выпуск проходят руками на настоящих серверах и
 настоящих клиентах: первый вход игрока на Fabric 1.21.1, 26.1.2 и 26.2 и на NeoForge. А на каждое
-изменение автоматический стенд поднимает настоящий сервер и заходит на него девятью разными
-клиентами — от «мода нет вовсе» до «версия новее, чем у сервера».
+изменение автоматический стенд поднимает настоящий сервер и заходит на него десятью разными
+клиентами — от «мода нет вовсе» до «версия новее, чем у сервера» — дважды: с полным Fabric API
+на сервере и без него.
 
 Ни одна картинка здесь не вышла из генератора: иконка — глиф `package` из набора Lucide (ISC) на
 однотонном фоне, скриншоты — снимки работающей программы.

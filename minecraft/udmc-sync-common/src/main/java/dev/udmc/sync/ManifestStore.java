@@ -157,7 +157,7 @@ public final class ManifestStore {
                     output.write(buffer, 0, count);
                 }
             }
-            if (AgentFiles.isAgent(staged)) throw new ApiException(400, "UDMC_AGENT_PACK_FORBIDDEN", "UDMC agents cannot be distributed through the modpack. Export a client JAR from Control.");
+            if (AgentFiles.isAgent(staged)) throw new ApiException(400, "UDMC_AGENT_PACK_FORBIDDEN", "UDMC itself is not distributed through the modpack: the server hands out its own file to players.");
             String sha256 = Hashes.sha256(staged);
             if (expectedHash != null && !Objects.equals(expectedHash, sha256)) {
                 throw new ApiException(409, "SERVER_FILE_CHANGED", "Server file changed. Refresh the inventory before importing.");

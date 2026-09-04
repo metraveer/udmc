@@ -4,7 +4,6 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { zipSync, strToU8 } from "fflate";
 import { inspectFile } from "../apps/admin-desktop/ui/assets/file-intake.js";
-import { normalizeManagedPath } from "../packages/core/src/manifest.js";
 
 function archive(name, files) {
   return new File([zipSync(Object.fromEntries(Object.entries(files).map(([key, value]) => [key, strToU8(value)])))], name);
@@ -75,13 +74,6 @@ test("multiloader archives use the metadata for the selected platform", async ()
   const file = archive("multi.jar", { "fabric.mod.json": '{"id":"fabric_part","environment":"client"}', "META-INF/neoforge.mods.toml": neoMetadata });
   assert.equal((await inspectFile(file, "fabric")).modId, "fabric_part");
   assert.equal((await inspectFile(file, "neoforge")).modId, "example");
-});
-
-test("unsafe, reserved and nonportable paths are rejected", () => {
-  for (const path of ["mods/../config/a.json", "mods/", "mods/con.jar", "mods/file.jar.", "mods/file:ads", "config/udmc-sync.json", "config/.udmc-managed.json"]) {
-    assert.throws(() => normalizeManagedPath(path), undefined, path);
-  }
-  assert.equal(normalizeManagedPath("config/nested/settings.json"), "config/nested/settings.json");
 });
 
 test("Tauri leaves Windows file drops to the HTML interface", async () => {

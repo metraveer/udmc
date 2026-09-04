@@ -2,9 +2,21 @@
 // plausible data, and nothing that touches a real server. Read-only by design - mutations
 // answer with what the panel expects and change nothing that matters.
 import { createServer } from "node:http";
+import { readFileSync } from "node:fs";
 
 const PORT = Number(process.argv[2] || 46000);
 const PLAYERS = Number(process.argv[3] || 0);
+// `--issues` makes the validation report findings - a blocking one and two warnings - so the
+// panel's warning rows can be looked at. Without it the server is in good order.
+const ISSUES = process.argv.includes("--issues") || process.env.UDMC_MOCK_ISSUES === "1";
+
+// The versions on screen follow the repository, so a screenshot taken today is not dated by
+// the agent it shows: the panel is this version, the server runs the release before it.
+const APP_VERSION = JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8")).version;
+const AGENT_VERSION = (() => {
+  const [major, minor, patch] = APP_VERSION.split(".").map(Number);
+  return patch > 0 ? `${major}.${minor}.${patch - 1}` : `${major}.${Math.max(minor - 1, 0)}.0`;
+})();
 let paired = false;
 let requireClient = false;
 let gameAddress = "play.example.com:25565";
@@ -103,12 +115,12 @@ createServer((request, response) => {
   }
   if (url.pathname === "/admin/agents") {
     return send(response, 200, {
-      protocol: 1, currentVersion: "0.19.0", requireClient, gameAddress,
+      protocol: 1, currentVersion: AGENT_VERSION, requireClient, gameAddress,
       serverUrl: `http://127.0.0.1:${PORT}`, downloadUrl: `http://127.0.0.1:${PORT}/agents/download`,
       instructionsUrl: `http://127.0.0.1:${PORT}/udmc`, signed: true,
       packId: "udmc-main", packName: "Дракон и Пламя",
       minecraftVersion: "26.2", loaderType: "fabric", loaderVersion: "0.19.3",
-      client: { version: "0.19.0", sha256: "a".repeat(64), sequence: "1" },
+      client: { version: AGENT_VERSION, sha256: "a".repeat(64), sequence: "1" },
       update: { state: "idle" }, canUpdate: true,
     });
   }
@@ -122,11 +134,11 @@ createServer((request, response) => {
         if (typeof value.gameAddress === "string") gameAddress = value.gameAddress;
       } catch { /* the panel is what is being looked at, not this */ }
       send(response, 200, {
-        protocol: 1, currentVersion: "0.19.0", requireClient, gameAddress,
+        protocol: 1, currentVersion: AGENT_VERSION, requireClient, gameAddress,
         serverUrl: `http://127.0.0.1:${PORT}`, downloadUrl: `http://127.0.0.1:${PORT}/agents/download`,
         signed: true, packId: "udmc-main", packName: "Дракон и Пламя",
         minecraftVersion: "26.2", loaderType: "fabric", loaderVersion: "0.19.3",
-        client: { version: "0.19.0", sha256: "a".repeat(64), sequence: "1" },
+        client: { version: AGENT_VERSION, sha256: "a".repeat(64), sequence: "1" },
         update: { state: "idle" }, canUpdate: true,
       });
     });
@@ -169,7 +181,7 @@ createServer((request, response) => {
     });
   }
   if (url.pathname === "/admin/validation") {
-    return send(response, 200, { target: url.searchParams.get("target") === "server" ? "server" : "draft", revision: "1", ok: false, checkedAt: new Date().toISOString(), issues: [
+    return send(response, 200, { target: url.searchParams.get("target") === "server" ? "server" : "draft", revision: "1", ok: !ISSUES, checkedAt: new Date().toISOString(), issues: !ISSUES ? [] : [
       { side: "server", level: "warning", code: "udmc_sync.diagnostic.not_delivered", args: ["mods/xaerominimap-fabric-26.2-26.4.2.jar", "xaerominimap", "12"], message: "xaerominimap adds 12 registry entries but is not handed to players." },
       { side: "server", level: "warning", code: "udmc_sync.diagnostic.not_delivered_namespace", args: ["xaeroworldmap", "4"], message: "The server holds 4 registry entries in the xaeroworldmap namespace that no file handed to players carries." },
       { side: "client", level: "error", code: "udmc_sync.diagnostic.required", args: ["mods/waystones.jar", "waystones", "balm", ">=21.0.0"], message: "waystones needs balm." },
@@ -213,7 +225,7 @@ createServer((request, response) => {
         packId: "udmc-main", packName: "Дракон и Пламя", adminToken: "a".repeat(64),
         manifestPublicKey: "MCowBQYDK2VwAyEA" + "b".repeat(28), fingerprint: "4f".repeat(32),
         minecraftVersion: "26.2", loaderType: "fabric", loaderVersion: "0.19.3",
-        apiPort: PORT, agentVersion: "0.20.0",
+        apiPort: PORT, agentVersion: APP_VERSION,
       });
     });
     return;

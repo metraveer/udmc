@@ -96,7 +96,7 @@ public final class AdminAccess {
     }
 
     public synchronized Map<String, Object> enrollOwner(Principal actor, String token, String name, String ip) throws IOException {
-        if (!actor.bootstrap()) throw new Denied(403, "ACCESS_RECOVERY_KEY_REQUIRED", "Owner recovery requires the project key from the server JAR.");
+        if (!actor.bootstrap()) throw new Denied(403, "ACCESS_RECOVERY_KEY_REQUIRED", "Owner recovery requires the project's recovery key from config/udmc-sync.json on the server.");
         validateToken(token); name = name(name);
         if (isRoot(token)) throw new ApiException(400, "ACCESS_SEPARATE_DEVICE_KEY_REQUIRED", "A separate device key is required.");
         Device existing = find(token);

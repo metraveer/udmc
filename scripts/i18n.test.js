@@ -145,7 +145,14 @@ test("all explicit UI messages and placeholders have both language resources", a
     assert.doesNotMatch(resources.en.translation[key], /[А-Яа-яЁё]/);
     assert.deepEqual(placeholders(resources.en.translation[key]), placeholders(resources.ru.translation[key]), key);
   }
-  assert.ok(used.size > 770);
+  assert.ok(used.size > 650);
+  // Every key still has a caller: a string nobody asks for is a translation nobody maintains.
+  // Plural forms hang off their base key; game keys are checked against the Java sources above.
+  const corpus = [await readFile(new URL("index.html", root), "utf8")];
+  for (const file of await readdir(new URL("assets/", root))) if (file.endsWith(".js")) corpus.push(await readFile(new URL(`assets/${file}`, root), "utf8"));
+  const sources = corpus.join("\n");
+  const orphans = Object.keys(resources.en.translation).filter(key => !key.startsWith("udmc_sync.") && !/_(one|few|many|other)$/.test(key) && !sources.includes(key));
+  assert.deepEqual(orphans, [], "Locale keys nobody uses");
 });
 
 test("English admin boot translates static, dynamic and command-reference text", async t => {

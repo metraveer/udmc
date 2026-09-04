@@ -1,1 +1,0 @@
-{"default":{"identifier":"default","description":"Minimal permissions for the UDMC Control window","local":true,"windows":["main"],"permissions":["core:default","updater:default","process:allow-restart"]}}

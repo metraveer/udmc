@@ -38,7 +38,7 @@ UDMC removes that step. You publish the pack in the panel, and players get it th
 2. In the app open **Server settings → Download the mod**, pick your game version, and save the file.
 3. Put the file into your server's `mods` folder and start it. The server creates a project and writes a **pairing code** — to the console and to `config/udmc-pairing.txt`.
 4. Return to the app, open **Server settings → Connection**, enter your server's address and the code. If the RCON password is already there, the field gives way to one button that fetches the code itself.
-5. Give players the very same file. There is only one: the server tells the client which modpack it is and where to get it.
+5. Give players the very same file. There is only one: the server tells the client which modpack it is and where to get it. On the first join the game asks one question, with the pack's name and the fingerprint of its signing key. Nothing is written until the player agrees; after one restart the pack keeps itself current.
 
 That is it: from now on, whatever you publish under "Pack" travels to your players by itself.
 
@@ -54,12 +54,16 @@ The step-by-step guide is [docs/installation.md](docs/installation.md) (in Russi
 | **Server console** | **Administrators** |
 | <img src="docs/images/04-console.png" alt="Server console with a command reference" width="420"> | <img src="docs/images/05-devices.png" alt="Administrator list with invitations and approval" width="420"> |
 
+What a player sees on the first join — one question, and nothing is written until they agree:
+
+<img src="docs/images/08-client-setup.png" alt="The in-game question on first join: the pack's name, the signing key fingerprint, Accept and Not now" width="640">
+
 ## Features
 
 **Building the pack**
 - Draft and publish: nothing reaches players until you publish it.
 - Compatibility validation runs by itself on every change and after publishing.
-- The check names any mod on the server that adds registry entries but is not handed to players: without it a new player is refused by the game before UDMC can ask them anything.
+- The check names any mod on the server that adds registry entries but is not handed to players: the game refuses everyone who lacks it, and UDMC cannot supply what is not in the pack. Such findings are warnings and never block publishing.
 - Files that arrived on the server outside the panel can be taken under management or left alone.
 - Per-file sides: server only, client only, or both.
 
@@ -114,7 +118,7 @@ Server agents update from the panel — the **Update and restart** button under 
 
 ## Built with AI assistance
 
-This project is developed and maintained with heavy use of AI assistants: they write the code, the tests and the documentation, under human direction and review. Every release goes through automated tests (123 interface and protocol checks, plus Rust and Java test suites) and a manual run against a real Minecraft server.
+This project is developed and maintained with heavy use of AI assistants: they write the code, the tests and the documentation, under human direction and review. Every release goes through automated tests (Node, Rust and Java suites, plus a login matrix against a real server in CI) and a manual run on real clients.
 
 We think it matters to say so plainly: the code is open, the history is detailed and the decisions are documented — you can check any part of it yourself.
 

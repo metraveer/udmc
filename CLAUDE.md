@@ -50,7 +50,8 @@ cd apps/admin-desktop/src-tauri && cargo build
 
 Затем — нативная проверка глазами: мок-агент `node scripts/dev/mock-agent.mjs 46000 3`
 (печатает код привязки), запуск отладочной сборки с `UDMC_TEST_PROFILE=<имя>` и
-`WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=<порт>`, скриншоты через CDP. Программные проверки регулярно пропускают то, что сразу видно на снимке:
+`WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=<порт>`, скриншоты через CDP; снимки для README и документации — `node scripts/dev/docs-screenshots.mjs docs/images`.
+Программные проверки регулярно пропускают то, что сразу видно на снимке:
 наложения, лишние линии, кнопки не в том блоке. Скриншот обязателен для любой правки вёрстки.
 
 Тестовый профиль есть только в отладочной сборке и держит свои данные в `%TEMP%`, отдельно от

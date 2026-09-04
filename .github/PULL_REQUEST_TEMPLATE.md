@@ -4,7 +4,8 @@
 
 ## Проверка
 
-- [ ] `npm run minecraft:build`
-- [ ] `npm run admin:build` или изменение не затрагивает Windows-приложение
+- [ ] `npm test`
+- [ ] `npm run minecraft:build` или изменение не затрагивает мод
+- [ ] `cargo build` в `apps/admin-desktop/src-tauri` или изменение не затрагивает Windows-приложение
 - [ ] Документация обновлена
 - [ ] В diff нет токенов, приватных адресов и собранных файлов
